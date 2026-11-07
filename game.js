@@ -376,6 +376,14 @@
     } else state.waveClock=0;
   }
   function update(dt) {
+    // Q / E continuously rotate the turret through all 360 degrees.
+    const ccw = keys.has("q") || keys.has("Q");
+    const cw = keys.has("e") || keys.has("E");
+    if (ccw !== cw) {
+      const turn = (cw ? 1 : -1) * 4.2 * dt; // radians per second
+      state.aim = ((state.aim + turn * 4 / Math.PI) % 8 + 8) % 8;
+      syncAimPad();
+    }
     updateArena(dt);
     state.invuln=Math.max(0,state.invuln-dt);
     state.fireClock-=dt;
@@ -560,7 +568,7 @@
   function setAim(x,y) {
     if (Math.hypot(x-CX,y-CY)<18) return;
     let theta=Math.atan2(y-CY,x-CX);
-    state.aim=((Math.round(theta/(Math.PI/4))%8)+8)%8;
+    state.aim=((theta/(Math.PI/4))%8+8)%8;
     syncAimPad();
   }
   function keyAim() {
@@ -592,7 +600,7 @@
   window.addEventListener("blur",()=>{keys.clear();pointerFiring=buttonFiring=false;fireButton.classList.remove("firing");if(state.phase==="playing")pause();});
   document.addEventListener("visibilitychange",()=>{if(document.hidden && state.phase==="playing")pause();});
   canvas.addEventListener("pointermove",event=>{
-    if(event.pointerType==="mouse"||event.buttons) {
+    if(event.pointerType==="mouse"||pointerFiring||event.buttons) {
       const p=canvasPoint(event);setAim(p.x,p.y);
     }
   });
