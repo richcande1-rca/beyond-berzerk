@@ -2,7 +2,7 @@
 
 **Insane shooter arcade game. The world moves. You don't.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.2.3 — Robot Riot**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.2.4 — Robot Riot**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -16,10 +16,10 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 
 | Input | Action |
 | --- | --- |
-| Left / Right arrows (hold) | Smoothly accelerate counterclockwise / clockwise; brake gently on release |
+| Left / Up arrows (hold) | Smoothly rotate counterclockwise through 360° |
+| Right / Down arrows (hold) | Smoothly rotate clockwise through 360° |
 | Q / E (hold) | Alternate smooth rotation controls |
 | WASD | Snap to one of eight quick directions |
-| Up / Down arrows | Ease smoothly toward north / south |
 | Space or Enter | Hold to fire |
 | Mouse | Aim freely at any angle; hold click to fire |
 | Touch | Drag on the arena to aim and fire freely; eight-way quick pad plus hold FIRE also works |
