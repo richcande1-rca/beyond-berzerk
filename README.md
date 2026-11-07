@@ -2,7 +2,7 @@
 
 **Insane shooter arcade game. The world moves. You don't.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.1.2 — First Contact**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.1.3 — First Contact**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -36,6 +36,7 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - Moving walls can scrap robots. Wall kills score fewer points than turret kills.
 - Normal robots: 100 points. Armored robots: 180. Wall kill: 40. Completed wave: +500.
 - Three lives; brief protection after a hit. High score is saved locally in your browser.
+- The SOUND ON button reinitializes browser audio and plays a short test chirp; game START also unlocks sound.
 
 ## Files
 
