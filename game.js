@@ -1402,18 +1402,26 @@
             y:(event.clientY-rect.top)*H/rect.height};
   }
 
+  // Wire normal play first. Older cached HTML may not contain the test-mode
+  // controls, but START GAME must remain usable during a Pages deployment.
+  startButton.addEventListener("click",()=>state.phase==="paused"?pause():start());
+
   function launchTest() {
+    if (!testWaveInput) return;
     const value=Number(testWaveInput.value);
     const wave=clamp(Number.isFinite(value) ? Math.floor(value) : 4,1,999);
     testWaveInput.value=String(wave);
     start(wave,true);
   }
-  // The input remains usable with keyboard and touch without steering the turret.
-  testWaveInput.addEventListener("keydown",event=>{
-    event.stopPropagation();
-    if(event.key==="Enter") {event.preventDefault();launchTest();}
-  });
-  testStartButton.addEventListener("click",launchTest);
+  // Test controls are optional while an older index.html is still cached.
+  // A missing test widget must never abort boot before normal-game handlers.
+  if (testWaveInput) {
+    testWaveInput.addEventListener("keydown",event=>{
+      event.stopPropagation();
+      if(event.key==="Enter") {event.preventDefault();launchTest();}
+    });
+  }
+  if (testStartButton) testStartButton.addEventListener("click",launchTest);
 
   window.addEventListener("keydown",event=>{
     if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," ","Enter"].includes(event.key))
@@ -1472,7 +1480,6 @@
   fireButton.addEventListener("pointerup",endFire);
   fireButton.addEventListener("pointercancel",endFire);
   fireButton.addEventListener("lostpointercapture",endFire);
-  startButton.addEventListener("click",()=>state.phase==="paused"?pause():start());
   pauseButton.addEventListener("click",pause);
   soundButton.addEventListener("click",()=>{
     soundOn=!soundOn;
