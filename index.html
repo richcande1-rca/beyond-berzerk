@@ -13,19 +13,19 @@
   <main class="shell">
     <header class="masthead">
       <div class="brand"><span class="brand-top">THE WORLD MOVES. YOU DON'T.</span><h1>BEYOND <em>BERZERK</em></h1></div>
-      <div class="version">FIRST CONTACT <span>V 0.1</span></div>
+      <div class="version">FIRST CONTACT <span>V 0.1.1</span></div>
     </header>
 
     <section class="cabinet" aria-label="Beyond Berzerk arcade game">
       <div class="screen">
-        <canvas id="game" width="960" height="720" aria-label="Game arena: move your aim in eight directions, shoot approaching robots, and survive shifting maze walls">Your browser needs HTML canvas to play.</canvas>
+        <canvas id="game" width="960" height="720" aria-label="Game arena: rotate the turret freely through 360 degrees, shoot approaching robots, and survive shifting maze walls">Your browser needs HTML canvas to play.</canvas>
         <div class="overlay" id="overlay">
           <div class="overlay-card">
             <div class="eyebrow" id="overlay-eyebrow">ARCADE SYSTEM ONLINE</div>
             <h2 id="overlay-title">FIRST CONTACT</h2>
-            <p id="overlay-text">One turret. Eight directions. Endless robot trouble.<br>Walls stop every shot — theirs and yours.</p>
+            <p id="overlay-text">One turret. Full 360° rotation. Endless robot trouble.<br>Walls stop every shot — theirs and yours.</p>
             <button class="primary" id="start-btn" type="button">START GAME <span>↗</span></button>
-            <p class="overlay-help">AIM: ARROWS / WASD / POINTER &nbsp; • &nbsp; FIRE: SPACE / HOLD CLICK</p>
+            <p class="overlay-help">AIM: POINTER / Q E / ARROWS &nbsp; • &nbsp; FIRE: SPACE / HOLD CLICK</p>
           </div>
         </div>
       </div>
@@ -40,7 +40,7 @@
 
     <section class="controls" aria-label="Touch controls">
       <div class="pad-wrap">
-        <span class="controls-label">EIGHT-WAY AIM</span>
+        <span class="controls-label">QUICK AIM</span>
         <div class="aim-pad" id="aim-pad">
           <button data-dir="5" aria-label="Aim northwest">↖</button><button data-dir="6" aria-label="Aim north">↑</button><button data-dir="7" aria-label="Aim northeast">↗</button>
           <button data-dir="4" aria-label="Aim west">←</button><div class="pad-center">✦</div><button data-dir="0" aria-label="Aim east">→</button>
@@ -53,8 +53,8 @@
       </div>
       <div class="instructions">
         <span class="controls-label">SURVIVAL PROTOCOL</span>
-        <p>Hold <kbd>SPACE</kbd> to fire. Aim with <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>WASD</kbd>, combining keys for diagonals.</p>
-        <p>Or point and hold on the arena. On touchscreens, aim with the pad and hold FIRE.</p>
+        <p>Hold <kbd>SPACE</kbd> to fire. Spin freely with <kbd>Q</kbd> / <kbd>E</kbd>, or aim with the mouse. Arrow keys and WASD still snap to eight quick directions.</p>
+        <p>On touchscreens, drag on the arena to aim freely and fire, or use the quick-aim pad with the FIRE button.</p>
         <p>Every projectile hits the first wall in its path. The arena alternates <strong>SPIN → MORPH → MELTDOWN</strong>. Clear the robots to reach the next wave.</p>
       </div>
     </section>
