@@ -59,6 +59,7 @@
       blasts:[], shockwaves:[], impacts:[], combo:0, comboClock:0,
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
       invuln:1.8, flash:0, shake:0, announce:"", announceClock:0,
+      revealClock:0,
       clearNearbyEnemyShots:false, turretKick:0, muzzleFlash:0,
       destroyed:0, spawnCount:0, chains:0
     };
@@ -559,6 +560,7 @@
         if (state.score>state.high) {state.high=state.score;storeHigh();}
         state.announce="WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName();
         state.announceClock=2.5;
+        state.revealClock=1.45; // Purely visual sector handoff.
         setStatus("WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName());
         if (state.wave%3===0) state.rings.forEach((ring,i)=>{
           ring.reverseClock=Math.min(ring.reverseClock,2+i*1.3);
@@ -592,6 +594,7 @@
     state.invuln=Math.max(0,state.invuln-dt);
     state.fireClock-=dt;
     state.announceClock=Math.max(0,state.announceClock-dt);
+    state.revealClock=Math.max(0,state.revealClock-dt);
     state.flash=Math.max(0,state.flash-dt);
     state.shake=Math.max(0,state.shake-dt*22);
     state.turretKick=Math.max(0,state.turretKick-dt*10);
@@ -621,169 +624,262 @@
     ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();
     ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
   }
-  // Purely decorative evolution. Geometry, hit tests and robot behavior never
-  // depend on these values. Growth is exponential through Wave 9, then capped;
-  // later waves keep changing their palette and rhythm without extra draw load.
-  function visualEvolution() {
-    const level=Math.min(9,Math.max(1,state.wave));
-    const growth=(Math.pow(1.43,level-1)-1)/(Math.pow(1.43,8)-1);
+  // Decorative only. A distinct sector composition arrives on EVERY wave.
+  // Visual complexity stops growing after Wave 9, leaving GPU headroom for
+  // planned shields, extra cannons, powerups and explosions.
+  function visualEvolution(wave=state.wave) {
+    const stage=Math.min(9,Math.max(1,wave));
+    const names=["CONTACT","RADAR","PRISM","REACTOR","VECTOR","PHANTOM","KALEIDOSCOPE","PULSE","COSMOS"];
+    const hues=[225,176,295,23,147,207,273,46,329];
+    const growth=(Math.pow(1.37,stage-1)-1)/(Math.pow(1.37,8)-1);
     return {
-      level:state.wave,
-      power:clamp(growth,0,1),
-      hue:((state.wave-1)*41)%360,
-      tempo:1+Math.min(1.2,(state.wave-1)*.075)
+      stage, level:wave, name:names[stage-1],
+      hue:(hues[stage-1]+Math.max(0,wave-9)*37)%360,
+      power:stage===1?0:.40+.60*growth,
+      tempo:1+Math.min(1.3,(wave-1)*.09)
     };
   }
 
+  // Bright sector motifs are BELOW solid walls, robots and shots. The inner
+  // 72px stays clear for the turret and its future weapon/shield hardware.
   function drawEvolutionField(v) {
-    if (v.level<2) return;
-    const t=state.elapsed*v.tempo;
+    if(v.stage<2)return;
+    const t=state.elapsed*v.tempo, hue=v.hue;
+    const ink=(shift,opacity,light=65)=>"hsla("+((hue+shift+360)%360)+",100%,"+light+"%,"+opacity+")";
     ctx.save();
     ctx.translate(CX,CY);
-
-    // Wave 2: the independent rotating compass is behind everything solid.
-    ctx.save();
-    ctx.rotate(t*.075);
-    ctx.strokeStyle="hsla("+(180+v.hue)%360+",90%,69%,"+(.11+v.power*.10)+")";
-    ctx.lineWidth=1;
     ctx.beginPath();
-    for(let k=0;k<16;k++) {
-      const a=k*TAU/16;
-      ctx.moveTo(Math.cos(a)*37,Math.sin(a)*37);
-      ctx.lineTo(Math.cos(a)*(R-6),Math.sin(a)*(R-6));
-    }
-    ctx.stroke();
-    ctx.restore();
+    ctx.arc(0,0,R-10,0,TAU);
+    ctx.arc(0,0,72,0,TAU,true);
+    ctx.clip("evenodd");
+    ctx.lineJoin="round";
+    ctx.lineCap="round";
 
-    // Wave 3: breathing concentric fields, distinct from solid wall segments.
-    if(v.level>=3) {
-      const beat=Math.sin(t*2.1);
-      ctx.lineWidth=1;
-      ctx.strokeStyle="hsla("+((v.hue+255)%360)+",94%,70%,"+(.12+v.power*.20)+")";
-      ctx.beginPath();
-      for(let k=0;k<3;k++) {
-        const radius=57+k*69+beat*(3+v.power*8);
-        ctx.moveTo(radius,0);
-        ctx.arc(0,0,radius,0,TAU);
+    // Wave 2: wide radar spokes and a rotating sweep. Not a faint wire grid.
+    if(v.stage===2) {
+      ctx.save();ctx.rotate(t*.22);
+      ctx.fillStyle=ink(0,.11);ctx.strokeStyle=ink(0,.52);ctx.lineWidth=2.8;
+      for(let k=0;k<12;k++){
+        const a=k*TAU/12;
+        ctx.beginPath();ctx.moveTo(0,0);
+        ctx.lineTo(Math.cos(a-.045)*252,Math.sin(a-.045)*252);
+        ctx.lineTo(Math.cos(a+.045)*252,Math.sin(a+.045)*252);
+        ctx.closePath();if(k%2===0)ctx.fill();ctx.stroke();
+      }
+      ctx.restore();
+      ctx.strokeStyle=ink(35,.46);ctx.lineWidth=3;ctx.beginPath();
+      for(const r of [98,166,233]){ctx.moveTo(r,0);ctx.arc(0,0,r,0,TAU);}
+      ctx.stroke();
+    }
+    // Wave 3: an unmistakable purple prism lattice, not merely three circles.
+    else if(v.stage===3) {
+      ctx.save();ctx.rotate(-t*.17);
+      ctx.fillStyle=ink(20,.16);ctx.strokeStyle=ink(32,.60);ctx.lineWidth=2.8;
+      for(let k=0;k<9;k++) {
+        const a=k*TAU/9, r=169+12*Math.sin(t*1.4+k);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a)*76,Math.sin(a)*76);
+        ctx.lineTo(Math.cos(a-.26)*r,Math.sin(a-.26)*r);
+        ctx.lineTo(Math.cos(a)*255,Math.sin(a)*255);
+        ctx.lineTo(Math.cos(a+.26)*r,Math.sin(a+.26)*r);
+        ctx.closePath();ctx.fill();ctx.stroke();
+      }
+      ctx.restore();
+      ctx.strokeStyle=ink(-35,.43);ctx.lineWidth=2.5;ctx.beginPath();
+      for(let k=0;k<3;k++){
+        const r=105+k*65+8*Math.sin(t*2+k);
+        ctx.moveTo(r,0);ctx.arc(0,0,r,0,TAU);
       }
       ctx.stroke();
     }
-
-    // Wave 5: bent perspective-grid bands, visual only. The walls do not warp.
-    if(v.level>=5) {
-      const bend=7+v.power*15;
-      ctx.lineWidth=1;
-      ctx.strokeStyle="hsla("+((v.hue+30)%360)+",90%,69%,"+(.09+v.power*.17)+")";
-      ctx.beginPath();
-      for(let x=-192;x<=192;x+=64) {
-        for(let y=-R;y<=R;y+=32) {
-          const offset=Math.sin(y*.019+t*.72+x*.008)*bend;
-          const px=x+offset*(1-Math.abs(x)/300);
-          if(y===-R)ctx.moveTo(px,y);else ctx.lineTo(px,y);
+    // Wave 4: hot, rotating reactor blades and segmented amber arcs.
+    else if(v.stage===4) {
+      ctx.save();ctx.rotate(t*.28);
+      ctx.fillStyle=ink(0,.18);ctx.strokeStyle=ink(20,.65);ctx.lineWidth=3;
+      for(let k=0;k<14;k++) {
+        const a=k*TAU/14;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a)*89,Math.sin(a)*89);
+        ctx.lineTo(Math.cos(a+.14)*173,Math.sin(a+.14)*173);
+        ctx.lineTo(Math.cos(a+.25)*249,Math.sin(a+.25)*249);
+        ctx.lineTo(Math.cos(a+.06)*212,Math.sin(a+.06)*212);
+        ctx.closePath();ctx.fill();ctx.stroke();
+      }
+      ctx.restore();
+      ctx.strokeStyle=ink(45,.55);ctx.lineWidth=5;ctx.beginPath();
+      for(let k=0;k<18;k++) {
+        const a=k*TAU/18+t*.11;
+        ctx.moveTo(Math.cos(a)*258,Math.sin(a)*258);
+        ctx.arc(0,0,258,a,a+.16);
+      }
+      ctx.stroke();
+    }
+    // Wave 5: a living emerald vector corridor. Background only; hitboxes
+    // stay exactly where the real wall segments are rendered.
+    else if(v.stage===5) {
+      ctx.save();ctx.rotate(.16*Math.sin(t*.36));
+      ctx.strokeStyle=ink(0,.54);ctx.lineWidth=2.2;ctx.beginPath();
+      for(let x=-252;x<=252;x+=43) {
+        for(let y=-270;y<=270;y+=30) {
+          const bx=x+24*Math.sin(y*.018+t*.8+x*.009);
+          if(y===-270)ctx.moveTo(bx,y);else ctx.lineTo(bx,y);
         }
       }
+      for(let y=-252;y<=252;y+=53){
+        for(let x=-276;x<=276;x+=30){
+          const by=y+19*Math.sin(x*.02-t*.7+y*.013);
+          if(x===-276)ctx.moveTo(x,by);else ctx.lineTo(x,by);
+        }
+      }
+      ctx.stroke();ctx.restore();
+      ctx.strokeStyle=ink(65,.44);ctx.lineWidth=3;ctx.strokeRect(-218,-218,436,436);
+    }
+    // Wave 6: icy gear geometry, backed by non-colliding dashed echoes.
+    else if(v.stage===6) {
+      for(let j=0;j<2;j++) {
+        const r=j?226:144, teeth=j?36:24;
+        ctx.save();ctx.rotate(t*(j?-.22:.32));
+        ctx.strokeStyle=ink(j?55:0,.68);ctx.lineWidth=j?2.8:3.5;
+        ctx.beginPath();
+        for(let k=0;k<=teeth*2;k++){
+          const a=k*TAU/(teeth*2),rr=r+(k%2?9:-9);
+          if(k===0)ctx.moveTo(Math.cos(a)*rr,Math.sin(a)*rr);
+          else ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);
+        }
+        ctx.closePath();ctx.stroke();ctx.restore();
+      }
+      ctx.strokeStyle=ink(-40,.38);ctx.lineWidth=2;ctx.beginPath();
+      for(const r of [111,184,256]){ctx.moveTo(r,0);ctx.arc(0,0,r,0,TAU);}
       ctx.stroke();
     }
-
-    // Wave 7: symmetric triangular shards bloom around the center.
-    if(v.level>=7) {
-      const arms=8, phase=t*.12;
-      ctx.strokeStyle="hsla("+((v.hue+128)%360)+",100%,75%,"+(.12+v.power*.22)+")";
-      ctx.lineWidth=1.4;
+    // Wave 7: jewel-like kaleidoscopic facets with independent counter-spin.
+    else if(v.stage===7) {
+      ctx.save();ctx.rotate(t*.16);
+      ctx.strokeStyle=ink(35,.75);ctx.fillStyle=ink(0,.13);ctx.lineWidth=2.7;
+      for(let k=0;k<12;k++){
+        const a=k*TAU/12, b=a+.32*Math.sin(t*.57);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a)*82,Math.sin(a)*82);
+        ctx.lineTo(Math.cos(a-.21)*222,Math.sin(a-.21)*222);
+        ctx.lineTo(Math.cos(b)*260,Math.sin(b)*260);
+        ctx.lineTo(Math.cos(a+.21)*222,Math.sin(a+.21)*222);
+        ctx.closePath();ctx.fill();ctx.stroke();
+      }
+      ctx.restore();
+      ctx.save();ctx.rotate(-t*.2);ctx.strokeStyle=ink(-65,.46);ctx.lineWidth=2;
       ctx.beginPath();
-      for(let k=0;k<arms;k++) {
-        const a=k*TAU/arms+phase;
-        const r1=100+11*Math.sin(t*1.2+k);
-        const r2=215+9*Math.cos(t*.7+k);
-        const left=a-.19,right=a+.19;
-        ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);
-        ctx.lineTo(Math.cos(left)*r2,Math.sin(left)*r2);
-        ctx.lineTo(Math.cos(right)*r2,Math.sin(right)*r2);
-        ctx.closePath();
+      for(let k=0;k<12;k++){
+        const a=k*TAU/12;
+        if(k===0)ctx.moveTo(Math.cos(a)*182,Math.sin(a)*182);
+        else ctx.lineTo(Math.cos(a)*182,Math.sin(a)*182);
+      }
+      ctx.closePath();ctx.stroke();ctx.restore();
+    }
+    // Wave 8: golden expanding wavefronts and accelerating radial gauges.
+    else if(v.stage===8) {
+      ctx.strokeStyle=ink(0,.68);ctx.lineWidth=3.5;ctx.beginPath();
+      for(let k=0;k<5;k++){
+        const progress=(t*.29+k/5)%1;
+        const r=72+progress*190;
+        ctx.moveTo(r,0);ctx.arc(0,0,r,0,TAU);
+      }
+      ctx.stroke();
+      ctx.save();ctx.rotate(-t*.19);ctx.strokeStyle=ink(40,.62);ctx.lineWidth=3;
+      ctx.beginPath();
+      for(let k=0;k<32;k++){
+        const a=k*TAU/32;
+        ctx.moveTo(Math.cos(a)*(k%4?223:192),Math.sin(a)*(k%4?223:192));
+        ctx.lineTo(Math.cos(a)*264,Math.sin(a)*264);
+      }
+      ctx.stroke();ctx.restore();
+    }
+    // Wave 9+ is maximum bounded complexity. Future wave numbers keep changing
+    // hue and timing, but never add a fresh unbounded layer of geometry.
+    else {
+      ctx.save();ctx.rotate(-t*.12);
+      ctx.strokeStyle=ink(0,.74);ctx.lineWidth=2.7;ctx.beginPath();
+      for(let k=0;k<14;k++){
+        for(let j=0;j<=16;j++){
+          const r=77+j*11.1,a=k*TAU/14+j*.075+Math.sin(t*.8+j*.25)*.09;
+          if(j===0)ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+          else ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+        }
+      }
+      ctx.stroke();ctx.restore();
+      ctx.strokeStyle=ink(105,.48);ctx.lineWidth=2.5;ctx.beginPath();
+      for(let k=0;k<4;k++){
+        const r=95+k*48+12*Math.sin(t*1.5+k);
+        ctx.moveTo(r,0);ctx.arc(0,0,r,0,TAU);
       }
       ctx.stroke();
     }
-
-    // Wave 8+: luminous ripples cycle their geometry/hue with every wave.
-    if(v.level>=8) {
-      const count=3;
-      ctx.lineWidth=1.3;
-      ctx.strokeStyle="hsla("+((v.hue+215)%360)+",100%,78%,"+(.16+v.power*.24)+")";
-      ctx.beginPath();
-      for(let k=0;k<count;k++) {
-        const progress=((t*.22+k/count)%1);
-        const radius=34+progress*(R-42);
-        ctx.moveTo(radius,0);
-        ctx.arc(0,0,radius,0,TAU);
-      }
-      ctx.stroke();
-    }
-
     ctx.restore();
   }
 
   function drawEvolutionGhosts(v) {
-    if (v.level<6) return;
-    // Deliberately faint dashed echoes: they are never solid walls.
-    ctx.save();
-    ctx.setLineDash([4,10]);
-    ctx.lineWidth=1.4;
-    ctx.strokeStyle="hsla("+((v.hue+80)%360)+",96%,73%,"+(.12+v.power*.20)+")";
-    for(let j=0;j<2;j++) {
-      const ring=state.rings[j+1];
-      const shape=ringShape(ring);
-      const pitch=TAU/ring.count;
-      const drift=state.elapsed*(j===0?.14:-.12)*v.tempo;
+    if(v.stage<6)return;
+    // Decorative arcs are unmistakably thin and dashed, never collision walls.
+    ctx.save();ctx.setLineDash([3,11]);ctx.lineWidth=1.7;
+    ctx.strokeStyle="hsla("+((v.hue+75)%360)+",96%,77%,.36)";
+    for(let j=0;j<2;j++){
+      const ring=state.rings[j+1],shape=ringShape(ring),pitch=TAU/ring.count;
+      const drift=state.elapsed*(j===0?.15:-.13)*v.tempo;
       const radius=shape.radius+(j===0?27:-27)+Math.sin(state.elapsed*1.1+j)*5;
       ctx.beginPath();
-      for(let n=0;n<ring.count;n++) {
-        const a=ring.angle+drift+n*pitch;
-        const start=a-shape.span*.30,end=a+shape.span*.30;
+      for(let n=0;n<ring.count;n++){
+        const a=ring.angle+drift+n*pitch,start=a-shape.span*.30,end=a+shape.span*.30;
         ctx.moveTo(CX+Math.cos(start)*radius,CY+Math.sin(start)*radius);
         ctx.arc(CX,CY,radius,start,end);
       }
       ctx.stroke();
     }
-    ctx.setLineDash([]);
     ctx.restore();
   }
 
-  function drawBackground() {
+  function drawBackground(v) {
     ctx.fillStyle="#060817";ctx.fillRect(0,0,W,H);
-    let g=ctx.createRadialGradient(CX,CY,42,CX,CY,350);
-    g.addColorStop(0,modeName()==="MELTDOWN"?"#341035":"#121633");
-    g.addColorStop(.72,"#0c1028");g.addColorStop(1,"#050713");
-    ctx.fillStyle=g;ctx.beginPath();ctx.arc(CX,CY,R+19,0,TAU);ctx.fill();
+    // Full-sector color signature; early waves never rely on faint geometry alone.
+    const gradient=ctx.createRadialGradient(CX,CY,30,CX,CY,350);
+    if(v.stage===1){
+      gradient.addColorStop(0,modeName()==="MELTDOWN"?"#341035":"#121633");
+      gradient.addColorStop(.72,"#0c1028");gradient.addColorStop(1,"#050713");
+    } else {
+      gradient.addColorStop(0,"hsl("+v.hue+",64%,18%)");
+      gradient.addColorStop(.72,"hsl("+((v.hue+22)%360)+",55%,12%)");
+      gradient.addColorStop(1,"#050713");
+    }
+    ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(CX,CY,R+19,0,TAU);ctx.fill();
     ctx.save();ctx.beginPath();ctx.arc(CX,CY,R+15,0,TAU);ctx.clip();
-    for (let x=CX-336;x<CX+340;x+=32) line(x,42,x,690,"#4f5c8c16");
-    for (let y=CY-337;y<CY+338;y+=32) line(130,y,832,y,"#4f5c8c16");
-    drawEvolutionField(visualEvolution());
-    for (const star of stars) {
+    const gridColor=v.stage===1?"#4f5c8c16":"hsla("+v.hue+",85%,64%,.16)";
+    for(let x=CX-336;x<CX+340;x+=32)line(x,42,x,690,gridColor);
+    for(let y=CY-337;y<CY+338;y+=32)line(130,y,832,y,gridColor);
+    drawEvolutionField(v);
+    for(const star of stars){
       ctx.globalAlpha=star.a;ctx.fillStyle="#a4bdf9";ctx.fillRect(star.x,star.y,1.6,1.6);
     }
-    ctx.globalAlpha=1;
+    ctx.globalAlpha=1;ctx.restore();
+    const perimeter=v.stage===1?328:(v.hue+12)%360;
+    ctx.save();ctx.shadowBlur=15;ctx.shadowColor="hsl("+perimeter+",100%,55%)";
+    ctx.strokeStyle="hsl("+perimeter+",100%,62%)";
+    ctx.lineWidth=6;ctx.beginPath();ctx.arc(CX,CY,R+17,0,TAU);ctx.stroke();
     ctx.restore();
-    ctx.save();ctx.shadowBlur=15;ctx.shadowColor="#ee319a";
-    ctx.strokeStyle="#fa329a";ctx.lineWidth=6;ctx.beginPath();ctx.arc(CX,CY,R+17,0,TAU);ctx.stroke();
-    ctx.restore();
-    ctx.strokeStyle="#27f9f33d";ctx.lineWidth=1;
     for(let k=0;k<8;k++){
       const a=k*Math.PI/4;
       line(CX+Math.cos(a)*(R+21),CY+Math.sin(a)*(R+21),
-           CX+Math.cos(a)*(R+23),CY+Math.sin(a)*(R+23),"#4efdf06c",2);
+           CX+Math.cos(a)*(R+23),CY+Math.sin(a)*(R+23),
+           "hsla("+perimeter+",90%,75%,.55)",2);
     }
   }
-  function drawRings() {
-    const v=visualEvolution();
+  function drawRings(v) {
     for (let ir=state.rings.length-1;ir>=0;ir--) {
       const ring=state.rings[ir], shape=ringShape(ring);
       const pitch=TAU/ring.count;
       const alert=ring.reversePending && Math.floor(state.elapsed*9)%2===0;
       // Every wave shifts the palette, but the flashing amber reversal warning
       // is always unmistakable and the real walls remain the brightest arcs.
-      const hue=alert?45:(ring.hue+state.elapsed*3+(state.wave-1)*19)%360;
+      const hue=alert?45:(v.stage===1?ring.hue+state.elapsed*3:v.hue+[36,145,0][ir]+state.elapsed*3)%360;
       ctx.save();
-      if(v.level>=4) {
+      if(v.stage>=4) {
         // Luminous motion echoes: two batched, noncolliding paths per ring.
         // No expensive per-segment shadows or persistent framebuffer trails.
         for(let trail=2;trail>=1;trail--) {
@@ -1094,17 +1190,59 @@
     ctx.fillText(state.announce,CX,116);
     ctx.restore();
   }
+  function drawWaveCelebration() {
+    if(state.phase!=="playing")return;
+    const clear=state.toSpawn===0 && state.bots.length===0 && state.waveClock>0;
+    const reveal=state.revealClock>0;
+    if(!clear && !reveal)return;
+    const next=clear?visualEvolution(state.wave+1):visualEvolution();
+    const progress=clear?clamp(state.waveClock/2,0,1):1-state.revealClock/1.45;
+    const alpha=clear?Math.min(1,progress*5,(1-progress)*4):Math.min(1,(1-progress)*2.9);
+    if(alpha<=0)return;
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    ctx.translate(CX,CY);
+    ctx.strokeStyle="hsla("+next.hue+",100%,70%,.76)";
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    const radius=clear?78+progress*180:260-(1-progress)*138;
+    ctx.arc(0,0,radius,0,TAU);
+    ctx.stroke();
+    // Fixed-size transition geometry: a reward, not another gameplay hazard.
+    ctx.strokeStyle="hsla("+((next.hue+68)%360)+",100%,84%,.7)";
+    ctx.lineWidth=2;ctx.beginPath();
+    for(let k=0;k<16;k++){
+      const a=k*TAU/16+state.elapsed*.32;
+      const start=Math.max(83,radius-23),stop=Math.min(R-6,radius+13);
+      ctx.moveTo(Math.cos(a)*start,Math.sin(a)*start);
+      ctx.lineTo(Math.cos(a)*stop,Math.sin(a)*stop);
+    }
+    ctx.stroke();
+    ctx.textAlign="center";
+    ctx.shadowColor="hsl("+next.hue+",100%,62%)";
+    ctx.shadowBlur=18;
+    ctx.font="1000 38px system-ui,sans-serif";
+    ctx.fillStyle="#fff7e8";
+    ctx.fillText(clear?"SECTOR CLEARED":"WAVE "+String(state.wave).padStart(2,"0"),0,-26);
+    ctx.font="800 18px system-ui,sans-serif";
+    ctx.fillStyle="hsl("+next.hue+",100%,77%)";
+    ctx.fillText(clear?"INCOMING // "+next.name:"FIELD ONLINE // "+next.name,0,29);
+    ctx.restore();
+  }
+
   function draw() {
     ctx.save();
     if (state.shake>0 && state.phase==="playing")
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
-    drawBackground();drawEvolutionGhosts(visualEvolution());drawRings();drawShockwaves();drawBots();drawShots();drawParticles();drawImpacts();drawTurret();
+    const visual=visualEvolution();
+    drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
+    drawShockwaves();drawBots();drawShots();drawParticles();drawImpacts();drawTurret();
     ctx.restore();
     if(state.flash>0) {
       ctx.fillStyle="rgba(255,50,95,"+(state.flash*.35)+")";
       ctx.fillRect(0,65,W,612);
     }
-    drawHUD();drawAnnouncements();
+    drawWaveCelebration();drawHUD();drawAnnouncements();
   }
   function frame(now) {
     const dt=clamp((now-last)/1000,0,.035);
