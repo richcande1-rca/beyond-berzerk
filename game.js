@@ -23,6 +23,8 @@
   const DURATIONS = [13, 13, 11];
   const HULL_CAPACITY = 3; // Projectile durability per life, separate from future shields.
   const SHOT_GRACE_SECONDS = .5; // Simultaneous volleys count as one hit.
+  const SHIELD_MAX = 3, SHIELD_REGEN_SECONDS = 6;
+  const HEAVY_KILLS_REQUIRED = 8, PENETRATOR_COOLDOWN = 4.5;
   const WAVE_NAMES = ["FIRST CONTACT", "SIDEWINDERS", "CROSSFIRE",
     "HEAVY METAL", "DOGPILE", "TOTAL MAYHEM", "REACTOR SPIN",
     "PANIC LOOP", "ROBOT RIOT", "CRITICAL MASS"];
@@ -74,7 +76,9 @@
   function makeState() {
     return {
       phase:"ready", elapsed:0, modeIndex:0, modeClock:0,
-      wave:1, testMode:false, testStartWave:1, score:0, high:highScore(), lives:3, hull:HULL_CAPACITY, shotGrace:0, twinCannons:false, aim:6, aimVelocity:0,
+      wave:1, testMode:false, testStartWave:1, score:0, high:highScore(), lives:3, hull:HULL_CAPACITY, shotGrace:0, twinCannons:false,
+      shieldUnlocked:false, shieldCharges:0, shieldRegen:0, heavyLaser:false,
+      wave4DirectKills:0, penetrator:false, penCharge:0, aim:6, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
       blasts:[], shockwaves:[], impacts:[], combo:0, comboClock:0,
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
@@ -161,6 +165,13 @@
     state.wave = testMode ? wave : 1;
     // Jumping into a later test wave includes rewards earned in earlier waves.
     state.twinCannons = state.wave >= 2;
+    // Test wave jumps simulate earlier graduation rewards. Wave 4 itself
+    // still requires eight direct kills before its Heavy Laser graduation.
+    state.shieldUnlocked = state.wave >= 4;
+    state.shieldCharges = state.shieldUnlocked ? SHIELD_MAX : 0;
+    state.heavyLaser = state.wave >= 5;
+    state.wave4DirectKills = state.heavyLaser ? HEAVY_KILLS_REQUIRED : 0;
+    state.penetrator = state.wave >= 7;
     state.testStartWave = state.wave;
     state.toSpawn = state.wave===1 ? 15 : Math.min(120,10+state.wave*5);
     state.announce = (testMode ? "TEST // " : "") +
@@ -331,6 +342,13 @@
     state.score += byWall?40:(cause==="chain"?140:bot.armored?180:100);
     if (cause==="chain") state.chains++;
     state.destroyed++;
+    // Participation is direct, weapon-delivered kills in Wave 4 only.
+    // Explosion chains and wall casualties never qualify.
+    if (state.wave===4 && !byWall && cause==="shot") {
+      state.wave4DirectKills++;
+      if (state.wave4DirectKills===HEAVY_KILLS_REQUIRED)
+        setStatus("MARKSMAN QUALIFIED — HEAVY LASER READY AT GRADUATION");
+    }
     state.shake = Math.max(state.shake,byWall?1.4:2.5);
     if (!state.testMode && state.score > state.high) { state.high=state.score; storeHigh(); }
     if (!byWall && cause!=="chain") tone(rnd(110,190),.12,"sawtooth",.03,55);
@@ -381,6 +399,16 @@
     if (state.invuln>0 || state.phase!=="playing") return;
     if (kind==="shot") {
       if (state.shotGrace>0) return;
+      if (state.shieldUnlocked && state.shieldCharges>0) {
+        state.shieldCharges--;
+        state.shieldRegen=0; // Six uninterrupted seconds to regrow one charge.
+        state.shotGrace=SHOT_GRACE_SECONDS;
+        state.flash=.08;state.shake=Math.max(state.shake,3);
+        burst(CX,CY,"#57fdff",10,.45);
+        tone(590,.11,"triangle",.038,330);
+        setStatus("SHIELD ABSORBED HIT — "+state.shieldCharges+"/"+SHIELD_MAX);
+        return;
+      }
       state.hull--;
       if (state.hull>0) {
         state.shotGrace=SHOT_GRACE_SECONDS;
@@ -393,6 +421,8 @@
     }
     state.lives--;
     state.hull=HULL_CAPACITY;
+    if (state.shieldUnlocked) state.shieldCharges=SHIELD_MAX;
+    state.shieldRegen=0;
     state.shotGrace=0;
     state.invuln=3.5; // Preserve existing post-death invulnerability.
     state.flash=.26; state.shake=13;
@@ -406,21 +436,26 @@
       " — "+state.lives+" LIVES");
   }
   function firePlayer() {
-    const angle = state.aim * Math.PI / 4;
-    const dx=Math.cos(angle),dy=Math.sin(angle);
-    // Original forward shot; keep the existing velocity, cadence and hitbox.
+    const angle=state.aim*Math.PI/4, dx=Math.cos(angle),dy=Math.sin(angle);
+    // Only the forward barrel fires the periodic manually aimed Penetrator;
+    // the original rear barrel continues to fire heavy lasers normally.
+    const penetration=state.penetrator && state.penCharge<=0;
+    if (penetration) state.penCharge=PENETRATOR_COOLDOWN;
+    const damage=state.heavyLaser?2:1;
+    const color=state.heavyLaser?"#dbadff":"#ecfdff";
     state.shots.push({x:CX+dx*27,y:CY+dy*27,
-      vx:dx*610,vy:dy*610,life:.7,friendly:true,size:3.3,color:"#ecfdff"});
-    burst(CX+dx*28,CY+dy*28,"#90faff",2,.15);
-    if (state.twinCannons) {
-      // Wave 1 graduation reward: the same turret fires 180 degrees backward
-      // simultaneously. No independent aim, auto-targeting or added audio.
+      vx:dx*610,vy:dy*610,life:.7,friendly:true,size:3.3,
+      color:penetration?"#ffd46c":color,damage:penetration?3:damage,
+      penetrating:penetration});
+    burst(CX+dx*28,CY+dy*28,penetration?"#ffe6aa":"#90faff",2,.15);
+    if(state.twinCannons){
       state.shots.push({x:CX-dx*27,y:CY-dy*27,
-        vx:-dx*610,vy:-dy*610,life:.7,friendly:true,size:3.3,color:"#ecfdff"});
+        vx:-dx*610,vy:-dy*610,life:.7,friendly:true,size:3.3,
+        color,damage,penetrating:false});
       burst(CX-dx*28,CY-dy*28,"#90faff",2,.15);
     }
-    state.turretKick = 1;
-    state.muzzleFlash = .07;
+    state.turretKick=1;
+    state.muzzleFlash=.07;
     tone(740,.055,"square",.033,420);
   }
   function fireBot(bot) {
@@ -506,6 +541,11 @@
     }
   }
   function shotPathClear(shot, seconds) {
+    // Penetrators ignore walls, but still expire at the arena perimeter.
+    if (shot.penetrating) {
+      const x=shot.x+shot.vx*seconds,y=shot.y+shot.vy*seconds;
+      return dist(x,y)<=R+21;
+    }
     // Interceptions cannot occur through the arena's moving walls.
     const steps=Math.max(1,Math.ceil(Math.hypot(shot.vx,shot.vy)*seconds/4));
     for (let i=1;i<=steps;i++) {
@@ -539,7 +579,8 @@
     for (const {a,b,t} of possible) {
       if (intercepted.has(a) || intercepted.has(b)) continue;
       if (!shotPathClear(a,t) || !shotPathClear(b,t)) continue;
-      intercepted.add(a);intercepted.add(b);
+      if (!a.penetrating) intercepted.add(a); // Penetrator survives interceptions.
+      intercepted.add(b);
       const x=(a.x+a.vx*t+b.x+b.vx*t)/2;
       const y=(a.y+a.vy*t+b.y+b.vy*t)/2;
       burst(x,y,"#f6ffff",10,.72);
@@ -562,7 +603,7 @@
       let hit=false;
       for (let j=0;j<steps;j++) {
         s.x+=s.vx*dt/steps;s.y+=s.vy*dt/steps;
-        const struckWall=wallHit(s.x,s.y,s.size);
+        const struckWall=!s.penetrating && wallHit(s.x,s.y,s.size);
         if (dist(s.x,s.y)>R+21 || struckWall) {
           burst(s.x,s.y,s.friendly?"#45fefa":"#ff9551",struckWall?8:5,.42);
           if(struckWall) {
@@ -576,11 +617,15 @@
           for (let k=state.bots.length-1;k>=0;k--) {
             const b=state.bots[k];
             if (Math.hypot(s.x-b.x,s.y-b.y)<b.size+4) {
-              b.hp--;
-              burst(s.x,s.y,"#ffffff",4,.27);
+              b.hp-=s.damage||1;
+              burst(s.x,s.y,s.penetrating?"#ffe9ab":"#ffffff",4,.27);
               if (b.hp<=0) scrap(k,false);
               else tone(170,.07,"triangle",.025,110);
-              hit=true;break;
+              if (!s.penetrating) {hit=true;break;}
+              // A Penetrator continues through the rest of the swarm.
+              // Its lethal damage removes each bot immediately, so none can
+              // be struck twice by the same projectile.
+              break;
             }
           }
         } else if (dist(s.x,s.y)<16 && state.invuln<=0) {
@@ -628,6 +673,17 @@
       if (state.waveClock>2) {
         state.wave++;
         if (state.wave===2) state.twinCannons=true;
+        if (state.wave===4) {
+          state.shieldUnlocked=true;
+          state.shieldCharges=SHIELD_MAX;
+          state.shieldRegen=0;
+        }
+        if (state.wave===5 && state.wave4DirectKills>=HEAVY_KILLS_REQUIRED)
+          state.heavyLaser=true;
+        if (state.wave===7) {
+          state.penetrator=true;
+          state.penCharge=0;
+        }
         state.toSpawn=Math.min(120,10+state.wave*5);
         state.spawnClock=.35;
         state.waveClock=0;
@@ -637,8 +693,11 @@
         state.announce="WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName();
         state.announceClock=2.5;
         state.revealClock=1.45; // Purely visual sector handoff.
-        setStatus("WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName() +
-          (state.wave===2 ? " — TWIN CANNONS ONLINE" : ""));
+        const gained=state.wave===2?" — TWIN CANNONS ONLINE":
+          state.wave===4?" — SHIELD ONLINE":
+          state.wave===5 && state.heavyLaser?" — HEAVY LASER ONLINE":
+          state.wave===7?" — PENETRATOR ONLINE":"";
+        setStatus("WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName()+gained);
         if (state.wave%3===0) state.rings.forEach((ring,i)=>{
           ring.reverseClock=Math.min(ring.reverseClock,2+i*1.3);
         });
@@ -670,6 +729,14 @@
     updateArena(dt);
     state.invuln=Math.max(0,state.invuln-dt);
     state.shotGrace=Math.max(0,state.shotGrace-dt);
+    if(state.shieldUnlocked && state.shieldCharges<SHIELD_MAX) {
+      state.shieldRegen+=dt;
+      if(state.shieldRegen>=SHIELD_REGEN_SECONDS) {
+        state.shieldCharges++;
+        state.shieldRegen-=SHIELD_REGEN_SECONDS;
+      }
+    } else state.shieldRegen=0;
+    if(state.penetrator) state.penCharge=Math.max(0,state.penCharge-dt);
     state.fireClock-=dt;
     state.announceClock=Math.max(0,state.announceClock-dt);
     state.revealClock=Math.max(0,state.revealClock-dt);
@@ -1101,11 +1168,11 @@
     for (const s of state.shots) {
       const x2=s.x-s.vx*.020,y2=s.y-s.vy*.020;
       ctx.strokeStyle=s.color;
-      ctx.lineWidth=s.friendly?5.2:3.7;
+      ctx.lineWidth=s.penetrating?8.0:s.friendly&&s.damage>1?6.2:s.friendly?5.2:3.7;
       ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(x2,y2);ctx.stroke();
       ctx.shadowBlur=0;
       ctx.strokeStyle=s.friendly?"#ffffff":"#ffe3b9";
-      ctx.lineWidth=s.friendly?1.7:1.2;
+      ctx.lineWidth=s.penetrating?2.5:s.friendly?1.7:1.2;
       ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(x2,y2);ctx.stroke();
     }
     ctx.restore();
@@ -1321,6 +1388,17 @@
     ctx.stroke();
     ctx.restore();
 
+    // Segmented energy shield: three crisp arcs, strictly separate from hull.
+    // No glow or additional moving geometry when the shield isn't equipped.
+    if (state.shieldUnlocked) {
+      ctx.save();ctx.lineWidth=4.5;ctx.lineCap="round";
+      for(let i=0;i<SHIELD_MAX;i++){
+        const start=i*TAU/SHIELD_MAX-1.42;
+        ctx.strokeStyle=i<state.shieldCharges?"#7afcff":"#294454";
+        ctx.beginPath();ctx.arc(0,0,43,start,start+1.75);ctx.stroke();
+      }
+      ctx.restore();
+    }
     ctx.restore();
   }
   function label(text,x,y,size,color,align="left") {
@@ -1344,7 +1422,7 @@
     label(String(state.high).padStart(6,"0"),242,52,25,"#f8fbff");
     label(state.testMode ? "TEST WAVE" : "WAVE",512,24,13,state.testMode ? "#f3ba79" : "#81c9ce");
     label(String(state.wave).padStart(2,"0"),512,52,25,"#f8fbff");
-    // Three crisp hull bars; future shields will have their own readout.
+    // Hull bars are separate from the rechargeable shield system.
     label("HULL",650,24,13,"#81c9ce");
     for(let i=0;i<HULL_CAPACITY;i++){
       ctx.fillStyle=i<state.hull?"#f7c779":"#35404a";
@@ -1359,6 +1437,17 @@
     }
     label("ARENA: "+modeName(),28,706,18,
       modeName()==="MELTDOWN"?"#ff8cbe":modeName()==="MORPH"?"#d1f990":"#8aece5");
+    if(state.shieldUnlocked) label("SHIELD "+state.shieldCharges+"/"+SHIELD_MAX,
+      264,705,13,"#81f7fb");
+    if(state.wave===4 && !state.heavyLaser)
+      label("DIRECT "+Math.min(state.wave4DirectKills,HEAVY_KILLS_REQUIRED)+
+        "/"+HEAVY_KILLS_REQUIRED,380,705,13,
+        state.wave4DirectKills>=HEAVY_KILLS_REQUIRED?"#c8ff9b":"#ffc982");
+    else if(state.penetrator)
+      label(state.penCharge<=0?"PEN READY":"PEN "+state.penCharge.toFixed(1)+"s",
+        380,705,13,"#ffd88a");
+    else if(state.heavyLaser)
+      label("HEAVY LASER",380,705,13,"#dbadff");
     label("ROBOTS: "+String(state.bots.length+state.toSpawn).padStart(2,"0"),W-26,706,17,"#f8d89b","right");
     if(state.comboClock>0)label("CHAIN x"+state.combo,655,705,15,"#ffa3c9","center");
     const remaining=Math.ceil(DURATIONS[state.modeIndex]-state.modeClock);
@@ -1449,8 +1538,14 @@
       ctx.fillStyle="#d4e4ef";ctx.fillText(motto,0,y+140,574);
       ctx.font='700 13px "Oxanium", ui-monospace, monospace';
       ctx.fillStyle="#ffc982";
-      ctx.fillText(state.wave===1 ? "REWARD UNLOCKED // TWIN CANNONS" :
-        "NEXT CLASS // WAVE "+String(state.wave+1).padStart(2,"0"),0,y+169);
+      const reward=state.wave===1?"REWARD UNLOCKED // TWIN CANNONS":
+        state.wave===3?"REWARD UNLOCKED // DEFENSE SHIELD":
+        state.wave===4 ? state.wave4DirectKills>=HEAVY_KILLS_REQUIRED ?
+          "REWARD UNLOCKED // HEAVY LASER":
+          "NOT QUALIFIED // "+state.wave4DirectKills+"/"+HEAVY_KILLS_REQUIRED+" DIRECT KILLS":
+        state.wave===6?"REWARD UNLOCKED // PENETRATOR":
+        "NEXT CLASS // WAVE "+String(state.wave+1).padStart(2,"0");
+      ctx.fillText(reward,0,y+169);
     } else {
       // After graduation, let the established sector reveal introduce combat.
       const y=-CY+136;
