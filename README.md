@@ -2,7 +2,7 @@
 
 **Insane shooter arcade game. The world moves. You don't.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.2.0 — Robot Riot**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.2.1 — Robot Riot**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -43,6 +43,10 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - Firing now has a brighter muzzle flash, layered laser trails, and sparkling wall impacts.
 - Three lives; brief protection after a hit. High score is saved locally in your browser.
 - The SOUND ON button reinitializes browser audio and plays a short test chirp; game START also unlocks sound.
+
+## Chromebook / desktop sizing
+
+On laptop-sized screens, the game cabinet automatically scales to the available browser height while preserving the 4:3 playfield and keeping the in-game score, lives, wave, and bottom HUD visible. The control panel below the game is still available by scrolling. Game physics and controls are unchanged.
 
 ## Files
 
