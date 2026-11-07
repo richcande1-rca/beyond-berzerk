@@ -645,7 +645,8 @@
   function drawEvolutionField(v) {
     if(v.stage<2)return;
     const t=state.elapsed*v.tempo, hue=v.hue;
-    const ink=(shift,opacity,light=65)=>"hsla("+((hue+shift+360)%360)+",100%,"+light+"%,"+opacity+")";
+    // Sharp, colorful geometry; no translucent bloom cloud over the action.
+    const ink=(shift,opacity,light=65)=>"hsla("+((hue+shift+360)%360)+",95%,"+light+"%,"+(opacity*.72)+")";
     ctx.save();
     ctx.translate(CX,CY);
     ctx.beginPath();
@@ -819,8 +820,8 @@
   function drawEvolutionGhosts(v) {
     if(v.stage<6)return;
     // Decorative arcs are unmistakably thin and dashed, never collision walls.
-    ctx.save();ctx.setLineDash([3,11]);ctx.lineWidth=1.7;
-    ctx.strokeStyle="hsla("+((v.hue+75)%360)+",96%,77%,.36)";
+    ctx.save();ctx.setLineDash([3,11]);ctx.lineWidth=1.5;
+    ctx.strokeStyle="hsla("+((v.hue+75)%360)+",96%,77%,.21)";
     for(let j=0;j<2;j++){
       const ring=state.rings[j+1],shape=ringShape(ring),pitch=TAU/ring.count;
       const drift=state.elapsed*(j===0?.15:-.13)*v.tempo;
@@ -844,13 +845,13 @@
       gradient.addColorStop(0,modeName()==="MELTDOWN"?"#341035":"#121633");
       gradient.addColorStop(.72,"#0c1028");gradient.addColorStop(1,"#050713");
     } else {
-      gradient.addColorStop(0,"hsl("+v.hue+",64%,18%)");
-      gradient.addColorStop(.72,"hsl("+((v.hue+22)%360)+",55%,12%)");
+      gradient.addColorStop(0,"hsl("+v.hue+",55%,15%)");
+      gradient.addColorStop(.72,"hsl("+((v.hue+22)%360)+",52%,10%)");
       gradient.addColorStop(1,"#050713");
     }
     ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(CX,CY,R+19,0,TAU);ctx.fill();
     ctx.save();ctx.beginPath();ctx.arc(CX,CY,R+15,0,TAU);ctx.clip();
-    const gridColor=v.stage===1?"#4f5c8c16":"hsla("+v.hue+",85%,64%,.16)";
+    const gridColor=v.stage===1?"#4f5c8c16":"hsla("+v.hue+",85%,64%,.09)";
     for(let x=CX-336;x<CX+340;x+=32)line(x,42,x,690,gridColor);
     for(let y=CY-337;y<CY+338;y+=32)line(130,y,832,y,gridColor);
     drawEvolutionField(v);
@@ -859,7 +860,7 @@
     }
     ctx.globalAlpha=1;ctx.restore();
     const perimeter=v.stage===1?328:(v.hue+12)%360;
-    ctx.save();ctx.shadowBlur=15;ctx.shadowColor="hsl("+perimeter+",100%,55%)";
+    ctx.save();ctx.shadowBlur=5;ctx.shadowColor="hsl("+perimeter+",100%,55%)";
     ctx.strokeStyle="hsl("+perimeter+",100%,62%)";
     ctx.lineWidth=6;ctx.beginPath();ctx.arc(CX,CY,R+17,0,TAU);ctx.stroke();
     ctx.restore();
@@ -891,8 +892,8 @@
             ctx.moveTo(CX+Math.cos(start)*shape.radius,CY+Math.sin(start)*shape.radius);
             ctx.arc(CX,CY,shape.radius,start,end);
           }
-          ctx.lineWidth=2.5+v.power*2;
-          ctx.strokeStyle="hsla("+hue+",100%,68%,"+(.085+v.power*.13)/trail+")";
+          ctx.lineWidth=1.8+v.power*1.6;
+          ctx.strokeStyle="hsla("+hue+",100%,68%,"+(.065+v.power*.065)/trail+")";
           ctx.stroke();
         }
       }
@@ -906,10 +907,10 @@
         ctx.moveTo(CX+Math.cos(start)*shape.radius,CY+Math.sin(start)*shape.radius);
         ctx.arc(CX,CY,shape.radius,start,end);
       }
-      ctx.shadowBlur=15;
+      ctx.shadowBlur=5;
       ctx.shadowColor="hsl("+hue+",100%,55%)";
-      ctx.lineWidth=shape.width+4;
-      ctx.strokeStyle="hsla("+hue+",100%,53%,.57)";
+      ctx.lineWidth=shape.width+2;
+      ctx.strokeStyle="hsla("+hue+",100%,53%,.31)";
       ctx.stroke();
       ctx.shadowBlur=0;
       ctx.lineWidth=shape.width-3;
@@ -1153,43 +1154,60 @@
     ctx.restore();
   }
   function label(text,x,y,size,color,align="left") {
-    ctx.font="900 "+size+"px system-ui, sans-serif";
-    ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(text,x,y);
+    // One clean text pass: crisp instrumentation is readable at laptop scale.
+    ctx.font="800 "+size+'px "Oxanium", ui-monospace, monospace';
+    ctx.textAlign=align;ctx.textBaseline="alphabetic";
+    ctx.shadowBlur=0;ctx.fillStyle=color;ctx.fillText(text,x,y);
   }
   function drawHUD() {
-    ctx.fillStyle="#0c0c21ee";ctx.fillRect(0,0,W,65);
-    ctx.fillStyle="#0c0c21f0";ctx.fillRect(0,677,W,43);
-    line(0,64,W,64,"#572c79",2);
-    line(0,677,W,677,"#572c79",2);
-    label("SCORE",30,24,13,"#32e9e9");
-    label(String(state.score).padStart(6,"0"),30,51,25,"#ffde7d");
-    label("BEST",242,24,13,"#32e9e9");
-    label(String(state.high).padStart(6,"0"),242,51,25,"#ffde7d");
-    label("WAVE",512,24,13,"#32e9e9");
-    label(String(state.wave).padStart(2,"0"),512,51,25,"#ffde7d");
-    label("LIVES",790,24,13,"#32e9e9");
-    for(let i=0;i<state.lives;i++){
+    // Fully opaque instrument rails sit above every effect, even damage flashes.
+    ctx.save();
+    ctx.fillStyle="#080d1a";ctx.fillRect(0,0,W,65);
+    ctx.fillStyle="#080d1a";ctx.fillRect(0,677,W,43);
+    line(0,64,W,64,"#315365",2);
+    line(0,677,W,677,"#315365",2);
+    ctx.fillStyle="#203745";
+    for(const x of [216,478,757])ctx.fillRect(x,13,1,39);
+    label("SCORE",30,24,13,"#81c9ce");
+    label(String(state.score).padStart(6,"0"),30,52,25,"#f8fbff");
+    label("BEST",242,24,13,"#81c9ce");
+    label(String(state.high).padStart(6,"0"),242,52,25,"#f8fbff");
+    label("WAVE",512,24,13,"#81c9ce");
+    label(String(state.wave).padStart(2,"0"),512,52,25,"#f8fbff");
+    label("LIVES",790,24,13,"#81c9ce");
+    for(let i=0;i<state.lives;i++) {
       ctx.save();ctx.translate(799+i*38,44);ctx.rotate(-Math.PI/2);
-      ctx.fillStyle="#fd4caa";ctx.beginPath();ctx.moveTo(13,0);
+      ctx.fillStyle="#ff7bb9";ctx.beginPath();ctx.moveTo(13,0);
       ctx.lineTo(-9,-8);ctx.lineTo(-4,0);ctx.lineTo(-9,8);ctx.closePath();ctx.fill();
       ctx.restore();
     }
     label("ARENA: "+modeName(),28,706,18,
-      modeName()==="MELTDOWN"?"#ff4d9f":modeName()==="MORPH"?"#b8ff65":"#31f5ec");
-    label("ROBOTS: "+String(state.bots.length+state.toSpawn).padStart(2,"0"),W-26,706,17,"#ffd071","right");
-    if (state.comboClock>0) label("CHAIN x"+state.combo,655,705,15,"#ff67bc","center");
+      modeName()==="MELTDOWN"?"#ff8cbe":modeName()==="MORPH"?"#d1f990":"#8aece5");
+    label("ROBOTS: "+String(state.bots.length+state.toSpawn).padStart(2,"0"),W-26,706,17,"#f8d89b","right");
+    if(state.comboClock>0)label("CHAIN x"+state.combo,655,705,15,"#ffa3c9","center");
     const remaining=Math.ceil(DURATIONS[state.modeIndex]-state.modeClock);
-    label("SHIFT IN "+remaining+"s",527,704,12,"#928caf","center");
-  }
-  function drawAnnouncements() {
-    if (state.announceClock<=0) return;
-    ctx.save();
-    ctx.globalAlpha=clamp(state.announceClock*1.5,0,1);
-    ctx.textAlign="center";ctx.font="1000 40px system-ui,sans-serif";
-    ctx.shadowBlur=25;ctx.shadowColor="#fd339d";ctx.fillStyle="#fff3d3";
-    ctx.fillText(state.announce,CX,116);
+    label("SHIFT IN "+remaining+"s",527,704,12,"#b2bdd5","center");
     ctx.restore();
   }
+
+  function drawAnnouncements() {
+    if(state.announceClock<=0)return;
+    // A sector-clear plaque owns the announcement area during transitions.
+    if(state.revealClock>0 ||
+       (state.toSpawn===0 && state.bots.length===0 && state.waveClock>0))return;
+    ctx.save();
+    ctx.globalAlpha=clamp(state.announceClock*1.6,0,1);
+    ctx.fillStyle="#080d1af0";
+    ctx.fillRect(CX-234,77,468,49);
+    ctx.fillStyle="#8fcbd3";
+    ctx.fillRect(CX-234,124,468,2);
+    ctx.textAlign="center";ctx.textBaseline="alphabetic";
+    ctx.font='800 27px "Oxanium", ui-monospace, monospace';
+    ctx.shadowBlur=0;ctx.fillStyle="#f8fbff";
+    ctx.fillText(state.announce,CX,111);
+    ctx.restore();
+  }
+
   function drawWaveCelebration() {
     if(state.phase!=="playing")return;
     const clear=state.toSpawn===0 && state.bots.length===0 && state.waveClock>0;
@@ -1202,31 +1220,36 @@
     ctx.save();
     ctx.globalAlpha=alpha;
     ctx.translate(CX,CY);
-    ctx.strokeStyle="hsla("+next.hue+",100%,70%,.76)";
-    ctx.lineWidth=3;
+    // Keep the wild wavefront, but it is thin and nonluminous.
+    ctx.strokeStyle="hsla("+next.hue+",100%,70%,.48)";
+    ctx.lineWidth=2.2;
     ctx.beginPath();
     const radius=clear?78+progress*180:260-(1-progress)*138;
     ctx.arc(0,0,radius,0,TAU);
     ctx.stroke();
-    // Fixed-size transition geometry: a reward, not another gameplay hazard.
-    ctx.strokeStyle="hsla("+((next.hue+68)%360)+",100%,84%,.7)";
-    ctx.lineWidth=2;ctx.beginPath();
-    for(let k=0;k<16;k++){
+    ctx.strokeStyle="hsla("+((next.hue+68)%360)+",100%,84%,.45)";
+    ctx.lineWidth=1.6;ctx.beginPath();
+    for(let k=0;k<16;k++) {
       const a=k*TAU/16+state.elapsed*.32;
       const start=Math.max(83,radius-23),stop=Math.min(R-6,radius+13);
       ctx.moveTo(Math.cos(a)*start,Math.sin(a)*start);
       ctx.lineTo(Math.cos(a)*stop,Math.sin(a)*stop);
     }
     ctx.stroke();
-    ctx.textAlign="center";
-    ctx.shadowColor="hsl("+next.hue+",100%,62%)";
-    ctx.shadowBlur=18;
-    ctx.font="1000 38px system-ui,sans-serif";
-    ctx.fillStyle="#fff7e8";
-    ctx.fillText(clear?"SECTOR CLEARED":"WAVE "+String(state.wave).padStart(2,"0"),0,-26);
-    ctx.font="800 18px system-ui,sans-serif";
-    ctx.fillStyle="hsl("+next.hue+",100%,77%)";
-    ctx.fillText(clear?"INCOMING // "+next.name:"FIELD ONLINE // "+next.name,0,29);
+    // Solid, compact upper readout; don't cover the turret or its future kit.
+    const plateY=-CY+136;
+    ctx.fillStyle="#080d1af2";
+    ctx.fillRect(-190,plateY,380,65);
+    ctx.fillStyle="hsl("+next.hue+",85%,68%)";
+    ctx.fillRect(-190,plateY+63,380,2);
+    ctx.textAlign="center";ctx.textBaseline="alphabetic";
+    ctx.shadowBlur=0;
+    ctx.font='900 27px "Oxanium", ui-monospace, monospace';
+    ctx.fillStyle="#f8fbff";
+    ctx.fillText(clear?"SECTOR CLEARED":"WAVE "+String(state.wave).padStart(2,"0"),0,plateY+29);
+    ctx.font='800 14px "Oxanium", ui-monospace, monospace';
+    ctx.fillStyle="#c1e1e5";
+    ctx.fillText(clear?"INCOMING // "+next.name:"FIELD ONLINE // "+next.name,0,plateY+51);
     ctx.restore();
   }
 
@@ -1239,7 +1262,7 @@
     drawShockwaves();drawBots();drawShots();drawParticles();drawImpacts();drawTurret();
     ctx.restore();
     if(state.flash>0) {
-      ctx.fillStyle="rgba(255,50,95,"+(state.flash*.35)+")";
+      ctx.fillStyle="rgba(255,50,95,"+(state.flash*.18)+")";
       ctx.fillRect(0,65,W,612);
     }
     drawWaveCelebration();drawHUD();drawAnnouncements();
