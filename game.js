@@ -26,6 +26,21 @@
   const WAVE_NAMES = ["FIRST CONTACT", "SIDEWINDERS", "CROSSFIRE",
     "HEAVY METAL", "DOGPILE", "TOTAL MAYHEM", "REACTOR SPIN",
     "PANIC LOOP", "ROBOT RIOT", "CRITICAL MASS"];
+  const GRADUATIONS = [
+    ["CERTIFICATE OF BASIC SURVIVAL","YOU HAVE LEARNED TO POINT A GUN."],
+    ["DIPLOMA IN BALLISTICS","OCCASIONAL ACCURACY HAS BEEN OBSERVED."],
+    ["ADVANCED ROBOT EVASION","YOUR SURVIVAL SURPRISES THE FACULTY."],
+    ["HONORS WITH DISTINCTION","THE FACULTY DID NOT EXPECT THIS."],
+    ["MASTER OF MAYHEM","THE ROBOTS REQUEST AN INVESTIGATION."],
+    ["DOCTORATE IN IMPROBABILITY","THE EXAMINERS HAVE LEFT THE BUILDING."],
+    ["FELLOWSHIP OF CHAOS","EUCLIDEAN GEOMETRY HAS RESIGNED."],
+    ["DISTINGUISHED SURVIVOR","THE CURRICULUM NOW FEARS YOU."],
+    ["PROFESSOR EMERITUS OF PANIC","THE ROBOTS ARE TAKING NOTES."],
+    ["ACADEMY OF THE IMPOSSIBLE","GRADUATION CONTINUES INDEFINITELY."]
+  ];
+  function graduationFor(wave) {
+    return GRADUATIONS[(wave-1)%GRADUATIONS.length];
+  }
   const ROLES = ["scout", "flank", "gunner", "heavy", "rush"];
   const ROLE_COLORS = {scout:0, flank:1, gunner:3, heavy:4, rush:2};
   const WAVE_FEATURE = ["scout", "flank", "gunner", "heavy", "rush",
@@ -82,12 +97,12 @@
   }
   function hideOverlay() { overlay.classList.add("hidden"); }
 
-  function tone(freq, duration, kind="square", volume=.027, endFreq=0) {
+  function tone(freq, duration, kind="square", volume=.027, endFreq=0, delay=0) {
     if (!soundOn || !audio || audio.state !== "running") return;
     try {
       const oscillator = audio.createOscillator();
       const gain = audio.createGain();
-      const t = audio.currentTime;
+      const t = audio.currentTime + delay;
       oscillator.type = kind;
       oscillator.frequency.setValueAtTime(Math.max(40, freq), t);
       if (endFreq) oscillator.frequency.exponentialRampToValueAtTime(Math.max(40, endFreq), t + duration);
@@ -104,6 +119,15 @@
   function audioChirp() {
     tone(740,.11,"square",.035,980);
     tone(980,.18,"triangle",.042,490);
+  }
+  function graduationFanfare(wave) {
+    // A compact four-note victory flourish. Every wave graduates, including 1.
+    // Higher waves get the same melody slightly brighter, not louder.
+    const transpose = wave>=5 ? 1.12246 : 1;
+    for (const [note,delay,length] of [[392,0,.16],[523.25,.17,.18],
+      [659.25,.37,.19],[783.99,.59,.36]]) {
+      tone(note*transpose,length,"triangle",.027,0,delay);
+    }
   }
   function primeAudio(testChirp=false) {
     if (!soundOn) return;
@@ -578,6 +602,17 @@
       }
     }
     if (!state.toSpawn && !state.bots.length) {
+      if (state.waveClock===0) {
+        // Begin a single, two-second graduation for every cleared wave.
+        // Decorative only: no changes to rings, hitboxes or combat timing.
+        graduationFanfare(state.wave);
+        const color="hsl("+visualEvolution(state.wave).hue+",95%,72%)";
+        burst(CX-158,CY+8,color,15,.85);
+        burst(CX+158,CY+8,"#ffe2a0",15,.85);
+        burst(CX,CY-100,"#f5fdff",12,.7);
+        setStatus("WAVE "+String(state.wave).padStart(2,"0")+
+          " CLEARED — GRADUATION CEREMONY");
+      }
       state.waveClock+=dt;
       if (state.waveClock>2) {
         state.wave++;
@@ -1316,41 +1351,78 @@
     if(!clear && !reveal)return;
     const next=clear?visualEvolution(state.wave+1):visualEvolution();
     const progress=clear?clamp(state.waveClock/2,0,1):1-state.revealClock/1.45;
-    const alpha=clear?Math.min(1,progress*5,(1-progress)*4):Math.min(1,(1-progress)*2.9);
+    const alpha=clear?Math.min(1,progress*7,(1-progress)*4.5):
+      Math.min(1,(1-progress)*2.9);
     if(alpha<=0)return;
     ctx.save();
     ctx.globalAlpha=alpha;
     ctx.translate(CX,CY);
-    // Keep the wild wavefront, but it is thin and nonluminous.
-    ctx.strokeStyle="hsla("+next.hue+",100%,70%,.48)";
-    ctx.lineWidth=2.2;
-    ctx.beginPath();
-    const radius=clear?78+progress*180:260-(1-progress)*138;
-    ctx.arc(0,0,radius,0,TAU);
-    ctx.stroke();
-    ctx.strokeStyle="hsla("+((next.hue+68)%360)+",100%,84%,.45)";
-    ctx.lineWidth=1.6;ctx.beginPath();
-    for(let k=0;k<16;k++) {
-      const a=k*TAU/16+state.elapsed*.32;
-      const start=Math.max(83,radius-23),stop=Math.min(R-6,radius+13);
+
+    // Same inexpensive wavefront as before, in each wave's own colors.
+    const hue=clear?visualEvolution(state.wave).hue:next.hue;
+    const radius=clear?74+progress*184:260-(1-progress)*138;
+    ctx.strokeStyle="hsla("+hue+",100%,72%,.65)";
+    ctx.lineWidth=3.4;
+    ctx.beginPath();ctx.arc(0,0,radius,0,TAU);ctx.stroke();
+    ctx.strokeStyle="hsla("+((hue+68)%360)+",100%,84%,.72)";
+    ctx.lineWidth=2.2;ctx.beginPath();
+    for(let k=0;k<20;k++) {
+      const a=k*TAU/20+state.elapsed*.32;
+      const start=Math.max(83,radius-26),stop=Math.min(R-6,radius+17);
       ctx.moveTo(Math.cos(a)*start,Math.sin(a)*start);
       ctx.lineTo(Math.cos(a)*stop,Math.sin(a)*stop);
     }
     ctx.stroke();
-    // Solid, compact upper readout; don't cover the turret or its future kit.
-    const plateY=-CY+136;
-    ctx.fillStyle="#080d1af2";
-    ctx.fillRect(-190,plateY,380,65);
-    ctx.fillStyle="hsl("+next.hue+",85%,68%)";
-    ctx.fillRect(-190,plateY+63,380,2);
-    ctx.textAlign="center";ctx.textBaseline="alphabetic";
-    ctx.shadowBlur=0;
-    ctx.font='900 27px "Oxanium", ui-monospace, monospace';
-    ctx.fillStyle="#f8fbff";
-    ctx.fillText(clear?"SECTOR CLEARED":"WAVE "+String(state.wave).padStart(2,"0"),0,plateY+29);
-    ctx.font='800 14px "Oxanium", ui-monospace, monospace';
-    ctx.fillStyle="#c1e1e5";
-    ctx.fillText(clear?"INCOMING // "+next.name:"FIELD ONLINE // "+next.name,0,plateY+51);
+
+    if(clear) {
+      // A synchronized *ceremonial* motif sits over the existing rings.
+      // The actual rotating walls, trajectories and collisions never change.
+      const phase=state.elapsed*.42*(1-progress)+progress*Math.PI/6;
+      ctx.lineWidth=2;
+      ctx.beginPath();
+      for(const ringRadius of [116,186,250]) {
+        for(let i=0;i<12;i++) {
+          const a=phase+i*TAU/12;
+          ctx.moveTo(Math.cos(a)*(ringRadius-9),Math.sin(a)*(ringRadius-9));
+          ctx.lineTo(Math.cos(a)*(ringRadius+9),Math.sin(a)*(ringRadius+9));
+        }
+      }
+      ctx.strokeStyle="hsla("+((hue+35)%360)+",100%,75%,.50)";
+      ctx.stroke();
+
+      // The graduation diploma floats above the arena, never over the turret.
+      const [degree,motto]=graduationFor(state.wave);
+      const y=-CY+108;
+      ctx.fillStyle="#080d1af5";ctx.fillRect(-302,y,604,190);
+      ctx.fillStyle="hsl("+hue+",95%,70%)";
+      ctx.fillRect(-302,y,604,5);ctx.fillRect(-302,y+185,604,5);
+      ctx.fillStyle="#edfaff";ctx.textAlign="center";ctx.textBaseline="alphabetic";
+      ctx.shadowBlur=0;
+      ctx.font='900 36px "Oxanium", ui-monospace, monospace';
+      ctx.fillText("WAVE "+String(state.wave).padStart(2,"0")+" CLEARED!",0,y+53);
+      ctx.font='800 13px "Oxanium", ui-monospace, monospace';
+      ctx.fillStyle="hsl("+hue+",100%,77%)";
+      ctx.fillText("OFFICIAL GRADUATION CEREMONY",0,y+77);
+      ctx.font='900 23px "Oxanium", ui-monospace, monospace';
+      ctx.fillStyle="#ffffff";ctx.fillText(degree,0,y+112,574);
+      ctx.font='700 15px "Oxanium", ui-monospace, monospace';
+      ctx.fillStyle="#d4e4ef";ctx.fillText(motto,0,y+140,574);
+      ctx.font='700 13px "Oxanium", ui-monospace, monospace';
+      ctx.fillStyle="#ffc982";
+      ctx.fillText("NEXT CLASS // WAVE "+String(state.wave+1).padStart(2,"0"),0,y+169);
+    } else {
+      // After graduation, let the established sector reveal introduce combat.
+      const y=-CY+136;
+      ctx.fillStyle="#080d1af2";ctx.fillRect(-190,y,380,65);
+      ctx.fillStyle="hsl("+next.hue+",85%,68%)";ctx.fillRect(-190,y+63,380,2);
+      ctx.textAlign="center";ctx.textBaseline="alphabetic";
+      ctx.font='900 27px "Oxanium", ui-monospace, monospace';
+      ctx.fillStyle="#f8fbff";
+      ctx.fillText("WAVE "+String(state.wave).padStart(2,"0"),0,y+29);
+      ctx.font='800 14px "Oxanium", ui-monospace, monospace';
+      ctx.fillStyle="#c1e1e5";
+      ctx.fillText("FIELD ONLINE // "+next.name,0,y+51);
+    }
     ctx.restore();
   }
 
