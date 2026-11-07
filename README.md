@@ -2,7 +2,7 @@
 
 **Insane shooter arcade game. The world moves. You don't.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.1.4 — First Contact**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.1.5 — First Contact**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
