@@ -66,12 +66,29 @@
     if (state.testMode) return; // Test runs cannot modify the real record.
     try { localStorage.setItem("beyond-berzerk-high", String(state.high)); } catch {}
   }
-  function makeRings() {
-    return [
-      {base:116, count:6, span:.30, speed:.36, angle:0.14, phase:.2, hue:178, spin:1, reverseClock:8, warning:0, reversePending:false},
-      {base:186, count:9, span:.225, speed:-.28, angle:.32, phase:1.5, hue:306, spin:1, reverseClock:12, warning:0, reversePending:false},
-      {base:250, count:12, span:.145, speed:.23, angle:.09, phase:2.9, hue:47, spin:1, reverseClock:16, warning:0, reversePending:false}
-    ];
+  // Actual collision-wall architecture evolves with each sector. Three rings
+  // remain bounded; count/span choices leave bot-sized lanes even at max morph.
+  // [radius, segments, base angular span, physical wall width, rotation speed]
+  const WALL_LAYOUTS = [
+    [[116,6,.30,16,.36],[186,9,.225,16,-.28],[250,12,.145,16,.23]], // CONTACT
+    [[114,7,.27,16,.36],[181,10,.18,15,-.29],[250,14,.12,14,.25]], // RADAR
+    [[116,9,.19,15,.40],[184,8,.25,16,-.32],[248,13,.13,15,.26]], // PRISM
+    [[120,10,.17,14,.46],[189,12,.16,16,-.38],[250,16,.09,12,.34]], // REACTOR: turbine teeth
+    [[114,6,.32,17,.32],[183,12,.15,14,-.30],[250,14,.12,15,.24]], // VECTOR
+    [[120,10,.14,14,.41],[187,9,.22,17,-.35],[251,16,.09,13,.30]], // PHANTOM
+    [[115,8,.23,16,.35],[182,12,.16,14,-.37],[249,15,.105,14,.28]], // KALEIDOSCOPE
+    [[114,4,.49,22,.19],[186,6,.34,20,-.19],[251,8,.24,18,.17]], // PULSE: massive capacitor plates
+    [[116,9,.19,16,.38],[185,11,.17,16,-.31],[250,16,.09,14,.29]] // COSMOS
+  ];
+  function makeRings(wave=1,previous=null) {
+    const layout=WALL_LAYOUTS[Math.min(9,Math.max(1,wave))-1];
+    const phases=[.2,1.5,2.9], startAngles=[.14,.32,.09], hues=[178,306,47];
+    return layout.map(([base,count,span,width,speed],i)=>({
+      base,count,span,width,speed,phase:phases[i],hue:hues[i],
+      angle:previous ? previous[i].angle : startAngles[i],
+      spin:previous ? previous[i].spin : 1,
+      reverseClock:8+i*4,warning:0,reversePending:false
+    }));
   }
   function makeState() {
     return {
@@ -163,6 +180,7 @@
     state.phase = "playing";
     state.testMode = testMode;
     state.wave = testMode ? wave : 1;
+    state.rings = makeRings(state.wave);
     // Jumping into a later test wave includes rewards earned in earlier waves.
     state.twinCannons = state.wave >= 2;
     // Test wave jumps simulate earlier graduation rewards. Wave 4 itself
@@ -224,10 +242,13 @@
   function ringShape(ring) {
     const power = modeName() === "SPIN" ? .12 : modeName() === "MORPH" ? 1 : 1.15;
     const surge = state.wave >= 3 ? .5+.5*Math.sin(state.elapsed*.65 + ring.phase) : 0;
+    // Dense turbine sectors must not seal every bot-sized passage in MORPH.
+    const densitySwing=Math.min(1,12/ring.count);
     return {
       radius:ring.base + power * (8+state.wave*.32) * Math.sin(state.elapsed * 1.7 + ring.phase),
-      span:Math.max(.055, ring.span + power * .075 * Math.sin(state.elapsed * 1.25 + ring.phase) + surge*.085),
-      width:16
+      span:Math.max(.055, ring.span + power * .075*densitySwing *
+        Math.sin(state.elapsed * 1.25 + ring.phase) + surge*.085*densitySwing),
+      width:ring.width
     };
   }
   function blockedAngle(ring, angle, padding=0) {
@@ -672,6 +693,9 @@
       state.waveClock+=dt;
       if (state.waveClock>2) {
         state.wave++;
+        // Changing sectors changes real walls as well as the decorative field.
+        // Preserve their angular orientation so the handoff feels continuous.
+        state.rings=makeRings(state.wave,state.rings);
         if (state.wave===2) state.twinCannons=true;
         if (state.wave===4) {
           state.shieldUnlocked=true;
@@ -1109,7 +1133,8 @@
         ctx.strokeStyle="hsla("+hue+",100%,68%,"+(.10+v.power*.055)+")";
         ctx.stroke();
       }
-      ctx.lineCap="round";
+      const reactor=v.stage===4, pulse=v.stage===8;
+      ctx.lineCap=(reactor||pulse)?"butt":"round";
       // Batch the full ring into one path: three strokes per ring instead
       // of three expensive glowing strokes for *each* moving segment.
       ctx.beginPath();
@@ -1119,18 +1144,48 @@
         ctx.moveTo(CX+Math.cos(start)*shape.radius,CY+Math.sin(start)*shape.radius);
         ctx.arc(CX,CY,shape.radius,start,end);
       }
-      // Wall geometry stays bright without a costly blurred shadow layer.
+      // The heavy PULSE plates and short REACTOR teeth are physical walls,
+      // not floating wallpaper; strokes use the exact collision radius/width.
       ctx.shadowBlur=0;
       ctx.lineWidth=shape.width+2;
-      ctx.strokeStyle="hsla("+hue+",100%,53%,.31)";
+      ctx.strokeStyle=pulse?"hsla("+hue+",100%,74%,.88)":
+        reactor?"hsla("+hue+",100%,60%,.48)":"hsla("+hue+",100%,53%,.31)";
       ctx.stroke();
-      ctx.shadowBlur=0;
-      ctx.lineWidth=shape.width-3;
-      ctx.strokeStyle="hsl("+hue+",100%,56%)";
+      ctx.lineWidth=shape.width-(pulse?5:3);
+      ctx.strokeStyle=pulse?"hsl("+((hue+190)%360)+",55%,14%)":
+        reactor?"hsl("+hue+",100%,43%)":"hsl("+hue+",100%,56%)";
       ctx.stroke();
-      ctx.lineWidth=3;
-      ctx.strokeStyle="#e2ffffa8";
+      ctx.lineWidth=pulse?3.6:3;
+      ctx.strokeStyle=pulse?"hsla("+hue+",100%,86%,.96)":
+        reactor?"#ffe7ab":"#e2ffffa8";
       ctx.stroke();
+      if (reactor) {
+        // Fin scoring lies entirely inside the lethal turbine teeth.
+        ctx.beginPath();
+        for(let n=0;n<ring.count;n++){
+          const center=ring.angle+n*pitch;
+          for(const a of [center-shape.span*.32,center+shape.span*.32]){
+            const r0=shape.radius-shape.width*.35,r1=shape.radius+shape.width*.35;
+            ctx.moveTo(CX+Math.cos(a)*r0,CY+Math.sin(a)*r0);
+            ctx.lineTo(CX+Math.cos(a)*r1,CY+Math.sin(a)*r1);
+          }
+        }
+        ctx.lineWidth=1.8;ctx.strokeStyle="hsla("+hue+",100%,90%,.85)";
+        ctx.stroke();
+      } else if (pulse) {
+        // Double energized rails reinforce each wide, collision-solid plate.
+        ctx.beginPath();
+        for(let n=0;n<ring.count;n++){
+          const center=ring.angle+n*pitch;
+          const start=center-shape.span/2,end=center+shape.span/2;
+          for(const radius of [shape.radius-shape.width*.33,shape.radius+shape.width*.33]){
+            ctx.moveTo(CX+Math.cos(start)*radius,CY+Math.sin(start)*radius);
+            ctx.arc(CX,CY,radius,start,end);
+          }
+        }
+        ctx.lineWidth=2;ctx.strokeStyle="hsla("+hue+",100%,85%,.85)";
+        ctx.stroke();
+      }
       ctx.restore();
     }
   }
