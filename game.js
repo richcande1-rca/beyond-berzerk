@@ -182,7 +182,7 @@
     state.wave = testMode ? wave : 1;
     state.rings = makeRings(state.wave);
     // Jumping into a later test wave includes rewards earned in earlier waves.
-    state.twinCannons = state.wave >= 2;
+    state.twinCannons = state.wave >= 5;
     // Test wave jumps simulate earlier graduation rewards. Wave 4 itself
     // still requires eight direct kills before its Heavy Laser graduation.
     state.shieldUnlocked = state.wave >= 4;
@@ -696,7 +696,7 @@
         // Changing sectors changes real walls as well as the decorative field.
         // Preserve their angular orientation so the handoff feels continuous.
         state.rings=makeRings(state.wave,state.rings);
-        if (state.wave===2) state.twinCannons=true;
+        if (state.wave===5) state.twinCannons=true;
         if (state.wave===4) {
           state.shieldUnlocked=true;
           state.shieldCharges=SHIELD_MAX;
@@ -717,9 +717,9 @@
         state.announce="WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName();
         state.announceClock=2.5;
         state.revealClock=1.45; // Purely visual sector handoff.
-        const gained=state.wave===2?" — TWIN CANNONS ONLINE":
-          state.wave===4?" — SHIELD ONLINE":
-          state.wave===5 && state.heavyLaser?" — HEAVY LASER ONLINE":
+        const gained=state.wave===4?" — SHIELD ONLINE":
+          state.wave===5?" — TWIN CANNONS ONLINE"+
+            (state.heavyLaser?" + HEAVY LASER ONLINE":""):
           state.wave===7?" — PENETRATOR ONLINE":"";
         setStatus("WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName()+gained);
         if (state.wave%3===0) state.rings.forEach((ring,i)=>{
@@ -1312,7 +1312,7 @@
     }
     ctx.restore();
 
-    // Wave 1 graduation mounts the second barrel directly opposite the first.
+    // Wave 4 graduation mounts the second barrel directly opposite the first.
     // Draw it without expensive glows to preserve Chromebook performance.
     if (state.twinCannons) {
       ctx.save();
@@ -1593,11 +1593,10 @@
       ctx.fillStyle="#d4e4ef";ctx.fillText(motto,0,y+140,574);
       ctx.font='700 13px "Oxanium", ui-monospace, monospace';
       ctx.fillStyle="#ffc982";
-      const reward=state.wave===1?"REWARD UNLOCKED // TWIN CANNONS":
-        state.wave===3?"REWARD UNLOCKED // DEFENSE SHIELD":
+      const reward=state.wave===3?"REWARD UNLOCKED // DEFENSE SHIELD":
         state.wave===4 ? state.wave4DirectKills>=HEAVY_KILLS_REQUIRED ?
-          "REWARD UNLOCKED // HEAVY LASER":
-          "NOT QUALIFIED // "+state.wave4DirectKills+"/"+HEAVY_KILLS_REQUIRED+" DIRECT KILLS":
+          "UNLOCKED // TWIN CANNONS + HEAVY LASER":
+          "TWIN CANNONS // LASER "+state.wave4DirectKills+"/"+HEAVY_KILLS_REQUIRED+" DIRECT KILLS":
         state.wave===6?"REWARD UNLOCKED // PENETRATOR":
         "NEXT CLASS // WAVE "+String(state.wave+1).padStart(2,"0");
       ctx.fillText(reward,0,y+169);
