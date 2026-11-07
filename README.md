@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.9 — Graduate Arsenal**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.10 — Evolving Walls**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
 
@@ -17,7 +17,7 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - Industrial sci-fi masthead and menus with Teko display typography and Oxanium system labels (web fonts; local fallbacks included).
 - Amber / warning-red / gunmetal start, pause, and game-over panels replace the earlier magenta-and-cyan menu treatment.
 - The start screen emphasizes the threat rather than a gameplay description; detailed controls remain below the cabinet.
-- The in-canvas arena, mechanics, and game-over label **END OF TRANSMISSION** are unchanged.
+- The game-over label **END OF TRANSMISSION** and the existing combat controls are unchanged; in v0.3.10 the in-canvas wall layouts evolve by sector.
 
 ## Controls
 
@@ -50,6 +50,15 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - **Test Mode:** Starting at Wave 4 includes the shield; starting at Wave 5 or higher simulates earning the Heavy Laser; Wave 7 or higher starts with a charged Penetrator. Starting on Wave 4 still requires the direct-kill challenge to earn Heavy Laser for Wave 5. Test scores remain separate.
 - **Performance:** No additional bullets are spawned by these upgrades; effects use simple arc and stroke drawing without new shadow blur. This release does not claim to resolve previously reported Wave 5 lag.
 
+## Evolving wall architecture — v0.3.10
+
+- **Real arena changes, not just wallpaper.** Each of Waves 1–9 now has its own three-ring layout: wall radii, number of segments, segment widths, open shooting lanes, and rotation speeds vary by wave. Beyond Wave 9 uses a fixed, bounded COSMOS layout.
+- **Wave 4 / REACTOR:** Ten short inner teeth, twelve middle fins, and sixteen outer blades. Hot metal-like orange cores and etched fin marks are drawn directly on the solid wall segments.
+- **Wave 8 / PULSE:** Four broad inner capacitor plates, six middle plates, eight outer plates, and double energized rails. The silhouette is intentionally unmistakable next to Wave 4's many small teeth.
+- **Collision accuracy:** Drawn wall centerlines use the same radii, spans, and physical widths as projectile/robot collision checks. Morph expansion is reduced for dense segment rings to preserve bot-sized passages; no decorative connectors pretend to block shots.
+- **Performance:** Still only three collision rings, bounded at sixteen segments each; accents are batched canvas paths with no new shadow blur. The existing four-tesseract cap and all player weapons are preserved. Real-Chromebook frame-rate testing remains necessary.
+- **Game feel:** Because the barriers and lanes truly change between waves, difficulty and firing angles may change; enemy AI, health, upgrades, scoring, and controls are not altered.
+
 ## Wave graduation ceremonies
 
 - **Every completed wave graduates**, even Wave 1. The existing two-second sector-clear window now hosts a celebratory diploma with a unique degree and cheeky faculty verdict; the first four clearances award **Certificate of Basic Survival**, **Diploma in Ballistics**, **Advanced Robot Evasion**, and **Honors with Distinction**. Further waves award increasingly absurd degrees, cycling indefinitely.
@@ -79,8 +88,8 @@ Select **TEST WAVE** in the status bar (default Wave 4; any integer from 1 throu
 - **MORPH:** walls change shape and radius, opening and closing lanes.
 - **MELTDOWN:** both transformations accelerate together.
 - Independent rings occasionally reverse direction, with a short amber warning. Corridors also contract and expand in later waves.
-- **Sector Spectacle (visual only):** Wave 1 starts in classic navy; Wave 2 switches to a bold cyan RADAR sweep; Wave 3 unveils a violet PRISM lattice; Wave 4 turns into an amber REACTOR; Wave 5 becomes an emerald VECTOR tunnel; Wave 6 forms icy PHANTOM gears and faint ghost rings; Wave 7 reveals a purple KALEIDOSCOPE; Wave 8 pulses with golden energy waves; Wave 9+ enters the magenta COSMOS field. Every wave changes color and rhythm.
-- Visual intensity starts meaningfully at Wave 2 instead of near-invisible: exponentially increasing detail through Wave 9, then capped draw counts for Chromebook performance. Waves beyond 9 continue shifting hue/rhythm without piling on geometry. Each cleared sector now gets a radiant victory transition and a themed incoming-wave reveal. All real walls, collisions, projectiles, robot AI and difficulty remain unchanged.
+- **Sector Spectacle:** Wave 1 starts in classic navy; Wave 2 switches to a bold cyan RADAR sweep; Wave 3 unveils a violet PRISM lattice; Wave 4 turns into an amber REACTOR; Wave 5 becomes an emerald VECTOR tunnel; Wave 6 forms icy PHANTOM gears and faint ghost rings; Wave 7 reveals a purple KALEIDOSCOPE; Wave 8 pulses with golden energy waves; Wave 9+ enters the magenta COSMOS field. The wallpaper remains decorative, but the walls themselves now have distinctive per-wave layouts and physically matching hitboxes.
+- Visual intensity starts meaningfully at Wave 2 instead of near-invisible: exponentially increasing detail through Wave 9, then capped draw counts for Chromebook performance. Waves beyond 9 continue shifting hue/rhythm without piling on geometry. Each cleared sector gets a radiant victory transition and a themed incoming-wave reveal. As of v0.3.10, the real wall layouts and their collision footprints also change by wave; projectiles, robot AI, and equipment keep their existing mechanics.
 - Normal player shots and enemy shots collide with the first wall they hit; charged Penetrator shots pass through walls and expire at the outer arena boundary.
 - Turret lasers can intercept hostile projectiles in flight. Regular shots and enemy shots both vanish in a cyan-white spark; charged Penetrator shots destroy hostile shots but continue flying. Manual aiming is required and interceptions award no bonus points.
 - Moving walls can scrap robots. Wall kills score fewer points than turret kills.
