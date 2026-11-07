@@ -45,7 +45,7 @@
   function makeState() {
     return {
       phase:"ready", elapsed:0, modeIndex:0, modeClock:0,
-      wave:1, score:0, high:highScore(), lives:3, aim:6,
+      wave:1, score:0, high:highScore(), lives:3, aim:6, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
       invuln:1.8, flash:0, shake:0, announce:"", announceClock:0,
@@ -133,6 +133,7 @@
   function pause() {
     if (state.phase === "playing") {
       state.phase = "paused";
+      state.aimVelocity = 0;
       pointerFiring = buttonFiring = false;
       fireButton.classList.remove("firing");
       showOverlay("PAUSED", "The robots are on their best behavior. For now.", "RESUME", "SYSTEM HOLD");
@@ -408,15 +409,43 @@
       }
     } else state.waveClock=0;
   }
-  function update(dt) {
-    // Holding Left/Right rotates smoothly; Q/E provide identical alternatives.
+  function updateKeyboardAim(dt) {
     const ccw = keys.has("ArrowLeft") || keys.has("q") || keys.has("Q");
     const cw = keys.has("ArrowRight") || keys.has("e") || keys.has("E");
+    const up = keys.has("ArrowUp");
+    const down = keys.has("ArrowDown");
+    const maxSpeed = 2.85; // ~163 degrees per second; previously 241
+    const accel = 12, brake = 18;
+    let desiredVelocity = 0;
+    let target = null;
+    let gap = 0;
+
     if (ccw !== cw) {
-      const turn = (cw ? 1 : -1) * 4.2 * dt; // radians per second
-      state.aim = ((state.aim + turn * 4 / Math.PI) % 8 + 8) % 8;
-      syncAimPad();
+      desiredVelocity = cw ? maxSpeed : -maxSpeed;
+    } else if (up !== down) {
+      // Up and down ease toward the cardinal direction, rather than snapping.
+      target = up ? 6 : 2;
+      gap = angleDiff(target * Math.PI / 4, state.aim * Math.PI / 4);
+      desiredVelocity = Math.sign(gap) * Math.min(maxSpeed, Math.sqrt(2 * brake * Math.abs(gap)));
     }
+
+    const slowing = Math.abs(desiredVelocity) < Math.abs(state.aimVelocity) ||
+      (desiredVelocity && state.aimVelocity && Math.sign(desiredVelocity) !== Math.sign(state.aimVelocity));
+    const maxChange = (slowing ? brake : accel) * dt;
+    state.aimVelocity += clamp(desiredVelocity - state.aimVelocity, -maxChange, maxChange);
+
+    // Avoid hunting or oscillating around a cardinal target.
+    if (target !== null && Math.abs(gap) <= Math.max(.002, Math.abs(state.aimVelocity * dt))) {
+      state.aim = target;
+      state.aimVelocity = 0;
+    } else if (state.aimVelocity !== 0) {
+      state.aim = ((state.aim + state.aimVelocity * dt * 4 / Math.PI) % 8 + 8) % 8;
+    }
+    if (state.aimVelocity || target !== null) syncAimPad();
+  }
+
+  function update(dt) {
+    updateKeyboardAim(dt);
     updateArena(dt);
     state.invuln=Math.max(0,state.invuln-dt);
     state.fireClock-=dt;
@@ -733,15 +762,15 @@
     if (Math.hypot(x-CX,y-CY)<18) return;
     let theta=Math.atan2(y-CY,x-CX);
     state.aim=((theta/(Math.PI/4))%8+8)%8;
+    state.aimVelocity=0; // Precision pointer and eight-way aim override momentum.
     syncAimPad();
   }
   function keyAim() {
-    // Preserve 8-way WASD shortcuts. Up/Down remain quick cardinal aims.
-    // Left/Right no longer snap: they rotate continuously in update().
+    // Keep eight-way WASD shortcuts; arrow keys now use smooth rotation.
     const left=keys.has("a")||keys.has("A");
     const right=keys.has("d")||keys.has("D");
-    const up=keys.has("ArrowUp")||keys.has("w")||keys.has("W");
-    const down=keys.has("ArrowDown")||keys.has("s")||keys.has("S");
+    const up=keys.has("w")||keys.has("W");
+    const down=keys.has("s")||keys.has("S");
     const x=Number(right)-Number(left), y=Number(down)-Number(up);
     if (x||y) setAim(CX+x*100,CY+y*100);
   }
@@ -783,9 +812,9 @@
   canvas.addEventListener("lostpointercapture",endPointer);
   for (const button of padButtons) {
     button.addEventListener("pointerdown",event=>{
-      event.preventDefault();state.aim=Number(button.dataset.dir);syncAimPad();
+      event.preventDefault();state.aim=Number(button.dataset.dir);state.aimVelocity=0;syncAimPad();
     });
-    button.addEventListener("click",()=>{state.aim=Number(button.dataset.dir);syncAimPad();});
+    button.addEventListener("click",()=>{state.aim=Number(button.dataset.dir);state.aimVelocity=0;syncAimPad();});
   }
   fireButton.addEventListener("pointerdown",event=>{
     event.preventDefault();
