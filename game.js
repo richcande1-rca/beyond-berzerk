@@ -55,7 +55,7 @@
       blasts:[], shockwaves:[], impacts:[], combo:0, comboClock:0,
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
       invuln:1.8, flash:0, shake:0, announce:"", announceClock:0,
-      clearNearbyEnemyShots:false, turretKick:0,
+      clearNearbyEnemyShots:false, turretKick:0, muzzleFlash:0,
       destroyed:0, spawnCount:0, chains:0
     };
   }
@@ -272,16 +272,65 @@
     }
     if (state.particles.length>450) state.particles.splice(0,state.particles.length-450);
   }
-  function scrap(index, byWall=false) {
+  function queueBlast(x,y,color,depth=0) {
+    if (state.blasts.length >= 24 || depth > 3) return;
+    state.blasts.push({x,y,color,depth,delay:.075});
+    state.shockwaves.push({x,y,color,life:.38,maxLife:.38,radius:55});
+    if (state.shockwaves.length>24) state.shockwaves.shift();
+    burst(x,y,"#ffecc1",13,1.45);
+    state.shake = Math.max(state.shake,3.5);
+    tone(130+depth*47,.15,"sawtooth",.03,62);
+  }
+  function scrap(index, byWall=false, cause="shot", depth=0) {
     const bot = state.bots[index];
     if (!bot) return;
     burst(bot.x,bot.y,colors[bot.hue],byWall?9:17,byWall?.7:1.15);
-    state.score += byWall?40:(bot.armored?180:100);
+    state.score += byWall?40:(cause==="chain"?140:bot.armored?180:100);
+    if (cause==="chain") state.chains++;
     state.destroyed++;
     state.shake = Math.max(state.shake,byWall?1.4:2.5);
     if (state.score > state.high) { state.high=state.score; storeHigh(); }
-    if (!byWall) tone(rnd(110,190),.12,"sawtooth",.03,55);
+    if (!byWall && cause!=="chain") tone(rnd(110,190),.12,"sawtooth",.03,55);
     state.bots.splice(index,1);
+    // A percentage of turret kills detonate; chained victims also detonate,
+    // within a bounded depth so even huge crowds stay inexpensive to process.
+    const detonates = !byWall && depth<3 && state.blasts.length<24 &&
+      (cause==="chain" || Math.random()<(bot.armored?.60:.28));
+    if (detonates) queueBlast(bot.x,bot.y,colors[bot.hue],depth);
+  }
+  function blastHasLine(x,y,bx,by) {
+    const dx=bx-x,dy=by-y,len=Math.hypot(dx,dy);
+    for (let d=7;d<len-5;d+=7) {
+      if (wallHit(x+dx*d/len,y+dy*d/len,1.5)) return false;
+    }
+    return true;
+  }
+  function updateBlasts(dt) {
+    // Move the current queue aside; chain explosions join the next frame,
+    // never changing the array we're iterating.
+    const queued=state.blasts.splice(0);
+    for (const blast of queued) {
+      blast.delay-=dt;
+      if (blast.delay>0) {state.blasts.push(blast);continue;}
+      let hits=0;
+      for (let i=state.bots.length-1;i>=0;i--) {
+        const bot=state.bots[i];
+        const distance=Math.hypot(bot.x-blast.x,bot.y-blast.y);
+        if (distance>116 || !blastHasLine(blast.x,blast.y,bot.x,bot.y)) continue;
+        if (distance<=55 && hits<10) {
+          hits++;
+          scrap(i,false,"chain",blast.depth+1);
+        } else {
+          // The survivors scatter for a moment — sometimes into a wall.
+          bot.panic=rnd(.55,1.15);
+          bot.panicAngle=Math.atan2(bot.y-blast.y,bot.x-blast.x)+rnd(-.48,.48);
+        }
+      }
+      if(hits>=2) {
+        state.comboClock=1.3;
+        state.combo=Math.max(state.combo,hits+1);
+      }
+    }
   }
   function playerHit() {
     if (state.invuln>0 || state.phase!=="playing") return;
@@ -302,6 +351,7 @@
       vx:Math.cos(angle)*610,vy:Math.sin(angle)*610,life:.7,friendly:true,size:3.3,color:"#ecfdff"});
     burst(CX+Math.cos(angle)*28,CY+Math.sin(angle)*28,"#90faff",2,.15);
     state.turretKick = 1;
+    state.muzzleFlash = .07;
     tone(740,.055,"square",.033,420);
   }
   function fireBot(bot) {
@@ -323,56 +373,66 @@
 
   function updateBots(dt) {
     for (let i=state.bots.length-1;i>=0;i--) {
-      const b = state.bots[i];
+      const b=state.bots[i];
       b.age+=dt;
       let d=dist(b.x,b.y), a=polar(b.x,b.y);
+      const preferred = b.type==="gunner"?153:b.type==="flank"?108:
+        b.type==="rush"?69:83;
       let heading=a+Math.PI;
-      let nearest=null, distanceToRing=Infinity;
+      let speed=b.speed*dt;
+      let nearest=null,distanceToRing=Infinity;
       for (const ring of state.rings) {
         const delta=d-ringShape(ring).radius;
-        if (delta>-13 && delta<44 && Math.abs(delta)<distanceToRing) {
+        if (delta>-17 && delta<46 && Math.abs(delta)<distanceToRing) {
           nearest=ring;distanceToRing=Math.abs(delta);
         }
       }
-      if (nearest && blockedAngle(nearest,a,(b.size+6)/nearest.base)) {
-        const target=bestGap(nearest,a,(b.size+6)/nearest.base);
+      // Runners press inward; flankers orbit; gunners seek a firing lane.
+      // Each role retains wall-avoiding behavior and a safe central pocket.
+      if (b.panic>0) {
+        b.panic=Math.max(0,b.panic-dt);
+        heading=b.panicAngle;
+        speed*=1.5;
+      } else if (d<preferred+6) {
+        if (b.type==="flank" || b.type==="gunner") {
+          heading=a+b.direction*Math.PI/2;
+          if (d<preferred-13) heading=a;
+        } else {
+          speed=0;
+        }
+      } else if (b.type==="flank") {
+        heading=a+Math.PI+b.direction*.45;
+      } else {
+        heading+=Math.sin(b.age*1.5+b.wobble)*.065;
+      }
+      if (nearest && blockedAngle(nearest,a,(b.size+7)/nearest.base)) {
+        const target=bestGap(nearest,a,(b.size+7)/nearest.base);
         const turn=angleDiff(target,a);
         heading=a+(Math.abs(turn)<.025?b.direction:Math.sign(turn))*Math.PI/2;
-      } else {
-        heading+=Math.sin(b.age*1.5+b.wobble)*.07;
       }
-      let speed=b.speed*dt;
-      // Within the innermost ring robots regroup along eight attack spokes.
-      // Every enemy can therefore be hit by the player's eight-direction gun.
-      if (d<115) {
-        const lane=Math.round(a/(Math.PI/4))*(Math.PI/4);
-        const turn=angleDiff(lane,a);
-        if (Math.abs(turn)>Math.max(.016,3/d)) {
-          heading=a+Math.sign(turn)*Math.PI/2;
-        } else if (d<83) {
-          speed=0; // Hold position and shoot rather than unavoidable ramming.
-        } else {
-          heading=a+Math.PI;
-        }
-      }
-      let nx=b.x+Math.cos(heading)*speed, ny=b.y+Math.sin(heading)*speed;
+      let nx=b.x+Math.cos(heading)*speed,ny=b.y+Math.sin(heading)*speed;
       if (wallHit(nx,ny,b.size*.8)) {
+        // Skirt around blocked corridors instead of pushing into walls.
         const turn = nearest ? Math.sign(angleDiff(bestGap(nearest,a,.16),a)) || b.direction : b.direction;
-        const tangential=a+turn*Math.PI/2;
-        nx=b.x+Math.cos(tangential)*speed*.83;
-        ny=b.y+Math.sin(tangential)*speed*.83;
+        const tangent=a+turn*Math.PI/2;
+        nx=b.x+Math.cos(tangent)*speed*.83;
+        ny=b.y+Math.sin(tangent)*speed*.83;
       }
-      if (!wallHit(nx,ny,b.size*.75) && dist(nx,ny)<R+22) {
+      if (!wallHit(nx,ny,b.size*.75) && dist(nx,ny)<R+22 && dist(nx,ny)>38) {
         b.x=nx;b.y=ny;
       }
-      // A barrier moving into a robot destroys it. The turret has its own safe central pocket.
-      if (wallHit(b.x,b.y,Math.max(1,b.size*.3))) { scrap(i,true);continue; }
+      if (wallHit(b.x,b.y,Math.max(1,b.size*.3))) {
+        scrap(i,true);continue;
+      }
       d=dist(b.x,b.y);
-      if (d<30) { burst(b.x,b.y,"#ff4baf",12);state.bots.splice(i,1);playerHit();continue; }
+      if (d<30) {burst(b.x,b.y,"#ff4baf",12);state.bots.splice(i,1);playerHit();continue;}
       b.shotClock-=dt;
-      if (b.shotClock<=0 && d<118 && clearShotPath(b.x,b.y)) {
+      const fireRange=b.type==="gunner"?190:b.type==="flank"?138:
+        b.type==="rush"?94:125;
+      if (b.shotClock<=0 && d<fireRange && clearShotPath(b.x,b.y)) {
         fireBot(b);
-        b.shotClock=rnd(2.8,4.6)/(1+Math.min(.35,state.wave*.025));
+        b.shotClock=(b.type==="gunner"?rnd(1.5,2.6):rnd(2.8,4.6))/
+          (1+Math.min(.35,state.wave*.025));
       } else if (b.shotClock<=0) b.shotClock=rnd(.25,.7);
     }
   }
@@ -386,8 +446,14 @@
       let hit=false;
       for (let j=0;j<steps;j++) {
         s.x+=s.vx*dt/steps;s.y+=s.vy*dt/steps;
-        if (dist(s.x,s.y)>R+21 || wallHit(s.x,s.y,s.size)) {
-          burst(s.x,s.y,s.friendly?"#45fefa":"#ff9551",5,.28);
+        const struckWall=wallHit(s.x,s.y,s.size);
+        if (dist(s.x,s.y)>R+21 || struckWall) {
+          burst(s.x,s.y,s.friendly?"#45fefa":"#ff9551",struckWall?8:5,.42);
+          if(struckWall) {
+            state.impacts.push({x:s.x,y:s.y,life:.19,maxLife:.19,
+              color:s.friendly?"#72ffff":"#ffb16b"});
+            if (state.impacts.length>48) state.impacts.shift();
+          }
           hit=true;break;
         }
         if (s.friendly) {
@@ -491,6 +557,9 @@
     state.flash=Math.max(0,state.flash-dt);
     state.shake=Math.max(0,state.shake-dt*22);
     state.turretKick=Math.max(0,state.turretKick-dt*10);
+    state.muzzleFlash=Math.max(0,state.muzzleFlash-dt);
+    state.comboClock=Math.max(0,state.comboClock-dt);
+    if (!state.comboClock) state.combo=0;
     if ((keys.has(" ")||keys.has("Enter")||pointerFiring||buttonFiring) && state.fireClock<=0) {
       firePlayer();
       state.fireClock=.115;
@@ -498,7 +567,16 @@
     updateWave(dt);
     updateBots(dt);
     if (state.phase==="playing") updateShots(dt);
+    updateBlasts(dt);
     updateParticles(dt);
+    for (let i=state.shockwaves.length-1;i>=0;i--) {
+      state.shockwaves[i].life-=dt;
+      if (state.shockwaves[i].life<=0) state.shockwaves.splice(i,1);
+    }
+    for (let i=state.impacts.length-1;i>=0;i--) {
+      state.impacts[i].life-=dt;
+      if (state.impacts[i].life<=0) state.impacts.splice(i,1);
+    }
   }
 
   function line(x1,y1,x2,y2,color,width=1) {
