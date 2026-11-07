@@ -2,7 +2,7 @@
 
 **Insane shooter arcade game. The world moves. You don't.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.1.5 — First Contact**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.1.6 — First Contact**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -16,10 +16,10 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 
 | Input | Action |
 | --- | --- |
-| Left / Right arrows (hold) | Rotate turret continuously counterclockwise / clockwise |
-| Q / E (hold) | Alternate continuous rotation controls |
+| Left / Right arrows (hold) | Smoothly accelerate counterclockwise / clockwise; brake gently on release |
+| Q / E (hold) | Alternate smooth rotation controls |
 | WASD | Snap to one of eight quick directions |
-| Up / Down arrows | Quick-aim north / south |
+| Up / Down arrows | Ease smoothly toward north / south |
 | Space or Enter | Hold to fire |
 | Mouse | Aim freely at any angle; hold click to fire |
 | Touch | Drag on the arena to aim and fire freely; eight-way quick pad plus hold FIRE also works |
