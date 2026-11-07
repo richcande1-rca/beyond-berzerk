@@ -12,6 +12,8 @@
   const soundButton = document.getElementById("sound-btn");
   const fireButton = document.getElementById("fire-btn");
   const statusMessage = document.getElementById("status-message");
+  const testWaveInput = document.getElementById("test-wave");
+  const testStartButton = document.getElementById("test-start-btn");
   const padButtons = [...document.querySelectorAll("[data-dir]")];
   // Center the entire arena in the space between the 65px top and 677px bottom HUD.
   // The outer perimeter, stroke, and radial markers now stay inside both HUDs.
@@ -42,6 +44,7 @@
     catch { return 0; }
   }
   function storeHigh() {
+    if (state.testMode) return; // Test runs cannot modify the real record.
     try { localStorage.setItem("beyond-berzerk-high", String(state.high)); } catch {}
   }
   function makeRings() {
@@ -54,7 +57,7 @@
   function makeState() {
     return {
       phase:"ready", elapsed:0, modeIndex:0, modeClock:0,
-      wave:1, score:0, high:highScore(), lives:3, aim:6, aimVelocity:0,
+      wave:1, testMode:false, testStartWave:1, score:0, high:highScore(), lives:3, aim:6, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
       blasts:[], shockwaves:[], impacts:[], combo:0, comboClock:0,
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
@@ -66,7 +69,7 @@
   }
   let state = makeState();
 
-  function setStatus(message) { statusMessage.textContent = message; }
+  function setStatus(message) { statusMessage.textContent = state.testMode ? "TEST // "+message : message; }
   function showOverlay(title, message, button, eyebrow) {
     overlayTitle.textContent = title;
     overlayText.innerHTML = message;
@@ -125,17 +128,22 @@
     }
   }
 
-  function start() {
+  function start(wave=1, testMode=false) {
     state = makeState();
     state.phase = "playing";
-    state.toSpawn = 15;
-    state.announce = "WAVE 01 — " + waveName();
+    state.testMode = testMode;
+    state.wave = testMode ? wave : 1;
+    state.testStartWave = state.wave;
+    state.toSpawn = state.wave===1 ? 15 : Math.min(120,10+state.wave*5);
+    state.announce = (testMode ? "TEST // " : "") +
+      "WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName();
     state.announceClock = 2.2;
+    state.revealClock = testMode ? 1.45 : 0;
     pointerFiring = buttonFiring = false;
     fireButton.classList.remove("firing");
     // User's START click unlocks browser audio; the chirp confirms it is active.
     primeAudio(true);
-    setStatus("CONTACT — WAVE 01");
+    setStatus("CONTACT — WAVE "+String(state.wave).padStart(2,"0"));
     pauseButton.textContent = "PAUSE";
     hideOverlay();
     syncAimPad();
@@ -160,12 +168,14 @@
 
   function gameOver() {
     state.phase = "over";
-    storeHigh();
+    storeHigh(); // Guarded against test-mode writes.
     tone(310,.35,"sawtooth",.08,65);
-    showOverlay("SYSTEM OVERRUN",
+    showOverlay(state.testMode ? "TEST COMPLETE" : "SYSTEM OVERRUN",
       "FINAL SCORE: <strong>" + state.score.toLocaleString() + "</strong><br>WAVE REACHED: " +
-      state.wave + " &nbsp; • &nbsp; ROBOTS SCRAPPED: " + state.destroyed,
-      "TRY AGAIN", "END OF TRANSMISSION");
+      state.wave + " &nbsp; • &nbsp; ROBOTS SCRAPPED: " + state.destroyed +
+      (state.testMode ? "<br>TEST RUN // UNSCORED" : ""),
+      state.testMode ? "NORMAL GAME" : "TRY AGAIN",
+      state.testMode ? "SIMULATION TERMINATED" : "END OF TRANSMISSION");
     pauseButton.textContent = "PAUSE";
     setStatus("GAME OVER — INSERT COURAGE");
   }
@@ -294,7 +304,7 @@
     if (cause==="chain") state.chains++;
     state.destroyed++;
     state.shake = Math.max(state.shake,byWall?1.4:2.5);
-    if (state.score > state.high) { state.high=state.score; storeHigh(); }
+    if (!state.testMode && state.score > state.high) { state.high=state.score; storeHigh(); }
     if (!byWall && cause!=="chain") tone(rnd(110,190),.12,"sawtooth",.03,55);
     state.bots.splice(index,1);
     // A percentage of turret kills detonate; chained victims also detonate,
@@ -557,7 +567,7 @@
         state.waveClock=0;
         state.invuln=Math.max(state.invuln,.8);
         state.score+=500;
-        if (state.score>state.high) {state.high=state.score;storeHigh();}
+        if (!state.testMode && state.score>state.high) {state.high=state.score;storeHigh();}
         state.announce="WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName();
         state.announceClock=2.5;
         state.revealClock=1.45; // Purely visual sector handoff.
@@ -1237,7 +1247,7 @@
     label(String(state.score).padStart(6,"0"),30,52,25,"#f8fbff");
     label("BEST",242,24,13,"#81c9ce");
     label(String(state.high).padStart(6,"0"),242,52,25,"#f8fbff");
-    label("WAVE",512,24,13,"#81c9ce");
+    label(state.testMode ? "TEST WAVE" : "WAVE",512,24,13,state.testMode ? "#f3ba79" : "#81c9ce");
     label(String(state.wave).padStart(2,"0"),512,52,25,"#f8fbff");
     label("LIVES",790,24,13,"#81c9ce");
     for(let i=0;i<state.lives;i++) {
@@ -1365,6 +1375,19 @@
     return {x:(event.clientX-rect.left)*W/rect.width,
             y:(event.clientY-rect.top)*H/rect.height};
   }
+
+  function launchTest() {
+    const value=Number(testWaveInput.value);
+    const wave=clamp(Number.isFinite(value) ? Math.floor(value) : 4,1,999);
+    testWaveInput.value=String(wave);
+    start(wave,true);
+  }
+  // The input remains usable with keyboard and touch without steering the turret.
+  testWaveInput.addEventListener("keydown",event=>{
+    event.stopPropagation();
+    if(event.key==="Enter") {event.preventDefault();launchTest();}
+  });
+  testStartButton.addEventListener("click",launchTest);
 
   window.addEventListener("keydown",event=>{
     if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," ","Enter"].includes(event.key))
