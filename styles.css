@@ -26,3 +26,16 @@ footer{padding-top:25px;margin-top:15px;border-top:1px solid #25203d;color:#736d
     margin-inline: auto;
   }
 }
+
+
+/* Industrial sci-fi title: cool metal, ember light, restrained cinematic framing. */
+.masthead{position:relative;min-height:76px;padding:5px 4px 12px;margin-bottom:16px;border-bottom:1px solid #503b36;background:linear-gradient(103deg,#171a208c,#3018173d 65%,transparent)}
+.masthead:after{content:"";position:absolute;left:4px;bottom:-2px;width:clamp(76px,15%,166px);height:2px;background:linear-gradient(90deg,#e29a59,#8a3b30 75%,transparent);box-shadow:0 0 9px #b54e3040;pointer-events:none}
+.brand{min-width:0}
+.brand h1{display:flex;align-items:baseline;gap:.24em;margin:0;white-space:nowrap;font-family:"Arial Narrow","Liberation Sans Narrow","Roboto Condensed",Impact,Arial,sans-serif;font-size:clamp(25px,4.5vw,53px);font-stretch:condensed;font-weight:900;letter-spacing:.035em;line-height:1.08;text-transform:uppercase;text-shadow:none}
+.brand h1 .title-steel{color:#bfc3c0;background:linear-gradient(180deg,#f2e9d9 0%,#b5b8b6 50%,#777b80 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 1px #080a0e)}
+.brand h1 em{font-style:normal;color:#cc6745;background:linear-gradient(180deg,#f0a66a 0%,#c86743 43%,#882f30 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 2px #13070a)}
+.version{color:#a69a8f;font-family:ui-monospace,Consolas,monospace;font-size:10px;font-weight:750;letter-spacing:.18em}
+.version span{color:#d99561;font-size:13px;text-shadow:0 0 10px #b455344a}
+@media(max-width:740px){.masthead{min-height:64px;padding:4px 4px 10px;margin-bottom:12px;gap:8px}.brand h1{font-size:clamp(23px,5vw,34px);letter-spacing:.005em;gap:.18em}.version{font-size:9px;letter-spacing:.05em}.version span{font-size:11px}}
+@media(max-width:430px){.masthead{min-height:59px}.brand h1{font-size:clamp(20px,5.45vw,24px)}}
