@@ -568,38 +568,22 @@
     } else state.waveClock=0;
   }
   function updateKeyboardAim(dt) {
-    const ccw = keys.has("ArrowLeft") || keys.has("q") || keys.has("Q");
-    const cw = keys.has("ArrowRight") || keys.has("e") || keys.has("E");
-    const up = keys.has("ArrowUp");
-    const down = keys.has("ArrowDown");
-    const maxSpeed = 2.85; // ~163 degrees per second; previously 241
+    // Either arrow-key pair provides unlimited 360-degree rotation:
+    // Left / Up counterclockwise; Right / Down clockwise. Q / E are aliases.
+    const ccw = keys.has("ArrowLeft") || keys.has("ArrowUp") || keys.has("q") || keys.has("Q");
+    const cw = keys.has("ArrowRight") || keys.has("ArrowDown") || keys.has("e") || keys.has("E");
+    const maxSpeed = 2.85; // ~163 degrees per second
     const accel = 12, brake = 18;
-    let desiredVelocity = 0;
-    let target = null;
-    let gap = 0;
-
-    if (ccw !== cw) {
-      desiredVelocity = cw ? maxSpeed : -maxSpeed;
-    } else if (up !== down) {
-      // Up and down ease toward the cardinal direction, rather than snapping.
-      target = up ? 6 : 2;
-      gap = angleDiff(target * Math.PI / 4, state.aim * Math.PI / 4);
-      desiredVelocity = Math.sign(gap) * Math.min(maxSpeed, Math.sqrt(2 * brake * Math.abs(gap)));
-    }
-
+    const desiredVelocity = ccw === cw ? 0 : (cw ? maxSpeed : -maxSpeed);
     const slowing = Math.abs(desiredVelocity) < Math.abs(state.aimVelocity) ||
       (desiredVelocity && state.aimVelocity && Math.sign(desiredVelocity) !== Math.sign(state.aimVelocity));
     const maxChange = (slowing ? brake : accel) * dt;
     state.aimVelocity += clamp(desiredVelocity - state.aimVelocity, -maxChange, maxChange);
 
-    // Avoid hunting or oscillating around a cardinal target.
-    if (target !== null && Math.abs(gap) <= Math.max(.002, Math.abs(state.aimVelocity * dt))) {
-      state.aim = target;
-      state.aimVelocity = 0;
-    } else if (state.aimVelocity !== 0) {
+    if (state.aimVelocity !== 0) {
       state.aim = ((state.aim + state.aimVelocity * dt * 4 / Math.PI) % 8 + 8) % 8;
+      syncAimPad();
     }
-    if (state.aimVelocity || target !== null) syncAimPad();
   }
 
   function update(dt) {
