@@ -66,7 +66,7 @@
   function hideOverlay() { overlay.classList.add("hidden"); }
 
   function tone(freq, duration, kind="square", volume=.027, endFreq=0) {
-    if (!soundOn || !audio) return;
+    if (!soundOn || !audio || audio.state !== "running") return;
     try {
       const oscillator = audio.createOscillator();
       const gain = audio.createGain();
@@ -74,18 +74,43 @@
       oscillator.type = kind;
       oscillator.frequency.setValueAtTime(Math.max(40, freq), t);
       if (endFreq) oscillator.frequency.exponentialRampToValueAtTime(Math.max(40, endFreq), t + duration);
-      gain.gain.setValueAtTime(volume, t);
+      // The original firing level was nearly inaudible on normal speakers.
+      const level = Math.min(.13, volume * 1.75);
+      gain.gain.setValueAtTime(level, t);
       gain.gain.exponentialRampToValueAtTime(.0001, t + duration);
       oscillator.connect(gain).connect(audio.destination);
       oscillator.start(t); oscillator.stop(t + duration + .01);
-    } catch {}
+    } catch (error) {
+      console.warn("Beyond Berzerk sound effect failed:", error);
+    }
   }
-  function primeAudio() {
+  function audioChirp() {
+    tone(740,.11,"square",.035,980);
+    tone(980,.18,"triangle",.042,490);
+  }
+  function primeAudio(testChirp=false) {
     if (!soundOn) return;
     try {
-      audio ||= new (window.AudioContext || window.webkitAudioContext)();
-      if (audio.state === "suspended") audio.resume();
-    } catch {}
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) {
+        soundButton.textContent = "SOUND UNSUPPORTED";
+        return;
+      }
+      audio ||= new AudioContextClass();
+      const ready = () => {
+        if (!soundOn) return;
+        soundButton.textContent = "SOUND ON";
+        if (testChirp) audioChirp();
+      };
+      if (audio.state === "running") ready();
+      else audio.resume().then(ready).catch(error => {
+        console.warn("Beyond Berzerk audio could not start:", error);
+        soundButton.textContent = "SOUND BLOCKED";
+      });
+    } catch (error) {
+      console.warn("Beyond Berzerk audio is unavailable:", error);
+      soundButton.textContent = "SOUND UNAVAILABLE";
+    }
   }
 
   function start() {
@@ -96,9 +121,8 @@
     state.announceClock = 2.2;
     pointerFiring = buttonFiring = false;
     fireButton.classList.remove("firing");
-    primeAudio();
-    tone(440,.12,"sawtooth",.055,660);
-    tone(660,.2,"triangle",.035,880);
+    // User's START click unlocks browser audio; the chirp confirms it is active.
+    primeAudio(true);
     setStatus("CONTACT — WAVE 01");
     pauseButton.textContent = "PAUSE";
     hideOverlay();
@@ -235,7 +259,7 @@
     state.shots.push({x:CX+Math.cos(angle)*27,y:CY+Math.sin(angle)*27,
       vx:Math.cos(angle)*610,vy:Math.sin(angle)*610,life:.7,friendly:true,size:3.3,color:"#ecfdff"});
     burst(CX+Math.cos(angle)*28,CY+Math.sin(angle)*28,"#90faff",2,.15);
-    tone(740,.045,"square",.01,420);
+    tone(740,.055,"square",.033,420);
   }
   function fireBot(bot) {
     if (state.shots.filter(s=>!s.friendly).length>65) return;
@@ -433,21 +457,29 @@
       const ring=state.rings[ir], shape=ringShape(ring);
       const pitch=TAU/ring.count;
       const hue=(ring.hue+state.elapsed*3)%360;
+      ctx.save();
+      ctx.lineCap="round";
+      // Batch the full ring into one path: three strokes per ring instead
+      // of three expensive glowing strokes for *each* moving segment.
+      ctx.beginPath();
       for (let n=0;n<ring.count;n++) {
         const center=ring.angle+n*pitch;
         const start=center-shape.span/2,end=center+shape.span/2;
-        ctx.save();ctx.lineCap="round";ctx.shadowBlur=21;
-        ctx.shadowColor="hsl("+hue+",100%,55%)";
-        ctx.lineWidth=shape.width+4;
-        ctx.strokeStyle="hsla("+hue+",100%,53%,.57)";
-        ctx.beginPath();ctx.arc(CX,CY,shape.radius,start,end);ctx.stroke();
-        ctx.shadowBlur=0;ctx.lineWidth=shape.width-3;
-        ctx.strokeStyle="hsl("+hue+",100%,56%)";
-        ctx.beginPath();ctx.arc(CX,CY,shape.radius,start,end);ctx.stroke();
-        ctx.lineWidth=3;ctx.strokeStyle="#e2ffffa8";
-        ctx.beginPath();ctx.arc(CX,CY,shape.radius,start,end);ctx.stroke();
-        ctx.restore();
+        ctx.arc(CX,CY,shape.radius,start,end);
       }
+      ctx.shadowBlur=15;
+      ctx.shadowColor="hsl("+hue+",100%,55%)";
+      ctx.lineWidth=shape.width+4;
+      ctx.strokeStyle="hsla("+hue+",100%,53%,.57)";
+      ctx.stroke();
+      ctx.shadowBlur=0;
+      ctx.lineWidth=shape.width-3;
+      ctx.strokeStyle="hsl("+hue+",100%,56%)";
+      ctx.stroke();
+      ctx.lineWidth=3;
+      ctx.strokeStyle="#e2ffffa8";
+      ctx.stroke();
+      ctx.restore();
     }
   }
   function drawBots() {
@@ -640,7 +672,7 @@
     soundOn=!soundOn;
     soundButton.textContent=soundOn?"SOUND ON":"SOUND OFF";
     soundButton.setAttribute("aria-pressed",String(soundOn));
-    if(soundOn)primeAudio();
+    if(soundOn)primeAudio(true);
   });
 
   // Decorative robots behind the ready-screen overlay.
