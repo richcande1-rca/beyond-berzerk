@@ -49,6 +49,7 @@
       rings:makeRings(), bots:[], shots:[], particles:[],
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
       invuln:1.8, flash:0, shake:0, announce:"", announceClock:0,
+      clearNearbyEnemyShots:false,
       destroyed:0, spawnCount:0
     };
   }
@@ -249,7 +250,9 @@
     state.invuln = 3.5;
     state.flash = .26; state.shake = 13;
     burst(CX,CY,"#ff3c91",34,1.8);
-    state.shots = state.shots.filter(s=>s.friendly || Math.hypot(s.x-CX,s.y-CY)>140);
+    // Defer projectile cleanup until updateShots has finished iterating.
+    // Replacing the array mid-loop used to throw when a robot shot hit the turret.
+    state.clearNearbyEnemyShots = true;
     tone(260,.35,"sawtooth",.09,52);
     if (state.lives<=0) gameOver();
     else setStatus("HULL BREACH — " + state.lives + " LIVES");
@@ -336,6 +339,7 @@
   function updateShots(dt) {
     for (let i=state.shots.length-1;i>=0;i--) {
       const s=state.shots[i];
+      if (!s) continue; // Defensive guard if another combat event changes the list.
       s.life-=dt;
       if (s.life<=0) {state.shots.splice(i,1);continue;}
       const steps=Math.max(1,Math.ceil(Math.hypot(s.vx,s.vy)*dt/5));
@@ -364,6 +368,10 @@
         if (hit) break;
       }
       if (hit) state.shots.splice(i,1);
+    }
+    if (state.clearNearbyEnemyShots) {
+      state.shots = state.shots.filter(s=>s.friendly || Math.hypot(s.x-CX,s.y-CY)>140);
+      state.clearNearbyEnemyShots = false;
     }
   }
   function updateParticles(dt) {
