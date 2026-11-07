@@ -376,9 +376,9 @@
     } else state.waveClock=0;
   }
   function update(dt) {
-    // Q / E continuously rotate the turret through all 360 degrees.
-    const ccw = keys.has("q") || keys.has("Q");
-    const cw = keys.has("e") || keys.has("E");
+    // Holding Left/Right rotates smoothly; Q/E provide identical alternatives.
+    const ccw = keys.has("ArrowLeft") || keys.has("q") || keys.has("Q");
+    const cw = keys.has("ArrowRight") || keys.has("e") || keys.has("E");
     if (ccw !== cw) {
       const turn = (cw ? 1 : -1) * 4.2 * dt; // radians per second
       state.aim = ((state.aim + turn * 4 / Math.PI) % 8 + 8) % 8;
@@ -563,7 +563,8 @@
   }
 
   function syncAimPad() {
-    for(const button of padButtons) button.classList.toggle("active",Number(button.dataset.dir)===state.aim);
+    const closest = Math.round(state.aim) % 8;
+    for(const button of padButtons) button.classList.toggle("active",Number(button.dataset.dir)===closest);
   }
   function setAim(x,y) {
     if (Math.hypot(x-CX,y-CY)<18) return;
@@ -572,8 +573,10 @@
     syncAimPad();
   }
   function keyAim() {
-    const left=keys.has("ArrowLeft")||keys.has("a")||keys.has("A");
-    const right=keys.has("ArrowRight")||keys.has("d")||keys.has("D");
+    // Preserve 8-way WASD shortcuts. Up/Down remain quick cardinal aims.
+    // Left/Right no longer snap: they rotate continuously in update().
+    const left=keys.has("a")||keys.has("A");
+    const right=keys.has("d")||keys.has("D");
     const up=keys.has("ArrowUp")||keys.has("w")||keys.has("W");
     const down=keys.has("ArrowDown")||keys.has("s")||keys.has("S");
     const x=Number(right)-Number(left), y=Number(down)-Number(up);
