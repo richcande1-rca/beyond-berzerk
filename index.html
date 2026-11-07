@@ -9,14 +9,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700;800&amp;family=Teko:wght@500;600;700&amp;display=swap">
-  <link rel="stylesheet" href="./styles.css?v=0.2.7">
-  <script src="./game.js?v=0.3.3" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=0.3.4">
+  <script src="./game.js?v=0.3.4" defer></script>
 </head>
 <body>
   <main class="shell">
     <header class="masthead">
       <div class="brand"><h1><span class="title-steel">BEYOND</span> <em>BERZERK</em></h1></div>
-      <div class="version">FIRST CONTACT <span>V 0.3.3</span></div>
+      <div class="version">FIRST CONTACT <span>V 0.3.4</span></div>
     </header>
 
     <section class="cabinet" aria-label="Beyond Berzerk arcade game">
@@ -38,6 +38,11 @@
       <div class="status-line">
         <span><i class="live-dot"></i><span id="status-message">READY FOR CONTACT</span></span>
         <div class="actions">
+          <div class="test-launch" role="group" aria-label="Level selection test mode">
+            <label for="test-wave">TEST WAVE</label>
+            <input id="test-wave" type="number" min="1" max="999" value="4" step="1" inputmode="numeric" aria-label="Choose starting wave for an unscored test run">
+            <button id="test-start-btn" type="button" title="Jump directly to this wave; test runs do not set high scores">LAUNCH TEST</button>
+          </div>
           <button id="pause-btn" type="button" title="Pause or resume (P)" aria-label="Pause or resume">PAUSE</button>
           <button id="sound-btn" type="button" title="Toggle synthesized arcade sound" aria-pressed="true">SOUND ON</button>
         </div>
@@ -61,6 +66,7 @@
         <span class="controls-label">SURVIVAL PROTOCOL</span>
         <p>Hold <kbd>SPACE</kbd> to fire. Hold <kbd>←</kbd> / <kbd>↑</kbd> to rotate counterclockwise, or <kbd>→</kbd> / <kbd>↓</kbd> to rotate clockwise through 360°, with smooth acceleration and braking. <kbd>Q</kbd> / <kbd>E</kbd> work too. Mouse aiming stays precise; WASD still provides eight-direction quick aim.</p>
         <p>On touchscreens, drag on the arena to aim freely and fire, or use the quick-aim pad with the FIRE button.</p>
+        <p><strong>TEST MODE:</strong> Enter any wave from 1 to 999 beside the PAUSE button, then press <kbd>LAUNCH TEST</kbd>. This begins a new run at that wave with the normal enemy mix and 3 lives. Test scores never replace your personal best.</p>
         <p>Every projectile hits the first wall in its path. Your lasers can also shoot down enemy projectiles. Robots flank, rush, and scatter during chain explosions. Every conquered wave unlocks a striking new arena look and a sector-clear light show. <strong>SPIN → MORPH → MELTDOWN</strong> remains fully playable with unchanged wall collisions.</p>
       </div>
     </section>
