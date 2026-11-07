@@ -817,6 +817,67 @@
     ctx.restore();
   }
 
+  // The 16 vertices and 32 edges of a genuine four-dimensional hypercube.
+  // Edges in the W dimension are accented so the nested cubes are readable.
+  // Static topology is allocated once, not rebuilt inside animation frames.
+  const TESSERACT_VERTICES=Array.from({length:16},(_,i)=>[
+    i&1?1:-1,i&2?1:-1,i&4?1:-1,i&8?1:-1
+  ]);
+  const TESSERACT_EDGES=[];
+  for(let i=0;i<16;i++)for(let axis=0;axis<4;axis++)
+    if(!(i&(1<<axis)))TESSERACT_EDGES.push([i,i|(1<<axis),axis===3]);
+
+  function drawTesseracts(v) {
+    if(v.stage<5)return;
+    // At most four tesseracts regardless of wave number. No glow/shadow,
+    // images, geometry allocation per vertex, or gameplay collision hooks.
+    const amount=Math.min(4,v.stage-4);
+    const time=state.elapsed*Math.min(v.tempo,2.2);
+    ctx.save();
+    ctx.translate(CX,CY);
+    ctx.beginPath();
+    ctx.arc(0,0,R-15,0,TAU);
+    ctx.arc(0,0,82,0,TAU,true);
+    ctx.clip("evenodd"); // Clear the turret and future shields/cannons.
+    ctx.lineCap="round";
+    for(let i=0;i<amount;i++) {
+      const orbit=time*(i%2?-.08:.11)+i*TAU/amount+.65;
+      const radius=amount===1?158:169;
+      const cx=Math.cos(orbit)*radius,cy=Math.sin(orbit)*radius;
+      const scale=amount===1?73:amount===2?60:53;
+      const a=time*.51+i*1.13,b=time*.31-i*.71,c=time*.38+i*.47;
+      const ca=Math.cos(a),sa=Math.sin(a);
+      const cb=Math.cos(b),sb=Math.sin(b);
+      const cc=Math.cos(c),sc=Math.sin(c);
+      const projected=[];
+      for(const [x,y,z,w] of TESSERACT_VERTICES) {
+        // True simultaneous XW/YZ/ZW rotations in 4D, followed by two
+        // perspective divisions: 4D -> 3D -> 2D.
+        const xr=x*ca-w*sa,wr=x*sa+w*ca;
+        const yr=y*cb-z*sb,zr=y*sb+z*cb;
+        const z2=zr*cc-wr*sc,w2=zr*sc+wr*cc;
+        const p4=3.5/(3.5-w2*.55);
+        const p3=4.5/(4.5-z2*p4*.38);
+        projected.push([cx+xr*p4*p3*scale,cy+yr*p4*p3*scale]);
+      }
+      // One path for cube edges, one for the fourth-dimensional connectors.
+      for(const isW of [false,true]) {
+        ctx.beginPath();
+        for(const [u,v,wEdge] of TESSERACT_EDGES) {
+          if(wEdge!==isW)continue;
+          ctx.moveTo(projected[u][0],projected[u][1]);
+          ctx.lineTo(projected[v][0],projected[v][1]);
+        }
+        ctx.lineWidth=isW?2.3:1.65;
+        ctx.strokeStyle=isW?
+          "hsla("+((v.hue+145+i*24)%360)+",100%,82%,.62)":
+          "hsla("+((v.hue+20+i*24)%360)+",98%,72%,.48)";
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
   function drawEvolutionGhosts(v) {
     if(v.stage<6)return;
     // Decorative arcs are unmistakably thin and dashed, never collision walls.
@@ -837,24 +898,33 @@
     ctx.restore();
   }
 
+  let backgroundGradient=null,backgroundGradientKey="";
   function drawBackground(v) {
     ctx.fillStyle="#060817";ctx.fillRect(0,0,W,H);
     // Full-sector color signature; early waves never rely on faint geometry alone.
-    const gradient=ctx.createRadialGradient(CX,CY,30,CX,CY,350);
-    if(v.stage===1){
-      gradient.addColorStop(0,modeName()==="MELTDOWN"?"#341035":"#121633");
-      gradient.addColorStop(.72,"#0c1028");gradient.addColorStop(1,"#050713");
-    } else {
-      gradient.addColorStop(0,"hsl("+v.hue+",55%,15%)");
-      gradient.addColorStop(.72,"hsl("+((v.hue+22)%360)+",52%,10%)");
-      gradient.addColorStop(1,"#050713");
+    const key=v.stage===1?"classic:"+modeName():"sector:"+v.hue;
+    if(key!==backgroundGradientKey || !backgroundGradient){
+      backgroundGradient=ctx.createRadialGradient(CX,CY,30,CX,CY,350);
+      if(v.stage===1){
+        backgroundGradient.addColorStop(0,modeName()==="MELTDOWN"?"#341035":"#121633");
+        backgroundGradient.addColorStop(.72,"#0c1028");
+        backgroundGradient.addColorStop(1,"#050713");
+      } else {
+        backgroundGradient.addColorStop(0,"hsl("+v.hue+",55%,15%)");
+        backgroundGradient.addColorStop(.72,"hsl("+((v.hue+22)%360)+",52%,10%)");
+        backgroundGradient.addColorStop(1,"#050713");
+      }
+      backgroundGradientKey=key;
     }
-    ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(CX,CY,R+19,0,TAU);ctx.fill();
+    ctx.fillStyle=backgroundGradient;ctx.beginPath();ctx.arc(CX,CY,R+19,0,TAU);ctx.fill();
     ctx.save();ctx.beginPath();ctx.arc(CX,CY,R+15,0,TAU);ctx.clip();
     const gridColor=v.stage===1?"#4f5c8c16":"hsla("+v.hue+",85%,64%,.09)";
-    for(let x=CX-336;x<CX+340;x+=32)line(x,42,x,690,gridColor);
-    for(let y=CY-337;y<CY+338;y+=32)line(130,y,832,y,gridColor);
+    ctx.strokeStyle=gridColor;ctx.lineWidth=1;ctx.beginPath();
+    for(let x=CX-336;x<CX+340;x+=32){ctx.moveTo(x,42);ctx.lineTo(x,690);}
+    for(let y=CY-337;y<CY+338;y+=32){ctx.moveTo(130,y);ctx.lineTo(832,y);}
+    ctx.stroke();
     drawEvolutionField(v);
+    drawTesseracts(v);
     for(const star of stars){
       ctx.globalAlpha=star.a;ctx.fillStyle="#a4bdf9";ctx.fillRect(star.x,star.y,1.6,1.6);
     }
@@ -881,21 +951,18 @@
       const hue=alert?45:(v.stage===1?ring.hue+state.elapsed*3:v.hue+[36,145,0][ir]+state.elapsed*3)%360;
       ctx.save();
       if(v.stage>=4) {
-        // Luminous motion echoes: two batched, noncolliding paths per ring.
-        // No expensive per-segment shadows or persistent framebuffer trails.
-        for(let trail=2;trail>=1;trail--) {
-          ctx.beginPath();
-          const offset=ring.speed*ring.spin*trail*(.10+v.power*.22);
-          for(let n=0;n<ring.count;n++) {
-            const center=ring.angle-offset+n*pitch;
-            const start=center-shape.span/2,end=center+shape.span/2;
-            ctx.moveTo(CX+Math.cos(start)*shape.radius,CY+Math.sin(start)*shape.radius);
-            ctx.arc(CX,CY,shape.radius,start,end);
-          }
-          ctx.lineWidth=1.8+v.power*1.6;
-          ctx.strokeStyle="hsla("+hue+",100%,68%,"+(.065+v.power*.065)/trail+")";
-          ctx.stroke();
+        // One sharp motion echo rather than two overdrawn glowing rings.
+        ctx.beginPath();
+        const offset=ring.speed*ring.spin*(.15+v.power*.26);
+        for(let n=0;n<ring.count;n++){
+          const center=ring.angle-offset+n*pitch;
+          const start=center-shape.span/2,end=center+shape.span/2;
+          ctx.moveTo(CX+Math.cos(start)*shape.radius,CY+Math.sin(start)*shape.radius);
+          ctx.arc(CX,CY,shape.radius,start,end);
         }
+        ctx.lineWidth=1.8+v.power*1.6;
+        ctx.strokeStyle="hsla("+hue+",100%,68%,"+(.10+v.power*.055)+")";
+        ctx.stroke();
       }
       ctx.lineCap="round";
       // Batch the full ring into one path: three strokes per ring instead
@@ -907,8 +974,8 @@
         ctx.moveTo(CX+Math.cos(start)*shape.radius,CY+Math.sin(start)*shape.radius);
         ctx.arc(CX,CY,shape.radius,start,end);
       }
-      ctx.shadowBlur=5;
-      ctx.shadowColor="hsl("+hue+",100%,55%)";
+      // Wall geometry stays bright without a costly blurred shadow layer.
+      ctx.shadowBlur=0;
       ctx.lineWidth=shape.width+2;
       ctx.strokeStyle="hsla("+hue+",100%,53%,.31)";
       ctx.stroke();
@@ -928,7 +995,6 @@
       ctx.save();ctx.translate(b.x,b.y);
       ctx.rotate(Math.atan2(CY-b.y,CX-b.x));
       if (b.panic>0) ctx.translate(Math.sin(b.age*44)*1.25,0);
-      ctx.shadowBlur=9;ctx.shadowColor=color;
       ctx.fillStyle=color;
       // Tiny 1980s sprites, with readable outlines for their different roles.
       ctx.fillRect(-5,-5,10,10);
@@ -956,7 +1022,7 @@
     ctx.save();ctx.lineCap="round";
     for (const s of state.shots) {
       const x2=s.x-s.vx*.020,y2=s.y-s.vy*.020;
-      ctx.shadowBlur=10;ctx.shadowColor=s.color;ctx.strokeStyle=s.color;
+      ctx.strokeStyle=s.color;
       ctx.lineWidth=s.friendly?5.2:3.7;
       ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(x2,y2);ctx.stroke();
       ctx.shadowBlur=0;
@@ -980,7 +1046,6 @@
       const age=1-wave.life/wave.maxLife;
       ctx.globalAlpha=Math.max(0,1-age);
       ctx.lineWidth=4*(1-age)+1;
-      ctx.shadowColor=wave.color;ctx.shadowBlur=14;
       ctx.strokeStyle=wave.color;
       ctx.beginPath();ctx.arc(wave.x,wave.y,5+wave.radius*age,0,TAU);ctx.stroke();
       ctx.shadowBlur=0;ctx.lineWidth=1;
@@ -996,7 +1061,7 @@
       const size=3+12*(1-life);
       ctx.globalAlpha=life;
       ctx.strokeStyle=p.color;
-      ctx.lineWidth=2;ctx.shadowColor=p.color;ctx.shadowBlur=11;
+      ctx.lineWidth=2;
       ctx.beginPath();
       ctx.moveTo(p.x-size,p.y);ctx.lineTo(p.x+size,p.y);
       ctx.moveTo(p.x,p.y-size);ctx.lineTo(p.x,p.y+size);
