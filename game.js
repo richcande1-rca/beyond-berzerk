@@ -185,14 +185,15 @@
   }
 
   function spawnBot(preview=false) {
-    const a = rnd(0,TAU), r = preview ? rnd(160,308) : rnd(305,315);
+    const a = preview ? rnd(0,TAU) : Math.floor(rnd(0,8))*Math.PI/4;
+    const r = preview ? rnd(160,308) : rnd(305,315);
     const variant = Math.floor(rnd(0, colors.length));
     const armored = !preview && state.wave >= 4 && Math.random() < Math.min(.32,.08+state.wave*.025);
     const bot = {
       x:CX+Math.cos(a)*r, y:CY+Math.sin(a)*r, size:armored?9:7.2,
-      speed:rnd(36,53) + Math.min(44,state.wave*3.1),
+      speed:rnd(28,40) + Math.min(35,state.wave*2.3),
       hue:variant, hp:armored?2:1, armored,
-      shotClock:rnd(1.2,3.7), wobble:rnd(0,TAU), direction:Math.random()<.5?-1:1,
+      shotClock:rnd(1.9,3.9), wobble:rnd(0,TAU), direction:Math.random()<.5?-1:1,
       age:0
     };
     if (!preview && wallHit(bot.x,bot.y,bot.size)) return false;
@@ -221,7 +222,7 @@
   function playerHit() {
     if (state.invuln>0 || state.phase!=="playing") return;
     state.lives--;
-    state.invuln = 2.5;
+    state.invuln = 3.2;
     state.flash = .26; state.shake = 13;
     burst(CX,CY,"#ff3c91",34,1.8);
     state.shots = state.shots.filter(s=>s.friendly || Math.hypot(s.x-CX,s.y-CY)>140);
@@ -274,6 +275,19 @@
         heading+=Math.sin(b.age*1.5+b.wobble)*.07;
       }
       let speed=b.speed*dt;
+      // Within the innermost ring robots regroup along eight attack spokes.
+      // Every enemy can therefore be hit by the player's eight-direction gun.
+      if (d<115) {
+        const lane=Math.round(a/(Math.PI/4))*(Math.PI/4);
+        const turn=angleDiff(lane,a);
+        if (Math.abs(turn)>Math.max(.016,3/d)) {
+          heading=a+Math.sign(turn)*Math.PI/2;
+        } else if (d<83) {
+          speed=0; // Hold position and shoot rather than unavoidable ramming.
+        } else {
+          heading=a+Math.PI;
+        }
+      }
       let nx=b.x+Math.cos(heading)*speed, ny=b.y+Math.sin(heading)*speed;
       if (wallHit(nx,ny,b.size*.8)) {
         const turn = nearest ? Math.sign(angleDiff(bestGap(nearest,a,.16),a)) || b.direction : b.direction;
@@ -287,11 +301,11 @@
       // A barrier moving into a robot destroys it. The turret has its own safe central pocket.
       if (wallHit(b.x,b.y,Math.max(1,b.size*.3))) { scrap(i,true);continue; }
       d=dist(b.x,b.y);
-      if (d<30) { scrap(i,false);playerHit();continue; }
+      if (d<30) { burst(b.x,b.y,"#ff4baf",12);state.bots.splice(i,1);playerHit();continue; }
       b.shotClock-=dt;
       if (b.shotClock<=0 && d<286 && clearShotPath(b.x,b.y)) {
         fireBot(b);
-        b.shotClock=rnd(1.55,3.05)/(1+Math.min(.6,state.wave*.045));
+        b.shotClock=rnd(2,3.7)/(1+Math.min(.35,state.wave*.025));
       } else if (b.shotClock<=0) b.shotClock=rnd(.25,.7);
     }
   }
@@ -341,7 +355,7 @@
       state.spawnClock-=dt;
       if (state.spawnClock<=0) {
         if (spawnBot()) state.toSpawn--;
-        state.spawnClock=Math.max(.1,rnd(.23,.46)-state.wave*.008);
+        state.spawnClock=Math.max(.16,rnd(.31,.52)-state.wave*.008);
       }
     }
     if (!state.toSpawn && !state.bots.length) {
