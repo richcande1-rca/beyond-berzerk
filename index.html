@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#09071b">
+  <meta name="description" content="Beyond Berzerk — a wildly colorful stationary-turret arcade shooter in a spinning, morphing robot arena.">
+  <title>BEYOND BERZERK — First Contact</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./game.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div class="brand"><span class="brand-top">THE WORLD MOVES. YOU DON'T.</span><h1>BEYOND <em>BERZERK</em></h1></div>
+      <div class="version">FIRST CONTACT <span>V 0.1</span></div>
+    </header>
+
+    <section class="cabinet" aria-label="Beyond Berzerk arcade game">
+      <div class="screen">
+        <canvas id="game" width="960" height="720" aria-label="Game arena: move your aim in eight directions, shoot approaching robots, and survive shifting maze walls">Your browser needs HTML canvas to play.</canvas>
+        <div class="overlay" id="overlay">
+          <div class="overlay-card">
+            <div class="eyebrow" id="overlay-eyebrow">ARCADE SYSTEM ONLINE</div>
+            <h2 id="overlay-title">FIRST CONTACT</h2>
+            <p id="overlay-text">One turret. Eight directions. Endless robot trouble.<br>Walls stop every shot — theirs and yours.</p>
+            <button class="primary" id="start-btn" type="button">START GAME <span>↗</span></button>
+            <p class="overlay-help">AIM: ARROWS / WASD / POINTER &nbsp; • &nbsp; FIRE: SPACE / HOLD CLICK</p>
+          </div>
+        </div>
+      </div>
+      <div class="status-line">
+        <span><i class="live-dot"></i><span id="status-message">READY FOR CONTACT</span></span>
+        <div class="actions">
+          <button id="pause-btn" type="button" title="Pause or resume (P)" aria-label="Pause or resume">PAUSE</button>
+          <button id="sound-btn" type="button" title="Toggle synthesized arcade sound" aria-pressed="true">SOUND ON</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="Touch controls">
+      <div class="pad-wrap">
+        <span class="controls-label">EIGHT-WAY AIM</span>
+        <div class="aim-pad" id="aim-pad">
+          <button data-dir="5" aria-label="Aim northwest">↖</button><button data-dir="6" aria-label="Aim north">↑</button><button data-dir="7" aria-label="Aim northeast">↗</button>
+          <button data-dir="4" aria-label="Aim west">←</button><div class="pad-center">✦</div><button data-dir="0" aria-label="Aim east">→</button>
+          <button data-dir="3" aria-label="Aim southwest">↙</button><button data-dir="2" aria-label="Aim south">↓</button><button data-dir="1" aria-label="Aim southeast">↘</button>
+        </div>
+      </div>
+      <div class="fire-wrap">
+        <span class="controls-label">HOLD TO SHOOT</span>
+        <button class="fire-btn" id="fire-btn" type="button">FIRE<span>● ● ●</span></button>
+      </div>
+      <div class="instructions">
+        <span class="controls-label">SURVIVAL PROTOCOL</span>
+        <p>Hold <kbd>SPACE</kbd> to fire. Aim with <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>WASD</kbd>, combining keys for diagonals.</p>
+        <p>Or point and hold on the arena. On touchscreens, aim with the pad and hold FIRE.</p>
+        <p>Every projectile hits the first wall in its path. The arena alternates <strong>SPIN → MORPH → MELTDOWN</strong>. Clear the robots to reach the next wave.</p>
+      </div>
+    </section>
+    <footer>BEYOND BERZERK <span>•</span> BUILT FOR ARCADE MAYHEM <span>•</span> NO LIBRARIES REQUIRED</footer>
+  </main>
+</body>
+</html>
