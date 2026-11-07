@@ -997,8 +997,19 @@
       event.preventDefault();
     if ((event.key==="p"||event.key==="P") && !event.repeat) {pause();return;}
     if (event.key===" "||event.key==="Enter") {
-      if (state.phase==="ready"||state.phase==="over") {start();return;}
-      if (state.phase==="paused") {pause();return;}
+      if (state.phase==="ready"||state.phase==="over") {
+        // A held fire key must never restart a finished game via key repeat.
+        // Require a fresh keypress after releasing the key.
+        if (!event.repeat && !keys.has(event.key)) {
+          start();
+          keys.add(event.key); // Holding START/SPACE still fires immediately.
+        }
+        return;
+      }
+      if (state.phase==="paused") {
+        if (!event.repeat && !keys.has(event.key)) pause();
+        return;
+      }
     }
     keys.add(event.key);
     keyAim();
