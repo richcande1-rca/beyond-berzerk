@@ -21,6 +21,8 @@
   const TAU = Math.PI * 2;
   const MODES = ["SPIN", "MORPH", "MELTDOWN"];
   const DURATIONS = [13, 13, 11];
+  const HULL_CAPACITY = 3; // Projectile durability per life, separate from future shields.
+  const SHOT_GRACE_SECONDS = .5; // Simultaneous volleys count as one hit.
   const WAVE_NAMES = ["FIRST CONTACT", "SIDEWINDERS", "CROSSFIRE",
     "HEAVY METAL", "DOGPILE", "TOTAL MAYHEM", "REACTOR SPIN",
     "PANIC LOOP", "ROBOT RIOT", "CRITICAL MASS"];
@@ -57,7 +59,7 @@
   function makeState() {
     return {
       phase:"ready", elapsed:0, modeIndex:0, modeClock:0,
-      wave:1, testMode:false, testStartWave:1, score:0, high:highScore(), lives:3, aim:6, aimVelocity:0,
+      wave:1, testMode:false, testStartWave:1, score:0, high:highScore(), lives:3, hull:HULL_CAPACITY, shotGrace:0, aim:6, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
       blasts:[], shockwaves:[], impacts:[], combo:0, comboClock:0,
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
@@ -347,18 +349,35 @@
       }
     }
   }
-  function playerHit() {
+  function playerHit(kind="shot") {
+    // Shots damage the hull; robot contact bypasses hull durability entirely.
+    // Shot grace applies to projectiles only, not robot collisions.
     if (state.invuln>0 || state.phase!=="playing") return;
+    if (kind==="shot") {
+      if (state.shotGrace>0) return;
+      state.hull--;
+      if (state.hull>0) {
+        state.shotGrace=SHOT_GRACE_SECONDS;
+        state.flash=.12; state.shake=Math.max(state.shake,4);
+        burst(CX,CY,"#ffb866",8,.5);
+        tone(440,.11,"triangle",.043,210);
+        setStatus("HULL HIT — "+state.hull+"/"+HULL_CAPACITY);
+        return;
+      }
+    }
     state.lives--;
-    state.invuln = 3.5;
-    state.flash = .26; state.shake = 13;
+    state.hull=HULL_CAPACITY;
+    state.shotGrace=0;
+    state.invuln=3.5; // Preserve existing post-death invulnerability.
+    state.flash=.26; state.shake=13;
     burst(CX,CY,"#ff3c91",34,1.8);
     // Defer projectile cleanup until updateShots has finished iterating.
     // Replacing the array mid-loop used to throw when a robot shot hit the turret.
-    state.clearNearbyEnemyShots = true;
+    state.clearNearbyEnemyShots=true;
     tone(260,.35,"sawtooth",.09,52);
     if (state.lives<=0) gameOver();
-    else setStatus("HULL BREACH — " + state.lives + " LIVES");
+    else setStatus((kind==="contact"?"ROBOT CONTACT":"HULL BREACH")+
+      " — "+state.lives+" LIVES");
   }
   function firePlayer() {
     const angle = state.aim * Math.PI / 4;
@@ -440,7 +459,7 @@
         scrap(i,true);continue;
       }
       d=dist(b.x,b.y);
-      if (d<30) {burst(b.x,b.y,"#ff4baf",12);state.bots.splice(i,1);playerHit();continue;}
+      if (d<30) {burst(b.x,b.y,"#ff4baf",12);state.bots.splice(i,1);playerHit("contact");continue;}
       b.shotClock-=dt;
       const fireRange=b.type==="gunner"?190:b.type==="flank"?138:
         b.type==="rush"?94:125;
@@ -530,7 +549,7 @@
             }
           }
         } else if (dist(s.x,s.y)<16 && state.invuln<=0) {
-          playerHit();
+          playerHit("shot");
           hit=true;
         }
         if (hit) break;
@@ -602,6 +621,7 @@
     updateKeyboardAim(dt);
     updateArena(dt);
     state.invuln=Math.max(0,state.invuln-dt);
+    state.shotGrace=Math.max(0,state.shotGrace-dt);
     state.fireClock-=dt;
     state.announceClock=Math.max(0,state.announceClock-dt);
     state.revealClock=Math.max(0,state.revealClock-dt);
@@ -1249,6 +1269,12 @@
     label(String(state.high).padStart(6,"0"),242,52,25,"#f8fbff");
     label(state.testMode ? "TEST WAVE" : "WAVE",512,24,13,state.testMode ? "#f3ba79" : "#81c9ce");
     label(String(state.wave).padStart(2,"0"),512,52,25,"#f8fbff");
+    // Three crisp hull bars; future shields will have their own readout.
+    label("HULL",650,24,13,"#81c9ce");
+    for(let i=0;i<HULL_CAPACITY;i++){
+      ctx.fillStyle=i<state.hull?"#f7c779":"#35404a";
+      ctx.fillRect(650+i*28,40,20,9);
+    }
     label("LIVES",790,24,13,"#81c9ce");
     for(let i=0;i<state.lives;i++) {
       ctx.save();ctx.translate(799+i*38,44);ctx.rotate(-Math.PI/2);
