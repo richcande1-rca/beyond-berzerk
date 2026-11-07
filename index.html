@@ -6,14 +6,17 @@
   <meta name="theme-color" content="#09071b">
   <meta name="description" content="Beyond Berzerk — a wildly colorful stationary-turret arcade shooter in a spinning, morphing robot arena.">
   <title>BEYOND BERZERK — First Contact</title>
-  <link rel="stylesheet" href="./styles.css?v=0.2.6">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700;800&amp;family=Teko:wght@500;600;700&amp;display=swap">
+  <link rel="stylesheet" href="./styles.css?v=0.2.7">
   <script src="./game.js?v=0.2.5" defer></script>
 </head>
 <body>
   <main class="shell">
     <header class="masthead">
       <div class="brand"><h1><span class="title-steel">BEYOND</span> <em>BERZERK</em></h1></div>
-      <div class="version">FIRST CONTACT <span>V 0.2.6</span></div>
+      <div class="version">FIRST CONTACT <span>V 0.2.7</span></div>
     </header>
 
     <section class="cabinet" aria-label="Beyond Berzerk arcade game">
@@ -21,11 +24,14 @@
         <canvas id="game" width="960" height="720" aria-label="Game arena: rotate the turret freely through 360 degrees, shoot approaching robots, and survive shifting maze walls">Your browser needs HTML canvas to play.</canvas>
         <div class="overlay" id="overlay">
           <div class="overlay-card">
-            <div class="eyebrow" id="overlay-eyebrow">ARCADE SYSTEM ONLINE</div>
-            <h2 id="overlay-title">FIRST CONTACT</h2>
-            <p id="overlay-text">One turret. Full 360° rotation. Endless robot trouble.<br>Walls stop every shot — theirs and yours.</p>
+            <div class="overlay-rail" aria-hidden="true">
+              <span><span class="danger-dot"></span>SECURITY BREACH</span>
+              <span>SECTOR // 01</span>
+            </div>
+            <div class="eyebrow" id="overlay-eyebrow">THREAT LEVEL // CRITICAL</div>
+            <h2 id="overlay-title">HOSTILES INBOUND</h2>
+            <p id="overlay-text" class="overlay-message"></p>
             <button class="primary" id="start-btn" type="button">START GAME <span>↗</span></button>
-            <p class="overlay-help">SPIN: ← → / Q E &nbsp; • &nbsp; AIM: MOUSE / WASD &nbsp; • &nbsp; FIRE: SPACE / HOLD CLICK</p>
           </div>
         </div>
       </div>
