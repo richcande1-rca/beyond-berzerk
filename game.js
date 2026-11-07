@@ -74,7 +74,7 @@
   function makeState() {
     return {
       phase:"ready", elapsed:0, modeIndex:0, modeClock:0,
-      wave:1, testMode:false, testStartWave:1, score:0, high:highScore(), lives:3, hull:HULL_CAPACITY, shotGrace:0, aim:6, aimVelocity:0,
+      wave:1, testMode:false, testStartWave:1, score:0, high:highScore(), lives:3, hull:HULL_CAPACITY, shotGrace:0, twinCannons:false, aim:6, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
       blasts:[], shockwaves:[], impacts:[], combo:0, comboClock:0,
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
@@ -159,6 +159,8 @@
     state.phase = "playing";
     state.testMode = testMode;
     state.wave = testMode ? wave : 1;
+    // Jumping into a later test wave includes rewards earned in earlier waves.
+    state.twinCannons = state.wave >= 2;
     state.testStartWave = state.wave;
     state.toSpawn = state.wave===1 ? 15 : Math.min(120,10+state.wave*5);
     state.announce = (testMode ? "TEST // " : "") +
@@ -405,9 +407,18 @@
   }
   function firePlayer() {
     const angle = state.aim * Math.PI / 4;
-    state.shots.push({x:CX+Math.cos(angle)*27,y:CY+Math.sin(angle)*27,
-      vx:Math.cos(angle)*610,vy:Math.sin(angle)*610,life:.7,friendly:true,size:3.3,color:"#ecfdff"});
-    burst(CX+Math.cos(angle)*28,CY+Math.sin(angle)*28,"#90faff",2,.15);
+    const dx=Math.cos(angle),dy=Math.sin(angle);
+    // Original forward shot; keep the existing velocity, cadence and hitbox.
+    state.shots.push({x:CX+dx*27,y:CY+dy*27,
+      vx:dx*610,vy:dy*610,life:.7,friendly:true,size:3.3,color:"#ecfdff"});
+    burst(CX+dx*28,CY+dy*28,"#90faff",2,.15);
+    if (state.twinCannons) {
+      // Wave 1 graduation reward: the same turret fires 180 degrees backward
+      // simultaneously. No independent aim, auto-targeting or added audio.
+      state.shots.push({x:CX-dx*27,y:CY-dy*27,
+        vx:-dx*610,vy:-dy*610,life:.7,friendly:true,size:3.3,color:"#ecfdff"});
+      burst(CX-dx*28,CY-dy*28,"#90faff",2,.15);
+    }
     state.turretKick = 1;
     state.muzzleFlash = .07;
     tone(740,.055,"square",.033,420);
@@ -616,6 +627,7 @@
       state.waveClock+=dt;
       if (state.waveClock>2) {
         state.wave++;
+        if (state.wave===2) state.twinCannons=true;
         state.toSpawn=Math.min(120,10+state.wave*5);
         state.spawnClock=.35;
         state.waveClock=0;
@@ -625,7 +637,8 @@
         state.announce="WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName();
         state.announceClock=2.5;
         state.revealClock=1.45; // Purely visual sector handoff.
-        setStatus("WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName());
+        setStatus("WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName() +
+          (state.wave===2 ? " — TWIN CANNONS ONLINE" : ""));
         if (state.wave%3===0) state.rings.forEach((ring,i)=>{
           ring.reverseClock=Math.min(ring.reverseClock,2+i*1.3);
         });
@@ -1177,7 +1190,34 @@
     }
     ctx.restore();
 
-    // The cannon head turns freely while the surrounding base stays still.
+    // Wave 1 graduation mounts the second barrel directly opposite the first.
+    // Draw it without expensive glows to preserve Chromebook performance.
+    if (state.twinCannons) {
+      ctx.save();
+      ctx.rotate(angle+Math.PI);
+      ctx.translate(-kick,0);
+      ctx.fillStyle="#1c2750";
+      ctx.fillRect(-10,-10,30,20);
+      ctx.strokeStyle="#60dce8";ctx.lineWidth=2;
+      ctx.strokeRect(-10,-10,30,20);
+      ctx.fillStyle="#e9fbff";
+      ctx.fillRect(10,-6,30,12);
+      ctx.fillStyle="#38f1ec";ctx.fillRect(15,-2,16,4);
+      ctx.fillStyle="#ff4ea7";ctx.fillRect(35,-8,12,16);
+      ctx.fillStyle="#fff6d8";
+      ctx.beginPath();ctx.arc(45,0,4.2+pulse*1.1,0,TAU);ctx.fill();
+      if (state.muzzleFlash>0) {
+        const power=state.muzzleFlash/.07;
+        ctx.fillStyle="#fffbd6";ctx.globalAlpha*=power;
+        ctx.beginPath();
+        ctx.moveTo(47,0);ctx.lineTo(66+power*8,-7);
+        ctx.lineTo(59,0);ctx.lineTo(66+power*8,7);
+        ctx.closePath();ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // The original forward cannon remains unchanged and rotates with the rear.
     ctx.save();
     ctx.rotate(angle);
     ctx.translate(-kick, 0);
@@ -1409,7 +1449,8 @@
       ctx.fillStyle="#d4e4ef";ctx.fillText(motto,0,y+140,574);
       ctx.font='700 13px "Oxanium", ui-monospace, monospace';
       ctx.fillStyle="#ffc982";
-      ctx.fillText("NEXT CLASS // WAVE "+String(state.wave+1).padStart(2,"0"),0,y+169);
+      ctx.fillText(state.wave===1 ? "REWARD UNLOCKED // TWIN CANNONS" :
+        "NEXT CLASS // WAVE "+String(state.wave+1).padStart(2,"0"),0,y+169);
     } else {
       // After graduation, let the established sector reveal introduce combat.
       const y=-CY+136;
