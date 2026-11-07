@@ -124,7 +124,7 @@
     state = makeState();
     state.phase = "playing";
     state.toSpawn = 15;
-    state.announce = "WAVE 01";
+    state.announce = "WAVE 01 — " + waveName();
     state.announceClock = 2.2;
     pointerFiring = buttonFiring = false;
     fireButton.classList.remove("firing");
@@ -506,9 +506,12 @@
         state.invuln=Math.max(state.invuln,.8);
         state.score+=500;
         if (state.score>state.high) {state.high=state.score;storeHigh();}
-        state.announce="WAVE " + String(state.wave).padStart(2,"0");
-        state.announceClock=2.2;
-        setStatus("WAVE " + String(state.wave).padStart(2,"0") + " — INCOMING!");
+        state.announce="WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName();
+        state.announceClock=2.5;
+        setStatus("WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName());
+        if (state.wave%3===0) state.rings.forEach((ring,i)=>{
+          ring.reverseClock=Math.min(ring.reverseClock,2+i*1.3);
+        });
         tone(450,.14,"triangle",.06,750);
       }
     } else state.waveClock=0;
@@ -611,7 +614,8 @@
     for (let ir=state.rings.length-1;ir>=0;ir--) {
       const ring=state.rings[ir], shape=ringShape(ring);
       const pitch=TAU/ring.count;
-      const hue=(ring.hue+state.elapsed*3)%360;
+      const alert=ring.reversePending && Math.floor(state.elapsed*9)%2===0;
+      const hue=alert?45:(ring.hue+state.elapsed*3)%360;
       ctx.save();
       ctx.lineCap="round";
       // Batch the full ring into one path: three strokes per ring instead
@@ -643,25 +647,42 @@
       const color=colors[b.hue];
       ctx.save();ctx.translate(b.x,b.y);
       ctx.rotate(Math.atan2(CY-b.y,CX-b.x));
+      if (b.panic>0) ctx.translate(Math.sin(b.age*44)*1.25,0);
       ctx.shadowBlur=9;ctx.shadowColor=color;
       ctx.fillStyle=color;
-      // Deliberately tiny robots, roughly half the size of the concept art.
+      // Tiny 1980s sprites, with readable outlines for their different roles.
       ctx.fillRect(-5,-5,10,10);
       ctx.fillRect(-8,-3,3,4);ctx.fillRect(5,-3,3,4);
       ctx.fillRect(-3,-8,6,3);ctx.fillRect(-4,5,3,4);ctx.fillRect(1,5,3,4);
-      ctx.shadowBlur=0;ctx.fillStyle="#0b0d22";ctx.fillRect(-3,-3,6,3);
+      if (b.type==="flank") {
+        ctx.fillRect(-10,-7,3,4);ctx.fillRect(7,3,3,4);
+      } else if (b.type==="gunner") {
+        ctx.fillRect(4,-2,7,3);
+      } else if (b.type==="rush") {
+        ctx.beginPath();ctx.moveTo(9,0);ctx.lineTo(3,-5);ctx.lineTo(3,5);ctx.closePath();ctx.fill();
+      }
+      ctx.shadowBlur=0;
+      ctx.fillStyle="#0b0d22";ctx.fillRect(-3,-3,6,3);
       ctx.fillStyle=b.armored?"#fff":"#ff684f";ctx.fillRect(-2,-2,4,1.5);
       if (b.armored) {ctx.strokeStyle="#fff";ctx.lineWidth=1;ctx.strokeRect(-6,-6,12,12);}
+      if (b.panic>0) {
+        ctx.strokeStyle="#ffeaa2";ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.arc(0,0,10.5,0,Math.PI*.55);ctx.stroke();
+      }
       ctx.restore();
     }
   }
   function drawShots() {
     ctx.save();ctx.lineCap="round";
     for (const s of state.shots) {
-      ctx.shadowBlur=13;ctx.shadowColor=s.color;ctx.strokeStyle=s.color;
-      ctx.lineWidth=s.friendly?4:3.4;
-      ctx.beginPath();ctx.moveTo(s.x,s.y);
-      ctx.lineTo(s.x-s.vx*.016,s.y-s.vy*.016);ctx.stroke();
+      const x2=s.x-s.vx*.020,y2=s.y-s.vy*.020;
+      ctx.shadowBlur=10;ctx.shadowColor=s.color;ctx.strokeStyle=s.color;
+      ctx.lineWidth=s.friendly?5.2:3.7;
+      ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(x2,y2);ctx.stroke();
+      ctx.shadowBlur=0;
+      ctx.strokeStyle=s.friendly?"#ffffff":"#ffe3b9";
+      ctx.lineWidth=s.friendly?1.7:1.2;
+      ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(x2,y2);ctx.stroke();
     }
     ctx.restore();
   }
@@ -670,6 +691,36 @@
     for (const p of state.particles) {
       ctx.globalAlpha=clamp(p.life/p.max,0,1);
       ctx.fillStyle=p.color;ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+    }
+    ctx.restore();
+  }
+  function drawShockwaves() {
+    ctx.save();
+    for (const wave of state.shockwaves) {
+      const age=1-wave.life/wave.maxLife;
+      ctx.globalAlpha=Math.max(0,1-age);
+      ctx.lineWidth=4*(1-age)+1;
+      ctx.shadowColor=wave.color;ctx.shadowBlur=14;
+      ctx.strokeStyle=wave.color;
+      ctx.beginPath();ctx.arc(wave.x,wave.y,5+wave.radius*age,0,TAU);ctx.stroke();
+      ctx.shadowBlur=0;ctx.lineWidth=1;
+      ctx.strokeStyle="#fff7cb";
+      ctx.beginPath();ctx.arc(wave.x,wave.y,3+wave.radius*age,0,TAU);ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawImpacts() {
+    ctx.save();
+    for (const p of state.impacts) {
+      const life=p.life/p.max;
+      const size=3+12*(1-life);
+      ctx.globalAlpha=life;
+      ctx.strokeStyle=p.color;
+      ctx.lineWidth=2;ctx.shadowColor=p.color;ctx.shadowBlur=11;
+      ctx.beginPath();
+      ctx.moveTo(p.x-size,p.y);ctx.lineTo(p.x+size,p.y);
+      ctx.moveTo(p.x,p.y-size);ctx.lineTo(p.x,p.y+size);
+      ctx.stroke();
     }
     ctx.restore();
   }
@@ -787,6 +838,15 @@
     ctx.shadowBlur = 0;
     line(47, -5, 52, -8, "#fff", 1.5);
     line(47, 5, 52, 8, "#fff", 1.5);
+    if (state.muzzleFlash>0) {
+      const power=state.muzzleFlash/.07;
+      ctx.globalAlpha*=power;
+      ctx.fillStyle="#fffbd6";ctx.shadowColor="#fdffab";ctx.shadowBlur=18;
+      ctx.beginPath();
+      ctx.moveTo(47,0);ctx.lineTo(66+power*8,-7);
+      ctx.lineTo(59,0);ctx.lineTo(66+power*8,7);
+      ctx.closePath();ctx.fill();
+    }
     ctx.restore();
 
     // Pulsing core remains visually centered as the barrel recoils.
@@ -838,6 +898,7 @@
     label("ARENA: "+modeName(),28,706,18,
       modeName()==="MELTDOWN"?"#ff4d9f":modeName()==="MORPH"?"#b8ff65":"#31f5ec");
     label("ROBOTS: "+String(state.bots.length+state.toSpawn).padStart(2,"0"),W-26,706,17,"#ffd071","right");
+    if (state.comboClock>0) label("CHAIN x"+state.combo,655,705,15,"#ff67bc","center");
     const remaining=Math.ceil(DURATIONS[state.modeIndex]-state.modeClock);
     label("SHIFT IN "+remaining+"s",527,704,12,"#928caf","center");
   }
@@ -854,7 +915,7 @@
     ctx.save();
     if (state.shake>0 && state.phase==="playing")
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
-    drawBackground();drawRings();drawBots();drawShots();drawParticles();drawTurret();
+    drawBackground();drawRings();drawShockwaves();drawBots();drawShots();drawParticles();drawImpacts();drawTurret();
     ctx.restore();
     if(state.flash>0) {
       ctx.fillStyle="rgba(255,50,95,"+(state.flash*.35)+")";
