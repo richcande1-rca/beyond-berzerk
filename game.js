@@ -18,10 +18,12 @@
   const MODES = ["SPIN", "MORPH", "MELTDOWN"];
   const DURATIONS = [13, 13, 11];
   const WAVE_NAMES = ["FIRST CONTACT", "SIDEWINDERS", "CROSSFIRE",
-    "HEAVY METAL", "DOGPILE", "TOTAL MAYHEM"];
+    "HEAVY METAL", "DOGPILE", "TOTAL MAYHEM", "REACTOR SPIN",
+    "PANIC LOOP", "ROBOT RIOT", "CRITICAL MASS"];
   const ROLES = ["scout", "flank", "gunner", "heavy", "rush"];
   const ROLE_COLORS = {scout:0, flank:1, gunner:3, heavy:4, rush:2};
-  const WAVE_FEATURE = ["scout", "flank", "gunner", "heavy", "rush", "flank"];
+  const WAVE_FEATURE = ["scout", "flank", "gunner", "heavy", "rush",
+    "flank", "gunner", "rush", "heavy", "rush"];
   const keys = new Set();
   const rnd = (a, b) => a + Math.random() * (b - a);
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
@@ -172,7 +174,7 @@
     const surge = state.wave >= 3 ? .5+.5*Math.sin(state.elapsed*.65 + ring.phase) : 0;
     return {
       radius:ring.base + power * (8+state.wave*.32) * Math.sin(state.elapsed * 1.7 + ring.phase),
-      span:Math.max(.055, ring.span + power * .075 * Math.sin(state.elapsed * 1.25 + ring.phase) + surge*.038),
+      span:Math.max(.055, ring.span + power * .075 * Math.sin(state.elapsed * 1.25 + ring.phase) + surge*.085),
       width:16
     };
   }
