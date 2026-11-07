@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.10 — Evolving Walls**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.11 — Guardian Angel Deferred**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
 
@@ -33,22 +33,22 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 | P | Pause / resume |
 | SOUND ON/OFF | Toggle synthesized sound |
 
-## Wave 1 reward — Twin Cannons
+## Wave 4 reward — Twin Cannons
 
-- **Clear Wave 1** to earn a permanent upgrade for the remainder of that run: a second cannon mounted **180° opposite** the original front cannon.
+- **Clear Wave 4** to earn a permanent upgrade for the remainder of that run: a second cannon mounted **180° opposite** the original front cannon.
 - Both barrels rotate together and fire **simultaneously** from the existing FIRE/Space/Enter controls. The original projectile speed, hitboxes, aiming, cadence and audio remain unchanged. Rear shots use the same projectile behavior and are blocked by walls.
 - The second barrel appears on the turret after the graduation ceremony, stays unlocked across lost lives, and resets when starting a new normal game. Graduation explicitly announces **REWARD UNLOCKED // TWIN CANNONS**.
-- Test runs starting at Wave 2 or higher automatically include twin cannons, representing the reward earned in Wave 1. Test Wave 1 starts single-barrel and earns the upgrade normally. Test scores never count toward records.
+- Test runs starting at Wave 5 or higher automatically include twin cannons, representing Wave 4 graduation. Test Waves 1–4 use the single forward barrel. Test scores never count toward records.
 - Only the new rear barrel and its existing projectile type are added; the visuals avoid additional shadow blurs for performance. No changes to enemy AI, collision walls, hull durability, player lives, or later wave difficulty.
 
-## Graduated arsenal — v0.3.9
+## Graduated arsenal — v0.3.11
 
-- **Wave 1 clear: Twin Cannons.** The simultaneous front/back firing upgrade remains as in v0.3.8.
+- **Wave 4 clear: Twin Cannons.** The simultaneous front/back firing upgrade now arrives in Wave 5 instead of Wave 2. Wave 1–4 use only the front cannon.
 - **Wave 3 clear: Rechargeable shield.** Unlocks a separate three-charge cyan shield around the turret for Wave 4 onward. Each charge absorbs one hostile projectile; each hit resets the recharge timer. After six uninterrupted seconds, one charge regenerates, repeating until all three are restored. The existing 0.5-second projectile grace applies. Direct robot contact still costs a full life and bypasses the shield; surviving lives begin with a fully charged shield. Existing three-hit hull durability remains unchanged.
-- **Wave 4 participation challenge: Heavy Laser.** Land **at least eight direct weapon kills during Wave 4**, then graduate to unlock double-damage shots on both barrels. Armored bots take one hit. Kills from moving walls and chain reactions do not count; the Wave 4 HUD displays the direct-kill counter. Without eight direct kills, graduation still occurs but the Heavy Laser is not awarded that run.
+- **Wave 4 participation challenge: Heavy Laser.** Land **at least eight direct weapon kills during Wave 4**, then graduate to unlock double-damage shots in Wave 5, when the twin cannons also arrive. Armored bots take one hit. Kills from moving walls and chain reactions do not count; the Wave 4 HUD displays the direct-kill counter. Without eight direct kills, the twin cannons are still awarded, but the Heavy Laser is not.
 - **Wave 6 clear: Penetrator Cannon.** From Wave 7 onward, every 4.5 seconds the next manually aimed **front-cannon shot** is a gold Penetrator. It crosses all wall segments, destroys multiple robots, including armored ones, and can destroy hostile projectiles without disappearing. The rear cannon continues firing normal or Heavy Laser shots. Firing rate and number of projectiles per salvo are unchanged.
-- **Test Mode:** Starting at Wave 4 includes the shield; starting at Wave 5 or higher simulates earning the Heavy Laser; Wave 7 or higher starts with a charged Penetrator. Starting on Wave 4 still requires the direct-kill challenge to earn Heavy Laser for Wave 5. Test scores remain separate.
-- **Performance:** No additional bullets are spawned by these upgrades; effects use simple arc and stroke drawing without new shadow blur. This release does not claim to resolve previously reported Wave 5 lag.
+- **Test Mode:** Starting at Wave 4 includes the shield but not twin cannons. Starting at Wave 5 or higher simulates earning both twin cannons and the Heavy Laser; Wave 7 or higher starts with a charged Penetrator. Starting on Wave 4 still requires the direct-kill challenge to earn Heavy Laser for Wave 5, but earns twin cannons regardless. Test scores remain separate.
+- **Performance:** The original upgrades use simple arc and stroke drawing without new shadow blur; the rear-barrel shot begins in Wave 5 rather than Wave 2. This release does not claim to resolve previously reported Wave 5 lag.
 
 ## Evolving wall architecture — v0.3.10
 
