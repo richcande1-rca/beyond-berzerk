@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.7 — Graduation Day**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.8 — Twin Cannons**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -32,6 +32,14 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 | Touch | Drag on the arena to aim and fire freely; eight-way quick pad plus hold FIRE also works |
 | P | Pause / resume |
 | SOUND ON/OFF | Toggle synthesized sound |
+
+## Wave 1 reward — Twin Cannons
+
+- **Clear Wave 1** to earn a permanent upgrade for the remainder of that run: a second cannon mounted **180° opposite** the original front cannon.
+- Both barrels rotate together and fire **simultaneously** from the existing FIRE/Space/Enter controls. The original projectile speed, hitboxes, aiming, cadence and audio remain unchanged. Rear shots use the same projectile behavior and are blocked by walls.
+- The second barrel appears on the turret after the graduation ceremony, stays unlocked across lost lives, and resets when starting a new normal game. Graduation explicitly announces **REWARD UNLOCKED // TWIN CANNONS**.
+- Test runs starting at Wave 2 or higher automatically include twin cannons, representing the reward earned in Wave 1. Test Wave 1 starts single-barrel and earns the upgrade normally. Test scores never count toward records.
+- Only the new rear barrel and its existing projectile type are added; the visuals avoid additional shadow blurs for performance. No changes to enemy AI, collision walls, hull durability, player lives, or later wave difficulty.
 
 ## Wave graduation ceremonies
 
@@ -90,10 +98,10 @@ The circular arena is now centered within the space between the top and bottom H
 
 - **Mouse/touchpad aiming — deferred:** Current absolute pointer aiming requires keeping the cursor correctly positioned relative to the turret, and aiming becomes awkward at canvas edges. Consider an optional browser Pointer Lock mode (relative mouse/touchpad motion rotates turret continuously through 360°, adjustable sensitivity), while retaining existing direct-pointer aiming. **Do not change controls until explicitly approved.**
 - **Hypercube Engine — v0.3.3:** 4D-projected tesseracts join the decorative scenery at Wave 5; their wireframe vertices rotate through the XW, YZ and ZW planes and project to 2D. One tesseract at Wave 5 grows to two at Wave 6, three at Wave 7 and four at Wave 8+, capped thereafter. Contrasting edges identify connections in the fourth dimension. All tesseracts are clipped away from the central turret and never participate in collision checks.
-- **Rendering optimization — v0.3.3:** Removes costly per-robot and per-projectile shadow blur, removes blurred particle impact and shockwave strokes, reduces two moving-wall echo paths to one, batches the arena grid into one path, and caches radial gradients per sector/mode. Preserves crisp laser cores and solid robot silhouettes. Wave 4 performance still needs real-device validation. Future shields and cannons remain planned, not implemented.
+- **Rendering optimization — v0.3.3:** Removes costly per-robot and per-projectile shadow blur, removes blurred particle impact and shockwave strokes, reduces two moving-wall echo paths to one, batches the arena grid into one path, and caches radial gradients per sector/mode. Preserves crisp laser cores and solid robot silhouettes. Wave 4 performance still needs real-device validation. Future shields and additional cannons beyond the unlocked rear barrel remain planned, not implemented.
 - **Signal Clarity — v0.3.2:** Reduced arena wallpaper opacity, softened perimeter/wall halos, lowered translucent ghost-ring and wall-trail strength, and restrained the damage flash. Kept the unique geometric composition and colors for each wave. HUD instruments now have opaque dark rails, sharp Oxanium readouts, pale high-contrast numbers and dividers, and zero text bloom. Wave announcements and sector-clear rewards use crisp text on compact dark plates placed above the turret instead of glowing over its center. Wall warning colors, collisions, AI, combat and controls are unchanged. Preserve this contrast and center space when adding future turret defenses and weapons.
 - **Visual reward pass — implemented in v0.3.1:** Earlier v0.3.0 visuals were too faint in Waves 2–3. New signature palettes and geometry start at Wave 2, with a sector-clear celebration and wave-introduction effect. Field art is behind the combat layer, and the center of the decorative field stays clear for the player turret.
-- **Future turret equipment — planned, not implemented:** Defensive shields and substantially more firepower/powerups are intended for later revisions. Reserve visual contrast, screen space and performance budget for their effects. Do not add or rebalance weapons/defense without explicit approval.
+- **Future turret equipment — planned, not implemented:** Defensive shields and further firepower/powerups beyond Wave 1 twin cannons are intended for later revisions. Reserve visual contrast, screen space and performance budget for their effects. Do not add or rebalance weapons/defense without explicit approval.
 
 ## First-contact scope
 
