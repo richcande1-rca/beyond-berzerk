@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.4 — Test Wave Selector**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.5 — Reinforced Hull**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -59,7 +59,7 @@ Select **TEST WAVE** in the status bar (default Wave 4; any integer from 1 throu
 - Moving walls can scrap robots. Wall kills score fewer points than turret kills.
 - Normal robots: 100 points. Armored robots: 180. Chain kill: 140. Wall kill: 40. Completed wave: +500.
 - Firing now has a brighter muzzle flash, layered laser trails, and sparkling wall impacts.
-- Three lives; brief protection after a hit. High score is saved locally in your browser.
+- **Reinforced hull:** Three lives, each with three hull points. Enemy projectiles reduce hull by one; the third projectile hit costs one life and restores hull to three for the next life. Direct robot contact ignores remaining hull and immediately costs one life. An ordinary projectile hit gives 0.5 seconds of projectile-only grace (contact still hurts); losing a life retains 3.5 seconds of invulnerability. Three crisp HULL bars display durability. **This is not a shield:** separate shields remain a planned future upgrade. Normal and test mode use identical damage rules. High score is saved locally in your browser.
 - The SOUND ON button reinitializes browser audio and plays a short test chirp; game START also unlocks sound.
 
 ## Chromebook / desktop sizing
