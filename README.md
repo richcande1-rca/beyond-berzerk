@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.6 — Start Button Reliability**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.7 — Graduation Day**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -32,6 +32,12 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 | Touch | Drag on the arena to aim and fire freely; eight-way quick pad plus hold FIRE also works |
 | P | Pause / resume |
 | SOUND ON/OFF | Toggle synthesized sound |
+
+## Wave graduation ceremonies
+
+- **Every completed wave graduates**, even Wave 1. The existing two-second sector-clear window now hosts a celebratory diploma with a unique degree and cheeky faculty verdict; the first four clearances award **Certificate of Basic Survival**, **Diploma in Ballistics**, **Advanced Robot Evasion**, and **Honors with Distinction**. Further waves award increasingly absurd degrees, cycling indefinitely.
+- A synchronized geometric *ceremony motif* and bright wave-colored energy ring appear only during the transition, with a short four-note victory fanfare using synthesized audio. Effects are temporary, lightweight and do **not** move real walls or change hitboxes, scores, enemy AI, health or wave timing.
+- After graduation, the established incoming-wave reveal appears as before. Works in both normal and test mode, subject to the sound toggle.
 
 ## Start button reliability
 
