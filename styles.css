@@ -11,3 +11,18 @@ button{font:inherit;cursor:pointer}button:focus-visible{outline:3px solid #fff;o
 footer{padding-top:25px;margin-top:15px;border-top:1px solid #25203d;color:#736d99;text-align:center;font-size:10px;letter-spacing:.23em;font-weight:800}footer span{color:var(--pink);margin:0 7px}
 @media(max-width:740px){.shell{padding:14px 9px 22px}.masthead{padding:0 5px}.version{font-size:9px}.version span{font-size:11px}.brand-top{font-size:9px;letter-spacing:.17em}.cabinet{border-radius:5px}.status-line{font-size:9px;padding:10px;letter-spacing:.04em}.actions button{font-size:10px;padding:7px}.controls{grid-template-columns:1fr 1fr;gap:15px 10px;margin:17px 6px}.pad-wrap{justify-self:center}.fire-wrap{justify-self:center}.instructions{grid-column:1/-1;padding-left:10px}.fire-btn{width:134px;height:134px}.overlay-card{padding:15px}.overlay .overlay-help{font-size:8px;margin-top:13px}.overlay h2{margin:6px 0 9px}.overlay p{margin-bottom:13px}.primary{padding:9px 16px;font-size:13px}}
 @media(max-width:430px){.overlay{padding:10px}.overlay-card{padding:10px}.overlay h2{font-size:27px}.overlay p{font-size:10px}.primary{font-size:11px}.overlay .overlay-help{display:none}.aim-pad{max-width:150px}.aim-pad button{font-size:21px}.fire-btn{width:126px;height:126px}.status-line{font-size:8px}}
+
+
+/*
+ * Desktop / Chromebook fit: keep the full 4:3 game (including its in-canvas
+ * top and bottom HUD) inside the browser viewport, even on short laptop screens.
+ * Reserve room for the page header and the status/action strip; the controls
+ * below the cabinet remain scrollable. No canvas pixels or gameplay are changed.
+ */
+@media (min-width: 741px) {
+  .cabinet {
+    width: min(100%, calc((100vh - 160px) * 1.333333333));
+    width: min(100%, calc((100dvh - 160px) * 1.333333333));
+    margin-inline: auto;
+  }
+}
