@@ -91,7 +91,7 @@
   function start() {
     state = makeState();
     state.phase = "playing";
-    state.toSpawn = 21;
+    state.toSpawn = 15;
     state.announce = "WAVE 01";
     state.announceClock = 2.2;
     pointerFiring = buttonFiring = false;
@@ -191,7 +191,7 @@
     const armored = !preview && state.wave >= 4 && Math.random() < Math.min(.32,.08+state.wave*.025);
     const bot = {
       x:CX+Math.cos(a)*r, y:CY+Math.sin(a)*r, size:armored?9:7.2,
-      speed:rnd(28,40) + Math.min(35,state.wave*2.3),
+      speed:rnd(24,33) + Math.min(35,state.wave*2.1),
       hue:variant, hp:armored?2:1, armored,
       shotClock:rnd(1.9,3.9), wobble:rnd(0,TAU), direction:Math.random()<.5?-1:1,
       age:0
@@ -222,7 +222,7 @@
   function playerHit() {
     if (state.invuln>0 || state.phase!=="playing") return;
     state.lives--;
-    state.invuln = 3.2;
+    state.invuln = 3.5;
     state.flash = .26; state.shake = 13;
     burst(CX,CY,"#ff3c91",34,1.8);
     state.shots = state.shots.filter(s=>s.friendly || Math.hypot(s.x-CX,s.y-CY)>140);
@@ -303,9 +303,9 @@
       d=dist(b.x,b.y);
       if (d<30) { burst(b.x,b.y,"#ff4baf",12);state.bots.splice(i,1);playerHit();continue; }
       b.shotClock-=dt;
-      if (b.shotClock<=0 && d<286 && clearShotPath(b.x,b.y)) {
+      if (b.shotClock<=0 && d<118 && clearShotPath(b.x,b.y)) {
         fireBot(b);
-        b.shotClock=rnd(2,3.7)/(1+Math.min(.35,state.wave*.025));
+        b.shotClock=rnd(2.8,4.6)/(1+Math.min(.35,state.wave*.025));
       } else if (b.shotClock<=0) b.shotClock=rnd(.25,.7);
     }
   }
@@ -362,7 +362,7 @@
       state.waveClock+=dt;
       if (state.waveClock>2) {
         state.wave++;
-        state.toSpawn=Math.min(130,14+state.wave*7);
+        state.toSpawn=Math.min(120,10+state.wave*5);
         state.spawnClock=.35;
         state.waveClock=0;
         state.invuln=Math.max(state.invuln,.8);
