@@ -68,6 +68,11 @@ The circular arena is now centered within the space between the top and bottom H
 - `styles.css` — arcade cabinet, neon UI, responsive mobile controls
 - `game.js` — game loop, arena transforms, physics, enemies, combat, particles, synthesized sound
 
+## Playtest notes / deferred improvements
+
+- **Mouse/touchpad aiming — deferred:** Current absolute pointer aiming requires keeping the cursor correctly positioned relative to the turret, and aiming becomes awkward at canvas edges. Consider an optional browser Pointer Lock mode (relative mouse/touchpad motion rotates turret continuously through 360°, adjustable sensitivity), while retaining existing direct-pointer aiming. **Do not change controls until explicitly approved.**
+- **Arena evolution — visual reward still too subtle:** Playtest feedback on v0.3.0: Waves 1, 2 and even 3 look too similar, despite the new decoration. The exponential intensity curve only reaches roughly **2.6% at Wave 2** and **6.3% at Wave 3**, and the low-opacity geometry mostly sits behind the gameplay. Next proposed visual pass should make **each wave visibly transformative**, starting with Wave 2: distinct palettes/compositions, stronger but readable wave-clear transition reveals, and dramatic patterns. Keep the actual wall arcs and projectiles clear, keep performance bounded, and **do not change gameplay or implement without approval**.
+
 ## First-contact scope
 
 This is a **playable prototype**, not a finished release. Arena art uses procedurally drawn vector graphics rather than the original concept illustration. Enemy behavior, difficulty, sound, scoring, and control feel are open for playtesting and iteration.
