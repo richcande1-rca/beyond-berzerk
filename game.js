@@ -621,6 +621,133 @@
     ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();
     ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
   }
+  // Purely decorative evolution. Geometry, hit tests and robot behavior never
+  // depend on these values. Growth is exponential through Wave 9, then capped;
+  // later waves keep changing their palette and rhythm without extra draw load.
+  function visualEvolution() {
+    const level=Math.min(9,Math.max(1,state.wave));
+    const growth=(Math.pow(1.43,level-1)-1)/(Math.pow(1.43,8)-1);
+    return {
+      level:state.wave,
+      power:clamp(growth,0,1),
+      hue:((state.wave-1)*41)%360,
+      tempo:1+Math.min(1.2,(state.wave-1)*.075)
+    };
+  }
+
+  function drawEvolutionField(v) {
+    if (v.level<2) return;
+    const t=state.elapsed*v.tempo;
+    ctx.save();
+    ctx.translate(CX,CY);
+
+    // Wave 2: the independent rotating compass is behind everything solid.
+    ctx.save();
+    ctx.rotate(t*.075);
+    ctx.strokeStyle="hsla("+(180+v.hue)%360+",90%,69%,"+(.11+v.power*.10)+")";
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    for(let k=0;k<16;k++) {
+      const a=k*TAU/16;
+      ctx.moveTo(Math.cos(a)*37,Math.sin(a)*37);
+      ctx.lineTo(Math.cos(a)*(R-6),Math.sin(a)*(R-6));
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // Wave 3: breathing concentric fields, distinct from solid wall segments.
+    if(v.level>=3) {
+      const beat=Math.sin(t*2.1);
+      ctx.lineWidth=1;
+      ctx.strokeStyle="hsla("+((v.hue+255)%360)+",94%,70%,"+(.12+v.power*.20)+")";
+      ctx.beginPath();
+      for(let k=0;k<3;k++) {
+        const radius=57+k*69+beat*(3+v.power*8);
+        ctx.moveTo(radius,0);
+        ctx.arc(0,0,radius,0,TAU);
+      }
+      ctx.stroke();
+    }
+
+    // Wave 5: bent perspective-grid bands, visual only. The walls do not warp.
+    if(v.level>=5) {
+      const bend=7+v.power*15;
+      ctx.lineWidth=1;
+      ctx.strokeStyle="hsla("+((v.hue+30)%360)+",90%,69%,"+(.09+v.power*.17)+")";
+      ctx.beginPath();
+      for(let x=-192;x<=192;x+=64) {
+        for(let y=-R;y<=R;y+=32) {
+          const offset=Math.sin(y*.019+t*.72+x*.008)*bend;
+          const px=x+offset*(1-Math.abs(x)/300);
+          if(y===-R)ctx.moveTo(px,y);else ctx.lineTo(px,y);
+        }
+      }
+      ctx.stroke();
+    }
+
+    // Wave 7: symmetric triangular shards bloom around the center.
+    if(v.level>=7) {
+      const arms=8, phase=t*.12;
+      ctx.strokeStyle="hsla("+((v.hue+128)%360)+",100%,75%,"+(.12+v.power*.22)+")";
+      ctx.lineWidth=1.4;
+      ctx.beginPath();
+      for(let k=0;k<arms;k++) {
+        const a=k*TAU/arms+phase;
+        const r1=100+11*Math.sin(t*1.2+k);
+        const r2=215+9*Math.cos(t*.7+k);
+        const left=a-.19,right=a+.19;
+        ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);
+        ctx.lineTo(Math.cos(left)*r2,Math.sin(left)*r2);
+        ctx.lineTo(Math.cos(right)*r2,Math.sin(right)*r2);
+        ctx.closePath();
+      }
+      ctx.stroke();
+    }
+
+    // Wave 8+: luminous ripples cycle their geometry/hue with every wave.
+    if(v.level>=8) {
+      const count=3;
+      ctx.lineWidth=1.3;
+      ctx.strokeStyle="hsla("+((v.hue+215)%360)+",100%,78%,"+(.16+v.power*.24)+")";
+      ctx.beginPath();
+      for(let k=0;k<count;k++) {
+        const progress=((t*.22+k/count)%1);
+        const radius=34+progress*(R-42);
+        ctx.moveTo(radius,0);
+        ctx.arc(0,0,radius,0,TAU);
+      }
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  function drawEvolutionGhosts(v) {
+    if (v.level<6) return;
+    // Deliberately faint dashed echoes: they are never solid walls.
+    ctx.save();
+    ctx.setLineDash([4,10]);
+    ctx.lineWidth=1.4;
+    ctx.strokeStyle="hsla("+((v.hue+80)%360)+",96%,73%,"+(.12+v.power*.20)+")";
+    for(let j=0;j<2;j++) {
+      const ring=state.rings[j+1];
+      const shape=ringShape(ring);
+      const pitch=TAU/ring.count;
+      const drift=state.elapsed*(j===0?.14:-.12)*v.tempo;
+      const radius=shape.radius+(j===0?27:-27)+Math.sin(state.elapsed*1.1+j)*5;
+      ctx.beginPath();
+      for(let n=0;n<ring.count;n++) {
+        const a=ring.angle+drift+n*pitch;
+        const start=a-shape.span*.30,end=a+shape.span*.30;
+        ctx.moveTo(CX+Math.cos(start)*radius,CY+Math.sin(start)*radius);
+        ctx.arc(CX,CY,radius,start,end);
+      }
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
   function drawBackground() {
     ctx.fillStyle="#060817";ctx.fillRect(0,0,W,H);
     let g=ctx.createRadialGradient(CX,CY,42,CX,CY,350);
@@ -630,6 +757,7 @@
     ctx.save();ctx.beginPath();ctx.arc(CX,CY,R+15,0,TAU);ctx.clip();
     for (let x=CX-336;x<CX+340;x+=32) line(x,42,x,690,"#4f5c8c16");
     for (let y=CY-337;y<CY+338;y+=32) line(130,y,832,y,"#4f5c8c16");
+    drawEvolutionField(visualEvolution());
     for (const star of stars) {
       ctx.globalAlpha=star.a;ctx.fillStyle="#a4bdf9";ctx.fillRect(star.x,star.y,1.6,1.6);
     }
@@ -646,12 +774,32 @@
     }
   }
   function drawRings() {
+    const v=visualEvolution();
     for (let ir=state.rings.length-1;ir>=0;ir--) {
       const ring=state.rings[ir], shape=ringShape(ring);
       const pitch=TAU/ring.count;
       const alert=ring.reversePending && Math.floor(state.elapsed*9)%2===0;
-      const hue=alert?45:(ring.hue+state.elapsed*3)%360;
+      // Every wave shifts the palette, but the flashing amber reversal warning
+      // is always unmistakable and the real walls remain the brightest arcs.
+      const hue=alert?45:(ring.hue+state.elapsed*3+(state.wave-1)*19)%360;
       ctx.save();
+      if(v.level>=4) {
+        // Luminous motion echoes: two batched, noncolliding paths per ring.
+        // No expensive per-segment shadows or persistent framebuffer trails.
+        for(let trail=2;trail>=1;trail--) {
+          ctx.beginPath();
+          const offset=ring.speed*ring.spin*trail*(.10+v.power*.22);
+          for(let n=0;n<ring.count;n++) {
+            const center=ring.angle-offset+n*pitch;
+            const start=center-shape.span/2,end=center+shape.span/2;
+            ctx.moveTo(CX+Math.cos(start)*shape.radius,CY+Math.sin(start)*shape.radius);
+            ctx.arc(CX,CY,shape.radius,start,end);
+          }
+          ctx.lineWidth=2.5+v.power*2;
+          ctx.strokeStyle="hsla("+hue+",100%,68%,"+(.085+v.power*.13)/trail+")";
+          ctx.stroke();
+        }
+      }
       ctx.lineCap="round";
       // Batch the full ring into one path: three strokes per ring instead
       // of three expensive glowing strokes for *each* moving segment.
@@ -950,7 +1098,7 @@
     ctx.save();
     if (state.shake>0 && state.phase==="playing")
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
-    drawBackground();drawRings();drawShockwaves();drawBots();drawShots();drawParticles();drawImpacts();drawTurret();
+    drawBackground();drawEvolutionGhosts(visualEvolution());drawRings();drawShockwaves();drawBots();drawShots();drawParticles();drawImpacts();drawTurret();
     ctx.restore();
     if(state.flash>0) {
       ctx.fillStyle="rgba(255,50,95,"+(state.flash*.35)+")";
