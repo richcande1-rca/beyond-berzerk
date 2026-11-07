@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.5 — Reinforced Hull**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.6 — Start Button Reliability**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -32,6 +32,10 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 | Touch | Drag on the arena to aim and fire freely; eight-way quick pad plus hold FIRE also works |
 | P | Pause / resume |
 | SOUND ON/OFF | Toggle synthesized sound |
+
+## Start button reliability
+
+- **v0.3.6 hotfix:** Normal START GAME and keyboard start are initialized independently of the optional Test Wave selector. Older cached page markup missing the test selector can no longer abort startup; test mode remains available on the current page. The three-hit hull, enemy AI, controls, scores and game difficulty are unchanged.
 
 ## Test mode / level selection
 
