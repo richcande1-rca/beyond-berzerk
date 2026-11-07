@@ -572,8 +572,8 @@
     // Left / Up counterclockwise; Right / Down clockwise. Q / E are aliases.
     const ccw = keys.has("ArrowLeft") || keys.has("ArrowUp") || keys.has("q") || keys.has("Q");
     const cw = keys.has("ArrowRight") || keys.has("ArrowDown") || keys.has("e") || keys.has("E");
-    const maxSpeed = 2.85; // ~163 degrees per second
-    const accel = 12, brake = 18;
+    const maxSpeed = 5.6; // ~321 degrees per second: fast enough for keyboard sweeps
+    const accel = 25, brake = 65; // quick response and short braking distance
     const desiredVelocity = ccw === cw ? 0 : (cw ? maxSpeed : -maxSpeed);
     const slowing = Math.abs(desiredVelocity) < Math.abs(state.aimVelocity) ||
       (desiredVelocity && state.aimVelocity && Math.sign(desiredVelocity) !== Math.sign(state.aimVelocity));
