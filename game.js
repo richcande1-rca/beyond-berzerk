@@ -49,7 +49,7 @@
       rings:makeRings(), bots:[], shots:[], particles:[],
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
       invuln:1.8, flash:0, shake:0, announce:"", announceClock:0,
-      clearNearbyEnemyShots:false,
+      clearNearbyEnemyShots:false, turretKick:0,
       destroyed:0, spawnCount:0
     };
   }
@@ -262,6 +262,7 @@
     state.shots.push({x:CX+Math.cos(angle)*27,y:CY+Math.sin(angle)*27,
       vx:Math.cos(angle)*610,vy:Math.sin(angle)*610,life:.7,friendly:true,size:3.3,color:"#ecfdff"});
     burst(CX+Math.cos(angle)*28,CY+Math.sin(angle)*28,"#90faff",2,.15);
+    state.turretKick = 1;
     tone(740,.055,"square",.033,420);
   }
   function fireBot(bot) {
@@ -422,6 +423,7 @@
     state.announceClock=Math.max(0,state.announceClock-dt);
     state.flash=Math.max(0,state.flash-dt);
     state.shake=Math.max(0,state.shake-dt*22);
+    state.turretKick=Math.max(0,state.turretKick-dt*10);
     if ((keys.has(" ")||keys.has("Enter")||pointerFiring||buttonFiring) && state.fireClock<=0) {
       firePlayer();
       state.fireClock=.115;
@@ -527,23 +529,143 @@
     ctx.restore();
   }
   function drawTurret() {
-    const a=state.aim*Math.PI/4;
-    ctx.save();ctx.translate(CX,CY);
-    const blink=state.phase==="playing" && state.invuln>0 && Math.floor(state.elapsed*13)%2===0;
-    if (blink) ctx.globalAlpha=.4;
-    ctx.shadowColor="#21ffff";ctx.shadowBlur=25;
-    ctx.strokeStyle="#38e8ef";ctx.lineWidth=4;
-    ctx.beginPath();ctx.arc(0,0,22,0,TAU);ctx.stroke();
-    ctx.fillStyle="#1b2945";ctx.beginPath();ctx.arc(0,0,17,0,TAU);ctx.fill();
-    for(let i=0;i<8;i++){
-      const t=i*Math.PI/4;
-      line(Math.cos(t)*22,Math.sin(t)*22,Math.cos(t)*28,Math.sin(t)*28,"#47f7ea",3);
+    const angle = state.aim * Math.PI / 4;
+    const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 5.2);
+    const kick = state.turretKick * 8;
+    const blink = state.phase==="playing" && state.invuln>0 &&
+      Math.floor(state.elapsed*13)%2===0;
+
+    ctx.save();
+    ctx.translate(CX, CY);
+    if (blink) ctx.globalAlpha = .4;
+
+    // Fixed, anchored neon defense platform.
+    ctx.save();
+    ctx.shadowColor = "#23f7ff";
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = "#0d1330";
+    ctx.beginPath();
+    ctx.arc(0, 0, 30, 0, TAU);
+    ctx.fill();
+
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#48f4ef";
+    ctx.beginPath();
+    ctx.arc(0, 0, 30, 0, TAU);
+    ctx.stroke();
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#fa329a";
+    ctx.beginPath();
+    ctx.arc(0, 0, 24, 0, TAU);
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < 8; i++) {
+      const t = i * Math.PI / 4;
+      line(
+        Math.cos(t)*31, Math.sin(t)*31,
+        Math.cos(t)*37, Math.sin(t)*37,
+        i%2===0 ? "#47f7ea" : "#ff5ab0", 2.5
+      );
     }
-    ctx.rotate(a);
-    ctx.fillStyle="#fff";ctx.fillRect(4,-5,27,10);
-    ctx.fillStyle="#fa329a";ctx.fillRect(23,-5,9,10);
-    ctx.fillStyle="#29fcf0";ctx.beginPath();ctx.arc(0,0,10,0,TAU);ctx.fill();
-    ctx.shadowBlur=0;ctx.fillStyle="#121738";ctx.beginPath();ctx.arc(0,0,4,0,TAU);ctx.fill();
+    ctx.restore();
+
+    // The cannon head turns freely while the surrounding base stays still.
+    ctx.save();
+    ctx.rotate(angle);
+    ctx.translate(-kick, 0);
+
+    // Rear mount. Use square corners on older canvas implementations.
+    ctx.fillStyle = "#172247";
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(-12, -11, 28, 22, 8);
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#53f7f1";
+      ctx.stroke();
+    } else {
+      ctx.fillRect(-12, -11, 28, 22);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#53f7f1";
+      ctx.strokeRect(-12, -11, 28, 22);
+    }
+
+    // Small hot-pink stabilizer fins.
+    ctx.fillStyle = "#ff4ea7";
+    ctx.beginPath();
+    ctx.moveTo(-2, -14);
+    ctx.lineTo(10, -9);
+    ctx.lineTo(0, -4);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-2, 14);
+    ctx.lineTo(10, 9);
+    ctx.lineTo(0, 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bright reinforced barrel.
+    ctx.fillStyle = "#e9fbff";
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(10, -6, 30, 12, 4);
+      ctx.fill();
+    } else {
+      ctx.fillRect(10, -6, 30, 12);
+    }
+    ctx.fillStyle = "#38f1ec";
+    ctx.fillRect(15, -2, 16, 4);
+
+    // Hot-pink muzzle with a lively energy shimmer.
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = "#ff4ea7";
+    ctx.fillStyle = "#ff4ea7";
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(35, -8, 12, 16, 4);
+      ctx.fill();
+    } else {
+      ctx.fillRect(35, -8, 12, 16);
+    }
+
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "#fff2b8";
+    ctx.fillStyle = "#fff6d8";
+    ctx.beginPath();
+    ctx.arc(45, 0, 4.2 + pulse*1.1, 0, TAU);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    line(47, -5, 52, -8, "#fff", 1.5);
+    line(47, 5, 52, 8, "#fff", 1.5);
+    ctx.restore();
+
+    // Pulsing core remains visually centered as the barrel recoils.
+    ctx.save();
+    ctx.shadowColor = "#29fcf0";
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = "#29fcf0";
+    ctx.beginPath();
+    ctx.arc(0, 0, 10+pulse*1.2, 0, TAU);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(0, 0, 4.5, 0, TAU);
+    ctx.fill();
+
+    ctx.strokeStyle = "#ff66b8";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 15, 0, TAU);
+    ctx.stroke();
+    ctx.restore();
+
     ctx.restore();
   }
   function label(text,x,y,size,color,align="left") {
