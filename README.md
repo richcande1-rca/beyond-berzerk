@@ -1,8 +1,8 @@
 # Beyond Berzerk
 
-**Insane shooter arcade game. The world moves. You don't.**
+**An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.2.5 — Robot Riot**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.2.6 — Robot Riot**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
