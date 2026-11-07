@@ -2,7 +2,7 @@
 
 **Insane shooter arcade game. The world moves. You don't.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.1.6 — First Contact**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.2.0 — Robot Riot**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -28,13 +28,19 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 
 ## Gameplay
 
+- Survive swarms of tiny robot types: Scouts, Flankers, Gunners, Armored robots, and Rushers. New types appear as waves progress.
+- Wave themes now feature different enemy mixes instead of only increasing robot counts.
+- Defeated robots sometimes detonate. Nearby robots can trigger chain reactions; survivors panic and scatter. Explosions cannot pass through walls.
+- Chain kills award 140 points, with a temporary CHAIN indicator.
 - Survive robot swarms and clear each wave.
 - **SPIN:** concentric wall segments rotate, changing firing lanes.
 - **MORPH:** walls change shape and radius, opening and closing lanes.
 - **MELTDOWN:** both transformations accelerate together.
+- Independent rings occasionally reverse direction, with a short amber warning. Corridors also contract and expand in later waves.
 - All shots collide with the first wall they hit. Enemy shots obey exactly the same rule.
 - Moving walls can scrap robots. Wall kills score fewer points than turret kills.
-- Normal robots: 100 points. Armored robots: 180. Wall kill: 40. Completed wave: +500.
+- Normal robots: 100 points. Armored robots: 180. Chain kill: 140. Wall kill: 40. Completed wave: +500.
+- Firing now has a brighter muzzle flash, layered laser trails, and sparkling wall impacts.
 - Three lives; brief protection after a hit. High score is saved locally in your browser.
 - The SOUND ON button reinitializes browser audio and plays a short test chirp; game START also unlocks sound.
 
