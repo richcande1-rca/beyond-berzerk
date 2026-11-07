@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.2.8 — Robot Riot**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.0 — Arena Evolution**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -44,6 +44,8 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - **MORPH:** walls change shape and radius, opening and closing lanes.
 - **MELTDOWN:** both transformations accelerate together.
 - Independent rings occasionally reverse direction, with a short amber warning. Corridors also contract and expand in later waves.
+- **Arena Evolution (visual only):** Wave 2 introduces a rotating compass field; Wave 3 breathes with concentric pulses; Wave 4 leaves luminous wall echoes; Wave 5 bends the background perspective grid; Wave 6 adds faint dashed ghost rings; Wave 7 adds kaleidoscopic shards; Wave 8 adds radial energy ripples. Every new wave changes the color signature.
+- Visual intensity ramps exponentially through Wave 9, then caps the number of effects and draw calls for Chromebook performance. Above Wave 9 the hue and rhythm keep evolving, but gameplay hitboxes, real walls, controls, and robot difficulty are unaffected by the decorative layers.
 - All shots collide with the first wall they hit. Enemy shots obey exactly the same rule.
 - Turret lasers can intercept hostile projectiles in flight. Both projectiles vanish in a cyan-white spark; manual aiming is required, with no bonus points awarded for interception.
 - Moving walls can scrap robots. Wall kills score fewer points than turret kills.
