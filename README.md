@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.2.6 — Robot Riot**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.2.7 — Robot Riot**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -11,6 +11,13 @@ You command a stationary 360-degree rotating turret while tiny robots swarm thro
 This is a static browser game with **no dependencies or build step**. Open `index.html` in a modern browser.
 
 For an online version, enable GitHub Pages in **Settings → Pages → Build and deployment → Deploy from a branch**, then select **main** and **/(root)**. Once Pages finishes publishing, the game will be at `https://richcande1-rca.github.io/beyond-berzerk/`.
+
+## Visual design
+
+- Industrial sci-fi masthead and menus with Teko display typography and Oxanium system labels (web fonts; local fallbacks included).
+- Amber / warning-red / gunmetal start, pause, and game-over panels replace the earlier magenta-and-cyan menu treatment.
+- The start screen emphasizes the threat rather than a gameplay description; detailed controls remain below the cabinet.
+- The in-canvas arena, mechanics, and game-over label **END OF TRANSMISSION** are unchanged.
 
 ## Controls
 
