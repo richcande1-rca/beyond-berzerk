@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.3 — Hypercube Engine**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.4 — Test Wave Selector**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -32,6 +32,14 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 | Touch | Drag on the arena to aim and fire freely; eight-way quick pad plus hold FIRE also works |
 | P | Pause / resume |
 | SOUND ON/OFF | Toggle synthesized sound |
+
+## Test mode / level selection
+
+Select **TEST WAVE** in the status bar (default Wave 4; any integer from 1 through 999), then choose **LAUNCH TEST**. A fresh three-life run begins immediately at the selected wave, with that wave's normal robot roster, spawn quota, wall behavior and visual theme. Future waves continue automatically on completion. You can launch a different wave at any time. This is for visual and performance playtesting without grinding through the opening waves.
+
+- **Test runs are unscored:** scores earned in this mode do not overwrite or contribute to the stored normal-play best. The HUD clearly marks **TEST WAVE**, and the status text marks **TEST**.
+- **Regular play stays untouched:** START GAME or a normal restart from the overlay always begins at Wave 1, saves high scores as before, and keeps the existing difficulty and controls. The overlay's **NORMAL GAME** button after a test returns to ordinary play.
+- Pressing **Enter** in the test-wave field launches the selected test. Values outside the range are clamped to 1–999. These are real waves, not invincibility or easier difficulty settings.
 
 ## Gameplay
 
