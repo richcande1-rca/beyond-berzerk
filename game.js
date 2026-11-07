@@ -17,6 +17,11 @@
   const TAU = Math.PI * 2;
   const MODES = ["SPIN", "MORPH", "MELTDOWN"];
   const DURATIONS = [13, 13, 11];
+  const WAVE_NAMES = ["FIRST CONTACT", "SIDEWINDERS", "CROSSFIRE",
+    "HEAVY METAL", "DOGPILE", "TOTAL MAYHEM"];
+  const ROLES = ["scout", "flank", "gunner", "heavy", "rush"];
+  const ROLE_COLORS = {scout:0, flank:1, gunner:3, heavy:4, rush:2};
+  const WAVE_FEATURE = ["scout", "flank", "gunner", "heavy", "rush", "flank"];
   const keys = new Set();
   const rnd = (a, b) => a + Math.random() * (b - a);
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
@@ -37,9 +42,9 @@
   }
   function makeRings() {
     return [
-      {base:128, count:6, span:.30, speed:.36, angle:0.14, phase:.2, hue:178},
-      {base:205, count:9, span:.225, speed:-.28, angle:.32, phase:1.5, hue:306},
-      {base:278, count:12, span:.145, speed:.23, angle:.09, phase:2.9, hue:47}
+      {base:128, count:6, span:.30, speed:.36, angle:0.14, phase:.2, hue:178, spin:1, reverseClock:8, warning:0, reversePending:false},
+      {base:205, count:9, span:.225, speed:-.28, angle:.32, phase:1.5, hue:306, spin:1, reverseClock:12, warning:0, reversePending:false},
+      {base:278, count:12, span:.145, speed:.23, angle:.09, phase:2.9, hue:47, spin:1, reverseClock:16, warning:0, reversePending:false}
     ];
   }
   function makeState() {
@@ -47,10 +52,11 @@
       phase:"ready", elapsed:0, modeIndex:0, modeClock:0,
       wave:1, score:0, high:highScore(), lives:3, aim:6, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
+      blasts:[], shockwaves:[], impacts:[], combo:0, comboClock:0,
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
       invuln:1.8, flash:0, shake:0, announce:"", announceClock:0,
       clearNearbyEnemyShots:false, turretKick:0,
-      destroyed:0, spawnCount:0
+      destroyed:0, spawnCount:0, chains:0
     };
   }
   let state = makeState();
@@ -160,11 +166,13 @@
   }
 
   function modeName() { return MODES[state.modeIndex]; }
+  function waveName() { return WAVE_NAMES[(state.wave-1)%WAVE_NAMES.length]; }
   function ringShape(ring) {
     const power = modeName() === "SPIN" ? .12 : modeName() === "MORPH" ? 1 : 1.15;
+    const surge = state.wave >= 3 ? .5+.5*Math.sin(state.elapsed*.65 + ring.phase) : 0;
     return {
-      radius:ring.base + power * 8 * Math.sin(state.elapsed * 1.7 + ring.phase),
-      span:Math.max(.055, ring.span + power * .075 * Math.sin(state.elapsed * 1.25 + ring.phase)),
+      radius:ring.base + power * (8+state.wave*.32) * Math.sin(state.elapsed * 1.7 + ring.phase),
+      span:Math.max(.055, ring.span + power * .075 * Math.sin(state.elapsed * 1.25 + ring.phase) + surge*.038),
       width:16
     };
   }
@@ -204,23 +212,53 @@
       setStatus("ARENA " + modeName());
       tone(modeName()==="MELTDOWN" ? 180 : 420,.26,"sawtooth",.045,750);
     }
-    for (const ring of state.rings) {
+    for (const [index,ring] of state.rings.entries()) {
+      // Each ring has its own staggered reversal clock. The one-second
+      // warning makes the change readable, not a surprise collision.
+      if (state.wave >= 2) {
+        if (!ring.reversePending) {
+          ring.reverseClock -= dt;
+          if (ring.reverseClock <= 0) {
+            ring.reversePending = true;
+            ring.warning = 1.05;
+          }
+        } else {
+          ring.warning -= dt;
+          if (ring.warning <= 0) {
+            ring.spin *= -1;
+            ring.reversePending = false;
+            ring.reverseClock = rnd(8.5,13) + index*2.6;
+            ring.warning = 0;
+            burst(CX+Math.cos(ring.angle)*ring.base,CY+Math.sin(ring.angle)*ring.base,
+              "#ffe372",8,.4);
+            tone(350+index*125,.12,"triangle",.018,180);
+          }
+        }
+      }
       const boost = modeName() === "SPIN" ? 1 : modeName() === "MORPH" ? .12 : 1.65;
-      ring.angle += ring.speed * boost * dt * (1 + Math.min(.7,(state.wave - 1) * .045));
+      ring.angle += ring.speed * ring.spin * boost * dt *
+        (1 + Math.min(.7,(state.wave - 1) * .045));
     }
   }
 
   function spawnBot(preview=false) {
+    // Every themed wave favors a new kind of trouble, while keeping earlier
+    // enemies in the mix. All opponents stay tiny and visually distinguishable.
+    const allowed = ROLES.filter((role,index) => index <= Math.min(4,state.wave-1));
+    const featured = WAVE_FEATURE[(state.wave-1)%WAVE_FEATURE.length];
+    const type = preview ? "scout" : (Math.random()<.55 ? featured :
+      allowed[Math.floor(Math.random()*allowed.length)]);
     const a = preview ? rnd(0,TAU) : Math.floor(rnd(0,8))*Math.PI/4;
     const r = preview ? rnd(160,308) : rnd(305,315);
-    const variant = Math.floor(rnd(0, colors.length));
-    const armored = !preview && state.wave >= 4 && Math.random() < Math.min(.32,.08+state.wave*.025);
+    const heavy = type==="heavy";
+    const factors = {scout:1, flank:1.12, gunner:.85, heavy:.72, rush:1.42};
     const bot = {
-      x:CX+Math.cos(a)*r, y:CY+Math.sin(a)*r, size:armored?9:7.2,
-      speed:rnd(24,33) + Math.min(35,state.wave*2.1),
-      hue:variant, hp:armored?2:1, armored,
-      shotClock:rnd(1.9,3.9), wobble:rnd(0,TAU), direction:Math.random()<.5?-1:1,
-      age:0
+      x:CX+Math.cos(a)*r, y:CY+Math.sin(a)*r, size:heavy?8.6:7.2,
+      type, speed:(rnd(24,33) + Math.min(35,state.wave*2.1))*factors[type],
+      hue:ROLE_COLORS[type], hp:heavy?2:1, armored:heavy,
+      shotClock: type==="gunner"?rnd(1.1,2.3):rnd(1.9,3.9),
+      wobble:rnd(0,TAU), direction:Math.random()<.5?-1:1,
+      panic:0, panicAngle:0, age:0
     };
     if (!preview && wallHit(bot.x,bot.y,bot.size)) return false;
     state.bots.push(bot);
