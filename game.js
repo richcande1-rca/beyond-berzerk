@@ -13,7 +13,9 @@
   const fireButton = document.getElementById("fire-btn");
   const statusMessage = document.getElementById("status-message");
   const padButtons = [...document.querySelectorAll("[data-dir]")];
-  const W = 960, H = 720, CX = 480, CY = 366, R = 304;
+  // Center the entire arena in the space between the 65px top and 677px bottom HUD.
+  // The outer perimeter, stroke, and radial markers now stay inside both HUDs.
+  const W = 960, H = 720, CX = 480, CY = 371, R = 276;
   const TAU = Math.PI * 2;
   const MODES = ["SPIN", "MORPH", "MELTDOWN"];
   const DURATIONS = [13, 13, 11];
@@ -44,9 +46,9 @@
   }
   function makeRings() {
     return [
-      {base:128, count:6, span:.30, speed:.36, angle:0.14, phase:.2, hue:178, spin:1, reverseClock:8, warning:0, reversePending:false},
-      {base:205, count:9, span:.225, speed:-.28, angle:.32, phase:1.5, hue:306, spin:1, reverseClock:12, warning:0, reversePending:false},
-      {base:278, count:12, span:.145, speed:.23, angle:.09, phase:2.9, hue:47, spin:1, reverseClock:16, warning:0, reversePending:false}
+      {base:116, count:6, span:.30, speed:.36, angle:0.14, phase:.2, hue:178, spin:1, reverseClock:8, warning:0, reversePending:false},
+      {base:186, count:9, span:.225, speed:-.28, angle:.32, phase:1.5, hue:306, spin:1, reverseClock:12, warning:0, reversePending:false},
+      {base:250, count:12, span:.145, speed:.23, angle:.09, phase:2.9, hue:47, spin:1, reverseClock:16, warning:0, reversePending:false}
     ];
   }
   function makeState() {
@@ -251,7 +253,7 @@
     const type = preview ? "scout" : (Math.random()<.55 ? featured :
       allowed[Math.floor(Math.random()*allowed.length)]);
     const a = preview ? rnd(0,TAU) : Math.floor(rnd(0,8))*Math.PI/4;
-    const r = preview ? rnd(160,308) : rnd(305,315);
+    const r = preview ? rnd(145,R+2) : rnd(R+2,R+10);
     const heavy = type==="heavy";
     const factors = {scout:1, flank:1.12, gunner:.85, heavy:.72, rush:1.42};
     const bot = {
@@ -609,7 +611,7 @@
     for(let k=0;k<8;k++){
       const a=k*Math.PI/4;
       line(CX+Math.cos(a)*(R+21),CY+Math.sin(a)*(R+21),
-           CX+Math.cos(a)*(R+32),CY+Math.sin(a)*(R+32),"#4efdf06c",2);
+           CX+Math.cos(a)*(R+23),CY+Math.sin(a)*(R+23),"#4efdf06c",2);
     }
   }
   function drawRings() {
