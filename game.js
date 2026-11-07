@@ -440,7 +440,54 @@
       } else if (b.shotClock<=0) b.shotClock=rnd(.25,.7);
     }
   }
+  function shotPathClear(shot, seconds) {
+    // Interceptions cannot occur through the arena's moving walls.
+    const steps=Math.max(1,Math.ceil(Math.hypot(shot.vx,shot.vy)*seconds/4));
+    for (let i=1;i<=steps;i++) {
+      const t=seconds*i/steps;
+      const x=shot.x+shot.vx*t,y=shot.y+shot.vy*t;
+      if (dist(x,y)>R+21 || wallHit(x,y,shot.size)) return false;
+    }
+    return true;
+  }
+  function interceptShots(dt) {
+    const friendly=state.shots.filter(s=>s.friendly && s.life>0);
+    const hostile=state.shots.filter(s=>!s.friendly && s.life>0);
+    if (!friendly.length || !hostile.length) return;
+
+    // Solve relative projectile motion over this frame; checking only their
+    // endpoints would miss fast shots crossing between animation frames.
+    const possible=[];
+    for (const a of friendly) {
+      for (const b of hostile) {
+        const rx=a.x-b.x, ry=a.y-b.y;
+        const vx=a.vx-b.vx, vy=a.vy-b.vy;
+        const limit=Math.min(dt,a.life,b.life);
+        const t=clamp(-(rx*vx+ry*vy)/Math.max(1,vx*vx+vy*vy),0,limit);
+        const dx=rx+vx*t, dy=ry+vy*t;
+        const radius=a.size+b.size+1.2;
+        if (dx*dx+dy*dy<=radius*radius) possible.push({a,b,t});
+      }
+    }
+    possible.sort((a,b)=>a.t-b.t);
+    const intercepted=new Set();
+    for (const {a,b,t} of possible) {
+      if (intercepted.has(a) || intercepted.has(b)) continue;
+      if (!shotPathClear(a,t) || !shotPathClear(b,t)) continue;
+      intercepted.add(a);intercepted.add(b);
+      const x=(a.x+a.vx*t+b.x+b.vx*t)/2;
+      const y=(a.y+a.vy*t+b.y+b.vy*t)/2;
+      burst(x,y,"#f6ffff",10,.72);
+      burst(x,y,"#59eaff",5,.38);
+      state.impacts.push({x,y,life:.23,maxLife:.23,color:"#d9ffff"});
+      if (state.impacts.length>48) state.impacts.shift();
+      tone(1030,.075,"triangle",.024,530);
+    }
+    // Remove matched pairs before updateShots starts iterating them.
+    if (intercepted.size) state.shots=state.shots.filter(s=>!intercepted.has(s));
+  }
   function updateShots(dt) {
+    interceptShots(dt);
     for (let i=state.shots.length-1;i>=0;i--) {
       const s=state.shots[i];
       if (!s) continue; // Defensive guard if another combat event changes the list.
