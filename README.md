@@ -2,7 +2,7 @@
 
 **Insane shooter arcade game. The world moves. You don't.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.2.2 — Robot Riot**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.2.3 — Robot Riot**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
 
@@ -38,6 +38,7 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - **MELTDOWN:** both transformations accelerate together.
 - Independent rings occasionally reverse direction, with a short amber warning. Corridors also contract and expand in later waves.
 - All shots collide with the first wall they hit. Enemy shots obey exactly the same rule.
+- Turret lasers can intercept hostile projectiles in flight. Both projectiles vanish in a cyan-white spark; manual aiming is required, with no bonus points awarded for interception.
 - Moving walls can scrap robots. Wall kills score fewer points than turret kills.
 - Normal robots: 100 points. Armored robots: 180. Chain kill: 140. Wall kill: 40. Completed wave: +500.
 - Firing now has a brighter muzzle flash, layered laser trails, and sparkling wall impacts.
