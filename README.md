@@ -2,9 +2,9 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.8 — Twin Cannons**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.9 — Graduate Arsenal**.
 
-You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block **every** projectile, whether it came from you or the robots. Robot swarms get larger and faster with each wave.
+You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
 
 ## Play
 
@@ -41,6 +41,15 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - Test runs starting at Wave 2 or higher automatically include twin cannons, representing the reward earned in Wave 1. Test Wave 1 starts single-barrel and earns the upgrade normally. Test scores never count toward records.
 - Only the new rear barrel and its existing projectile type are added; the visuals avoid additional shadow blurs for performance. No changes to enemy AI, collision walls, hull durability, player lives, or later wave difficulty.
 
+## Graduated arsenal — v0.3.9
+
+- **Wave 1 clear: Twin Cannons.** The simultaneous front/back firing upgrade remains as in v0.3.8.
+- **Wave 3 clear: Rechargeable shield.** Unlocks a separate three-charge cyan shield around the turret for Wave 4 onward. Each charge absorbs one hostile projectile; each hit resets the recharge timer. After six uninterrupted seconds, one charge regenerates, repeating until all three are restored. The existing 0.5-second projectile grace applies. Direct robot contact still costs a full life and bypasses the shield; surviving lives begin with a fully charged shield. Existing three-hit hull durability remains unchanged.
+- **Wave 4 participation challenge: Heavy Laser.** Land **at least eight direct weapon kills during Wave 4**, then graduate to unlock double-damage shots on both barrels. Armored bots take one hit. Kills from moving walls and chain reactions do not count; the Wave 4 HUD displays the direct-kill counter. Without eight direct kills, graduation still occurs but the Heavy Laser is not awarded that run.
+- **Wave 6 clear: Penetrator Cannon.** From Wave 7 onward, every 4.5 seconds the next manually aimed **front-cannon shot** is a gold Penetrator. It crosses all wall segments, destroys multiple robots, including armored ones, and can destroy hostile projectiles without disappearing. The rear cannon continues firing normal or Heavy Laser shots. Firing rate and number of projectiles per salvo are unchanged.
+- **Test Mode:** Starting at Wave 4 includes the shield; starting at Wave 5 or higher simulates earning the Heavy Laser; Wave 7 or higher starts with a charged Penetrator. Starting on Wave 4 still requires the direct-kill challenge to earn Heavy Laser for Wave 5. Test scores remain separate.
+- **Performance:** No additional bullets are spawned by these upgrades; effects use simple arc and stroke drawing without new shadow blur. This release does not claim to resolve previously reported Wave 5 lag.
+
 ## Wave graduation ceremonies
 
 - **Every completed wave graduates**, even Wave 1. The existing two-second sector-clear window now hosts a celebratory diploma with a unique degree and cheeky faculty verdict; the first four clearances award **Certificate of Basic Survival**, **Diploma in Ballistics**, **Advanced Robot Evasion**, and **Honors with Distinction**. Further waves award increasingly absurd degrees, cycling indefinitely.
@@ -72,12 +81,12 @@ Select **TEST WAVE** in the status bar (default Wave 4; any integer from 1 throu
 - Independent rings occasionally reverse direction, with a short amber warning. Corridors also contract and expand in later waves.
 - **Sector Spectacle (visual only):** Wave 1 starts in classic navy; Wave 2 switches to a bold cyan RADAR sweep; Wave 3 unveils a violet PRISM lattice; Wave 4 turns into an amber REACTOR; Wave 5 becomes an emerald VECTOR tunnel; Wave 6 forms icy PHANTOM gears and faint ghost rings; Wave 7 reveals a purple KALEIDOSCOPE; Wave 8 pulses with golden energy waves; Wave 9+ enters the magenta COSMOS field. Every wave changes color and rhythm.
 - Visual intensity starts meaningfully at Wave 2 instead of near-invisible: exponentially increasing detail through Wave 9, then capped draw counts for Chromebook performance. Waves beyond 9 continue shifting hue/rhythm without piling on geometry. Each cleared sector now gets a radiant victory transition and a themed incoming-wave reveal. All real walls, collisions, projectiles, robot AI and difficulty remain unchanged.
-- All shots collide with the first wall they hit. Enemy shots obey exactly the same rule.
-- Turret lasers can intercept hostile projectiles in flight. Both projectiles vanish in a cyan-white spark; manual aiming is required, with no bonus points awarded for interception.
+- Normal player shots and enemy shots collide with the first wall they hit; charged Penetrator shots pass through walls and expire at the outer arena boundary.
+- Turret lasers can intercept hostile projectiles in flight. Regular shots and enemy shots both vanish in a cyan-white spark; charged Penetrator shots destroy hostile shots but continue flying. Manual aiming is required and interceptions award no bonus points.
 - Moving walls can scrap robots. Wall kills score fewer points than turret kills.
 - Normal robots: 100 points. Armored robots: 180. Chain kill: 140. Wall kill: 40. Completed wave: +500.
 - Firing now has a brighter muzzle flash, layered laser trails, and sparkling wall impacts.
-- **Reinforced hull:** Three lives, each with three hull points. Enemy projectiles reduce hull by one; the third projectile hit costs one life and restores hull to three for the next life. Direct robot contact ignores remaining hull and immediately costs one life. An ordinary projectile hit gives 0.5 seconds of projectile-only grace (contact still hurts); losing a life retains 3.5 seconds of invulnerability. Three crisp HULL bars display durability. **This is not a shield:** separate shields remain a planned future upgrade. Normal and test mode use identical damage rules. High score is saved locally in your browser.
+- **Reinforced hull:** Three lives, each with three hull points. Enemy projectiles reduce hull by one; the third projectile hit costs one life and restores hull to three for the next life. Direct robot contact ignores remaining hull and immediately costs one life. An ordinary projectile hit gives 0.5 seconds of projectile-only grace (contact still hurts); losing a life retains 3.5 seconds of invulnerability. Three crisp HULL bars display durability. **Hull is not the shield:** shield charges are a separate upgrade earned upon clearing Wave 3. Normal and test mode use identical damage rules. High score is saved locally in your browser.
 - The SOUND ON button reinitializes browser audio and plays a short test chirp; game START also unlocks sound.
 
 ## Chromebook / desktop sizing
@@ -98,10 +107,10 @@ The circular arena is now centered within the space between the top and bottom H
 
 - **Mouse/touchpad aiming — deferred:** Current absolute pointer aiming requires keeping the cursor correctly positioned relative to the turret, and aiming becomes awkward at canvas edges. Consider an optional browser Pointer Lock mode (relative mouse/touchpad motion rotates turret continuously through 360°, adjustable sensitivity), while retaining existing direct-pointer aiming. **Do not change controls until explicitly approved.**
 - **Hypercube Engine — v0.3.3:** 4D-projected tesseracts join the decorative scenery at Wave 5; their wireframe vertices rotate through the XW, YZ and ZW planes and project to 2D. One tesseract at Wave 5 grows to two at Wave 6, three at Wave 7 and four at Wave 8+, capped thereafter. Contrasting edges identify connections in the fourth dimension. All tesseracts are clipped away from the central turret and never participate in collision checks.
-- **Rendering optimization — v0.3.3:** Removes costly per-robot and per-projectile shadow blur, removes blurred particle impact and shockwave strokes, reduces two moving-wall echo paths to one, batches the arena grid into one path, and caches radial gradients per sector/mode. Preserves crisp laser cores and solid robot silhouettes. Wave 4 performance still needs real-device validation. Future shields and additional cannons beyond the unlocked rear barrel remain planned, not implemented.
+- **Rendering optimization — v0.3.3:** Removes costly per-robot and per-projectile shadow blur, removes blurred particle impact and shockwave strokes, reduces two moving-wall echo paths to one, batches the arena grid into one path, and caches radial gradients per sector/mode. Preserves crisp laser cores and solid robot silhouettes. Wave 4/5 performance still needs real-device validation. The shield and upgraded projectiles were introduced in v0.3.9; further cannons remain unimplemented.
 - **Signal Clarity — v0.3.2:** Reduced arena wallpaper opacity, softened perimeter/wall halos, lowered translucent ghost-ring and wall-trail strength, and restrained the damage flash. Kept the unique geometric composition and colors for each wave. HUD instruments now have opaque dark rails, sharp Oxanium readouts, pale high-contrast numbers and dividers, and zero text bloom. Wave announcements and sector-clear rewards use crisp text on compact dark plates placed above the turret instead of glowing over its center. Wall warning colors, collisions, AI, combat and controls are unchanged. Preserve this contrast and center space when adding future turret defenses and weapons.
 - **Visual reward pass — implemented in v0.3.1:** Earlier v0.3.0 visuals were too faint in Waves 2–3. New signature palettes and geometry start at Wave 2, with a sector-clear celebration and wave-introduction effect. Field art is behind the combat layer, and the center of the decorative field stays clear for the player turret.
-- **Future turret equipment — planned, not implemented:** Defensive shields and further firepower/powerups beyond Wave 1 twin cannons are intended for later revisions. Reserve visual contrast, screen space and performance budget for their effects. Do not add or rebalance weapons/defense without explicit approval.
+- **Future turret equipment:** Additional powerups, cannons and defensive systems beyond Twin Cannons, the three-charge shield, Heavy Laser and Penetrator require separate discussion and explicit approval. Preserve visual contrast, screen space and the performance budget.
 
 ## First-contact scope
 
