@@ -465,6 +465,7 @@
       for (let n=0;n<ring.count;n++) {
         const center=ring.angle+n*pitch;
         const start=center-shape.span/2,end=center+shape.span/2;
+        ctx.moveTo(CX+Math.cos(start)*shape.radius,CY+Math.sin(start)*shape.radius);
         ctx.arc(CX,CY,shape.radius,start,end);
       }
       ctx.shadowBlur=15;
