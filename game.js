@@ -65,6 +65,8 @@
   const POWERUP_DURATIONS = {triple:10,guardian:12,stasis:8};
   const POWERUP_TYPES = ["triple","guardian","stasis"];
   const STASIS_SCALE = .36;
+  const EXTRA_LIFE_INTERVAL = 15000, MAX_LIVES = 5;
+  const HULL_REPAIR_FULL_BONUS = 250;
   // Sector names match what players actually see, not unrelated generic
   // combat labels. Wave 10+ can retain the expanding endless-run title pool.
   const WAVE_NAMES = ["FIRST CONTACT", "RADAR SWEEP", "PRISM FRACTURE",
@@ -142,6 +144,7 @@
       railFlash:0, railAngle:0,
       arcCannon:false, arcCharge:0, arcLinks:[],
       supplyDrone:null,dropClock:rnd(14,24),powerup:null,
+      nextExtraLifeScore:EXTRA_LIFE_INTERVAL,
       powerClock:0,lastPowerup:null,guardianClock:0,guardianAngle:0,
       waveElapsed:0, waveTotal:0, shieldCapsule:null, shieldCapsuleSeen:false,
       boss:null, bossState:"none", bossWarning:0, bossDefeated:false, clearBossShots:false,
@@ -584,26 +587,80 @@
   function collectSupplyDrone() {
     const drone=state.supplyDrone;
     if(!drone)return;
-    let pick=POWERUP_TYPES[Math.floor(Math.random()*POWERUP_TYPES.length)];
-    // No same prize twice in a row; keep every pickup surprising.
-    if(pick===state.lastPowerup)
-      pick=POWERUP_TYPES[(POWERUP_TYPES.indexOf(pick)+1+
-        Math.floor(Math.random()*2))%POWERUP_TYPES.length];
+    // Special colored supplies grant instant benefits without cancelling
+    // an existing timed weapon. The original gold mystery drone remains.
     state.supplyDrone=null;
-    state.powerup=pick;
-    state.lastPowerup=pick;
-    state.powerClock=POWERUP_DURATIONS[pick];
-    state.guardianClock=0;
     state.dropClock=rnd(18,29);
-    const title=pick==="triple"?"TRIPLE THREAT":
-      pick==="guardian"?"GUARDIAN DRONES":"STASIS FIELD";
-    state.announce=title+" ACTIVATED";
+    if(drone.kind==="repair") {
+      if(state.hull<HULL_CAPACITY) {
+        state.hull=HULL_CAPACITY;
+        state.announce="HULL REPAIRED // 3/3";
+        setStatus("EMERGENCY REPAIR — HULL FULL");
+      } else {
+        state.score+=HULL_REPAIR_FULL_BONUS;
+        if(!state.testMode && state.score>state.high){
+          state.high=state.score;storeHigh();
+        }
+        state.announce="HULL FULL // +250 BONUS";
+        setStatus("REPAIR SALVAGED — +250 POINTS");
+      }
+      burst(drone.x,drone.y,"#a1ffc2",17,.75);
+      tone(480,.17,"triangle",.055,970);
+      tone(790,.25,"triangle",.040,1280);
+    } else if(drone.kind==="overcharge") {
+      if(state.shieldUnlocked){
+        state.shieldCharges=SHIELD_MAX;
+        state.shieldRegen=0;
+        flashShield(-1,.6);
+      }
+      if(state.penetrator)state.penCharge=0;
+      state.announce="OVERCHARGE // SYSTEMS RECHARGED";
+      setStatus("OVERCHARGE — SHIELDS FULL"+
+        (state.penetrator?" + RAILGUN READY":""));
+      burst(drone.x,drone.y,"#87c8ff",19,.85);
+      tone(390,.24,"sawtooth",.046,920);
+      tone(1120,.22,"triangle",.045,1780);
+    } else {
+      let pick=POWERUP_TYPES[Math.floor(Math.random()*POWERUP_TYPES.length)];
+      // No back-to-back identical timed powers, even across instant supplies.
+      if(pick===state.lastPowerup)
+        pick=POWERUP_TYPES[(POWERUP_TYPES.indexOf(pick)+1+
+          Math.floor(Math.random()*2))%POWERUP_TYPES.length];
+      state.powerup=pick;
+      state.lastPowerup=pick;
+      state.powerClock=POWERUP_DURATIONS[pick];
+      state.guardianClock=0;
+      const title=pick==="triple"?"TRIPLE THREAT":
+        pick==="guardian"?"GUARDIAN DRONES":"STASIS FIELD";
+      state.announce=title+" ACTIVATED";
+      setStatus("SUPPLY SECURED — "+title);
+      burst(drone.x,drone.y,"#f8da7f",16,.72);
+      tone(560,.13,"triangle",.052,1100);
+      tone(940,.20,"triangle",.036,1540,.11);
+    }
     state.announceClock=2.1;
-    setStatus("SUPPLY SECURED — "+title);
-    burst(drone.x,drone.y,"#f8da7f",16,.72);
     burst(drone.x,drone.y,"#ffffff",7,.4);
-    tone(560,.13,"triangle",.052,1100);
-    tone(940,.20,"triangle",.036,1540,.11);
+  }
+  function awardScoreLives() {
+    // One award at 15k, 30k, 45k, and every subsequent 15k milestone.
+    // Milestones are consumed even at the five-life inventory cap.
+    let earned=0;
+    while(state.score>=state.nextExtraLifeScore) {
+      state.nextExtraLifeScore+=EXTRA_LIFE_INTERVAL;
+      if(state.lives<MAX_LIVES){
+        state.lives++;
+        earned++;
+      }
+    }
+    if(!earned)return;
+    state.announce="EXTRA LIFE! +"+earned;
+    state.announceClock=2.8;
+    setStatus("EXTRA LIFE! — "+state.lives+"/"+MAX_LIVES+" LIVES");
+    burst(CX,CY,"#ffb6e2",24,.85);
+    burst(CX,CY,"#ffe8a0",15,.55);
+    tone(520,.16,"triangle",.06,760);
+    tone(780,.25,"triangle",.055,1220,.13);
+    tone(1040,.32,"triangle",.05,1570,.27);
   }
   function updateSupplyDrone(dt) {
     if(state.supplyDrone){
@@ -625,12 +682,19 @@
     if(state.dropClock>0)return;
     const lanes=[-146,-104,-63,-25,38,83,132];
     const dir=Math.random()<.5?1:-1;
+    const roll=Math.random();
+    // 20% green repairs, 10% rare blue Overcharge after shield unlock.
+    // The remaining crossings retain the original mystery weapon pool.
+    const kind=roll<.20?"repair":
+      roll<.30 && state.shieldUnlocked?"overcharge":"random";
     state.supplyDrone={
       x:CX-dir*(R+SUPPLY_RADIUS+10),
       y:CY+lanes[Math.floor(Math.random()*lanes.length)],
-      vx:dir*SUPPLY_SPEED
+      vx:dir*SUPPLY_SPEED,kind
     };
-    state.announce="SUPPLY DRONE INBOUND // SHOOT TO CLAIM";
+    state.announce=kind==="repair"?"EMERGENCY REPAIR INBOUND":
+      kind==="overcharge"?"OVERCHARGE INBOUND":
+      "SUPPLY DRONE INBOUND // SHOOT TO CLAIM";
     state.announceClock=1.7;
     tone(720,.08,"square",.025,450);
   }
@@ -1456,6 +1520,7 @@
       updateShots(dt);
     }
     updateBlasts(dt);
+    awardScoreLives(); // Include kills, chain reactions, boss and wave bonuses.
     updateParticles(dt);
     for (let i=state.shockwaves.length-1;i>=0;i--) {
       state.shockwaves[i].life-=dt;
@@ -2788,7 +2853,8 @@
     }
     label("LIVES",790,24,13,"#81c9ce");
     for(let i=0;i<state.lives;i++) {
-      ctx.save();ctx.translate(799+i*38,44);ctx.rotate(-Math.PI/2);
+      // Fit all five reserve icons inside the right-hand HUD rail.
+      ctx.save();ctx.translate(800+i*30,44);ctx.rotate(-Math.PI/2);
       ctx.fillStyle="#ff7bb9";ctx.beginPath();ctx.moveTo(13,0);
       ctx.lineTo(-9,-8);ctx.lineTo(-4,0);ctx.lineTo(-9,8);ctx.closePath();ctx.fill();
       ctx.restore();
