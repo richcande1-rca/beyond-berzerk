@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.11 — Guardian Angel Deferred**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.12 — Consistent Controls**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
 
@@ -26,17 +26,24 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 | Left / Up arrows (hold) | Smoothly rotate counterclockwise through 360° (up to ~320°/s) |
 | Right / Down arrows (hold) | Smoothly rotate clockwise through 360° (up to ~320°/s) |
 | Q / E (hold) | Alternate smooth rotation controls |
-| WASD | Snap to one of eight quick directions |
+| WASD | Select one of eight target directions; turret turns at the common speed limit |
 | Space or Enter | Hold to fire; release and press again to restart after game over |
-| Mouse | Aim freely at any angle; hold click to fire |
-| Touch | Drag on the arena to aim and fire freely; eight-way quick pad plus hold FIRE also works |
+| Mouse / touchpad | Indicate any target angle; turret turns toward it at the same maximum speed as the arrow keys; hold click to fire |
+| Touch | Drag on the arena to steer toward a target and fire; eight-way pad also turns at the common speed limit |
 | P | Pause / resume |
 | SOUND ON/OFF | Toggle synthesized sound |
+
+## Unified turret controls — v0.3.12
+
+- All aiming inputs now share the same physical rotation: a **5.6 radians/second (~321°/s)** top angular speed with the existing **25 rad/s² acceleration** and **65 rad/s² braking**.
+- Arrows and Q/E command clockwise/counterclockwise rotation. Mouse, touchpad, touch drag, WASD, and the eight-way touch/click pad specify a desired aim angle; the turret approaches it using the same capped rotation mechanics and shortest angular path.
+- Pointer movement or quick-aim input no longer teleports the barrel between directions. While rotation keys are held, they take control and cancel the last pointer destination.
+- No changes to firing rate, enemy AI, weapon rewards, collisions, lives, difficulty scaling, or arena art. The target-tracking behavior needs real-device feel testing.
 
 ## Wave 4 reward — Twin Cannons
 
 - **Clear Wave 4** to earn a permanent upgrade for the remainder of that run: a second cannon mounted **180° opposite** the original front cannon.
-- Both barrels rotate together and fire **simultaneously** from the existing FIRE/Space/Enter controls. The original projectile speed, hitboxes, aiming, cadence and audio remain unchanged. Rear shots use the same projectile behavior and are blocked by walls.
+- Both barrels rotate together and fire **simultaneously** from the existing FIRE/Space/Enter controls. The original projectile speed, hitboxes, firing cadence and audio remain unchanged; all aiming now follows the shared v0.3.12 rotation limit. Rear shots use the same projectile behavior and are blocked by walls.
 - The second barrel appears on the turret after the graduation ceremony, stays unlocked across lost lives, and resets when starting a new normal game. Graduation explicitly announces **REWARD UNLOCKED // TWIN CANNONS**.
 - Test runs starting at Wave 5 or higher automatically include twin cannons, representing Wave 4 graduation. Test Waves 1–4 use the single forward barrel. Test scores never count toward records.
 - Only the new rear barrel and its existing projectile type are added; the visuals avoid additional shadow blurs for performance. No changes to enemy AI, collision walls, hull durability, player lives, or later wave difficulty.
