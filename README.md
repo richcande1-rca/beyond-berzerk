@@ -55,7 +55,7 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 
 - **Reactor heartbeat:** A slower, gentle cyan core brightness pulse gets a brief additional boost when the weapon fires. Two tiny status LEDs on the armor blink at different, nonsynchronized intervals (cyan and amber).
 - **Shield reactions:** The spent shield segment briefly shimmers after an absorbed projectile; passive recharge lights the restored segment; a collected shield capsule briefly illuminates all three segments. Initial unlock and life-restoration also receive a brief shimmer. All effects are rendered directly over the existing sprite sheet.
-- **Lightweight and visual only:** No new textures, animations, particles, timers in the browser, glow filters, or game mechanics. The short shield animation uses a state countdown and only overdraws its arc images for approximately half a second. Physics, firing, aiming, hitboxes, shields, upgrades, audio and scoring are unchanged. The legacy canvas turret still works if WebP fails to decode.
+- **Lightweight and visual only:** No new textures, animated image files, particles, browser timers, glow filters, or game mechanics. The short shield animation uses a state countdown and only overdraws its arc images for approximately half a second. Physics, firing, aiming, hitboxes, shields, upgrades, audio and scoring are unchanged. The legacy canvas turret still works if WebP fails to decode.
 
 ## Custom armored turret — v0.3.16
 
