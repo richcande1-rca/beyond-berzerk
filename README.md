@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.14 — Cyberpunk Opening Screen**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.15 — Shield Capsule**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
 
@@ -50,6 +50,14 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - The second barrel appears on the turret after the graduation ceremony, stays unlocked across lost lives, and resets when starting a new normal game. Graduation explicitly announces **REWARD UNLOCKED // TWIN CANNONS**.
 - Test runs starting at Wave 5 or higher automatically include twin cannons, representing Wave 4 graduation. Test Waves 1–4 use the single forward barrel. Test scores never count toward records.
 - Only the new rear barrel and its existing projectile type are added; the visuals avoid additional shadow blurs for performance. No changes to enemy AI, collision walls, hull durability, player lives, or later wave difficulty.
+
+## Wave 4 shield recharge capsule — v0.3.15
+
+- One cyan shield capsule crosses the Wave 4 battlefield after approximately 4.5 seconds of combat, flying straight across the arena above the turret. It ignores wall collision and can pass through both live walls and robots.
+- Shoot the capsule with an ordinary friendly projectile when it crosses an open firing lane. Player shots obey the normal wall collision rules, so walls can block a collection shot; hostile projectiles and explosions cannot collect it.
+- A direct hit instantly restores the rechargeable shield to **3/3**, resets its regeneration timer and displays a short status/sound effect. The capsule consumes the collecting shot, but grants no score or robot kills and does not count toward Wave 4's Heavy Laser direct-kill challenge.
+- Only **one capsule appears** in Wave 4. If it exits uncollected, it does not respawn. The capsule is cleaned up at the next wave transition and works in normal runs or Test Wave 4.
+- The shield still unlocks from clearing Wave 3, and the Wave 4 graduation rewards, enemy behavior, wall physics, weapon damage, and future boss design remain unchanged.
 
 ## Graduated arsenal — v0.3.11
 
