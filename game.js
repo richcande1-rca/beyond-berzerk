@@ -61,9 +61,11 @@
   const TURRET_MAX_SPEED = 5.6, TURRET_ACCEL = 25, TURRET_BRAKE = 65;
   const HEAVY_KILLS_REQUIRED = 8, RAILGUN_COOLDOWN = 4.5;
   const RAILGUN_DAMAGE = 3, RAILGUN_RADIUS = 8, RAILGUN_FLASH = .24;
-  const WAVE_NAMES = ["FIRST CONTACT", "SIDEWINDERS", "CROSSFIRE",
-    "HEAVY METAL", "DOGPILE", "TOTAL MAYHEM", "REACTOR SPIN",
-    "PANIC LOOP", "ROBOT RIOT", "CRITICAL MASS"];
+  // Sector names match what players actually see, not unrelated generic
+  // combat labels. Wave 10+ can retain the expanding endless-run title pool.
+  const WAVE_NAMES = ["FIRST CONTACT", "RADAR SWEEP", "PRISM FRACTURE",
+    "REACTOR FURNACE", "VECTOR GRID", "PHANTOM WORKS", "KALEIDOSCOPE",
+    "PULSE CHAMBER", "COSMOS BREACH", "CRITICAL MASS"];
   const GRADUATIONS = [
     ["CERTIFICATE OF BASIC SURVIVAL","YOU HAVE LEARNED TO POINT A GUN."],
     ["DIPLOMA IN BALLISTICS","OCCASIONAL ACCURACY HAS BEEN OBSERVED."],
@@ -1712,6 +1714,19 @@
         backgroundGradient.addColorStop(0,modeName()==="MELTDOWN"?"#341035":"#121633");
         backgroundGradient.addColorStop(.72,"#0c1028");
         backgroundGradient.addColorStop(1,"#050713");
+      } else if(v.stage===9){
+        // Cosmos is a cold black void, not another colorful neon backdrop.
+        backgroundGradient.addColorStop(0,"#090d24");
+        backgroundGradient.addColorStop(.48,"#040515");
+        backgroundGradient.addColorStop(1,"#01030a");
+      } else if(v.stage===5) {
+        backgroundGradient.addColorStop(0,"#071f18");
+        backgroundGradient.addColorStop(.7,"#06130e");
+        backgroundGradient.addColorStop(1,"#020908");
+      } else if(v.stage===6) {
+        backgroundGradient.addColorStop(0,"#0b1827");
+        backgroundGradient.addColorStop(.74,"#07101b");
+        backgroundGradient.addColorStop(1,"#030710");
       } else {
         backgroundGradient.addColorStop(0,"hsl("+v.hue+",55%,15%)");
         backgroundGradient.addColorStop(.72,"hsl("+((v.hue+22)%360)+",52%,10%)");
@@ -1721,11 +1736,18 @@
     }
     ctx.fillStyle=backgroundGradient;ctx.beginPath();ctx.arc(CX,CY,R+19,0,TAU);ctx.fill();
     ctx.save();ctx.beginPath();ctx.arc(CX,CY,R+15,0,TAU);ctx.clip();
-    const gridColor=v.stage===1?"#4f5c8c16":"hsla("+v.hue+",85%,64%,.09)";
-    ctx.strokeStyle=gridColor;ctx.lineWidth=1;ctx.beginPath();
-    for(let x=CX-336;x<CX+340;x+=32){ctx.moveTo(x,42);ctx.lineTo(x,690);}
-    for(let y=CY-337;y<CY+338;y+=32){ctx.moveTo(130,y);ctx.lineTo(832,y);}
-    ctx.stroke();
+    // A shared square grid made every stage feel like the same room. Only
+    // classic/radar/reactor/pulse retain it; Vector gets a square circuit
+    // coordinate plane, while crystal/phantom/mirrors/cosmos use no grid.
+    if([1,2,4,8].includes(v.stage) || v.stage===5){
+      const gridColor=v.stage===1?"#4f5c8c16":
+        v.stage===5?"#42e8a018":"hsla("+v.hue+",85%,64%,.09)";
+      const step=v.stage===5?54:32;
+      ctx.strokeStyle=gridColor;ctx.lineWidth=1;ctx.beginPath();
+      for(let x=CX-336;x<CX+340;x+=step){ctx.moveTo(x,42);ctx.lineTo(x,690);}
+      for(let y=CY-337;y<CY+338;y+=step){ctx.moveTo(130,y);ctx.lineTo(832,y);}
+      ctx.stroke();
+    }
     drawEvolutionField(v);
     drawTesseracts(v);
     for(const star of stars){
@@ -1751,7 +1773,10 @@
       const alert=ring.reversePending && Math.floor(state.elapsed*9)%2===0;
       // Every wave shifts the palette, but the flashing amber reversal warning
       // is always unmistakable and the real walls remain the brightest arcs.
-      const hue=alert?45:(v.stage===1?ring.hue+state.elapsed*3:v.hue+[36,145,0][ir]+state.elapsed*3)%360;
+      const hue=alert?45:(v.stage===1?ring.hue+state.elapsed*3:
+        v.hue+[36,145,0][ir]+state.elapsed*3)%360;
+      const prism=v.stage===3,vector=v.stage===5,phantom=v.stage===6,
+        mirror=v.stage===7,cosmos=v.stage===9;
       ctx.save();
       if(v.stage>=4) {
         // One sharp motion echo rather than two overdrawn glowing rings.
@@ -1768,7 +1793,7 @@
         ctx.stroke();
       }
       const reactor=v.stage===4, pulse=v.stage===8;
-      ctx.lineCap=(reactor||pulse)?"butt":"round";
+      ctx.lineCap=(reactor||pulse||prism||vector||mirror)?"butt":"round";
       // Batch the full ring into one path: three strokes per ring instead
       // of three expensive glowing strokes for *each* moving segment.
       ctx.beginPath();
@@ -1783,16 +1808,57 @@
       ctx.shadowBlur=0;
       ctx.lineWidth=shape.width+2;
       ctx.strokeStyle=pulse?"hsla("+hue+",100%,74%,.88)":
-        reactor?"hsla("+hue+",100%,60%,.48)":"hsla("+hue+",100%,53%,.31)";
+        reactor?"hsla("+hue+",100%,60%,.48)":
+        prism?"#a470ff":vector?"#35f5a3":
+        phantom?"#667e93":mirror?"#ffe7ff":
+        cosmos?"#b49af2":"hsla("+hue+",100%,53%,.31)";
       ctx.stroke();
       ctx.lineWidth=shape.width-(pulse?5:3);
       ctx.strokeStyle=pulse?"hsl("+((hue+190)%360)+",55%,14%)":
-        reactor?"hsl("+hue+",100%,43%)":"hsl("+hue+",100%,56%)";
+        reactor?"hsl("+hue+",100%,43%)":
+        prism?"#39215f":vector?"#073729":phantom?"#0c1b2a":
+        mirror?"#592b81":cosmos?"#13152c":"hsl("+hue+",100%,56%)";
       ctx.stroke();
       ctx.lineWidth=pulse?3.6:3;
       ctx.strokeStyle=pulse?"hsla("+hue+",100%,86%,.96)":
-        reactor?"#ffe7ab":"#e2ffffa8";
+        reactor?"#ffe7ab":prism?"#efc5ff":
+        vector?"#70ffce":phantom?"#b8d6e1":
+        mirror?"#ffffff":cosmos?"#dad0ff":"#e2ffffa8";
       ctx.stroke();
+      if(prism || vector || phantom || mirror || cosmos){
+        // Inlays are drawn directly ON the physical moving wall arcs, never
+        // separate fake obstacles. Collision radii/spans remain unchanged.
+        ctx.beginPath();
+        for(let n=0;n<ring.count;n++){
+          const center=ring.angle+n*pitch;
+          const cx=CX+Math.cos(center)*shape.radius;
+          const cy=CY+Math.sin(center)*shape.radius;
+          if(prism){
+            const a=center+.11;
+            ctx.moveTo(cx,cy-5);ctx.lineTo(cx+5,cy);
+            ctx.lineTo(cx,cy+5);ctx.lineTo(cx-5,cy);ctx.closePath();
+          }else if(vector){
+            const x=cx,y=cy;
+            ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y-4);
+            ctx.lineTo(x+4,y+4);ctx.lineTo(x-4,y+4);ctx.closePath();
+          }else if(phantom){
+            const n1=-Math.sin(center),n2=Math.cos(center);
+            ctx.moveTo(cx-n1*5,cy-n2*5);
+            ctx.lineTo(cx+n1*5,cy+n2*5);
+          }else if(mirror){
+            const ca=center+.2*Math.sin(state.elapsed*.8+n);
+            ctx.moveTo(cx,cy-5);ctx.lineTo(cx+5*Math.cos(ca),cy+5*Math.sin(ca));
+            ctx.lineTo(cx,cy+5);ctx.closePath();
+          }else{
+            ctx.moveTo(cx-2,cy);ctx.lineTo(cx+2,cy);
+            ctx.moveTo(cx,cy-2);ctx.lineTo(cx,cy+2);
+          }
+        }
+        ctx.lineWidth=vector?2.4:1.6;
+        ctx.strokeStyle=vector?"#ccffe0":phantom?"#f8c1a5":
+          prism?"#ffffff":mirror?"#fff9cd":"#ffffff";
+        ctx.stroke();
+      }
       if (reactor) {
         // Fin scoring lies entirely inside the lethal turbine teeth.
         ctx.beginPath();
