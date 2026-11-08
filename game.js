@@ -8,6 +8,15 @@
   const cyberArt = typeof Image === "function" ? new Image() : null;
   if (cyberArt) cyberArt.src = "./assets/cyberpunk-ui.avif?v=0.3.13";
   const overlay = document.getElementById("overlay");
+  const introArt = document.getElementById("intro-art");
+  // Keep the original, accessible opening panel if the artwork is unavailable.
+  if (introArt) {
+    const syncIntroArtwork = () => overlay.classList.toggle(
+      "has-intro-art", introArt.complete && introArt.naturalWidth > 0);
+    introArt.addEventListener("load", syncIntroArtwork);
+    introArt.addEventListener("error", syncIntroArtwork);
+    syncIntroArtwork();
+  }
   const overlayTitle = document.getElementById("overlay-title");
   const overlayText = document.getElementById("overlay-text");
   const overlayEyebrow = document.getElementById("overlay-eyebrow");
@@ -120,6 +129,7 @@
     overlayEyebrow.textContent = eyebrow;
     const finalTransmission = state.phase === "over" && !state.testMode;
     overlay.classList.toggle("is-end", finalTransmission);
+    overlay.classList.toggle("is-intro", state.phase === "ready");
     const endArt = document.getElementById("end-transmission-art");
     if (endArt) endArt.hidden = !finalTransmission;
     startButton.querySelector("span").textContent = "↗";
