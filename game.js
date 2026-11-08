@@ -748,11 +748,14 @@
         hitArchitect(architect);
     }
     const drone=state.supplyDrone;
+    let collectedOvercharge=false;
     if(drone) {
       const rx=drone.x-CX,ry=drone.y-CY;
       if(rx*dx+ry*dy>=24 && rx*dx+ry*dy<=range &&
-          Math.abs(rx*dy-ry*dx)<=RAILGUN_RADIUS+SUPPLY_RADIUS)
+          Math.abs(rx*dy-ry*dx)<=RAILGUN_RADIUS+SUPPLY_RADIUS){
+        collectedOvercharge=drone.kind==="overcharge";
         collectSupplyDrone();
+      }
     }
     // The old Penetrator could shoot down hostile bolts. Retain that advantage.
     state.shots=state.shots.filter(s=>{
@@ -766,7 +769,9 @@
     });
     state.railAngle=angle;
     state.railFlash=RAILGUN_FLASH;
-    state.penCharge=RAILGUN_COOLDOWN;
+    // When this very rail blast collected Overcharge, its instant reset
+    // must win over the railgun's ordinary firing cooldown.
+    state.penCharge=collectedOvercharge?0:RAILGUN_COOLDOWN;
     state.shake=Math.max(state.shake,5.5);
     burst(CX+dx*46,CY+dy*46,"#ffe39c",10,.5);
     // Two layered low-frequency transients, triggered only by each rail shot.
