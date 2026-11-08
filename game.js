@@ -698,7 +698,7 @@
           // Otherwise the closed plate stops shots at the outer 35px radius.
           if (boss && state.bossState==="active" &&
               Math.hypot(s.x-boss.x,s.y-boss.y)<
-                (wardenCoreOpen(boss)?11:35)+s.size) {
+                (wardenCoreOpen(boss)?11:47)+s.size) {
             const core=Math.hypot(s.x-boss.x,s.y-boss.y)<11+s.size;
             if (core && wardenCoreOpen(boss) && boss.guard<=0) {
               boss.hp--;
@@ -1463,19 +1463,19 @@
     ctx.beginPath();
     for(let i=0;i<8;i++){
       const a=i*TAU/8+Math.PI/8;
-      const x=Math.cos(a)*33,y=Math.sin(a)*33;
+      const x=Math.cos(a)*41,y=Math.sin(a)*41;
       if(!i)ctx.moveTo(x,y);else ctx.lineTo(x,y);
     }
     ctx.closePath();ctx.fill();ctx.stroke();
     for(let i=0;i<b.hp;i++) {
       ctx.save();ctx.rotate(i*TAU/3-Math.PI/2);
-      ctx.fillStyle="#bf4b45";ctx.fillRect(19,-6,16,12);
-      ctx.strokeStyle="#ffd39c";ctx.lineWidth=1.4;ctx.strokeRect(19,-6,16,12);
+      ctx.fillStyle="#bf4b45";ctx.fillRect(29,-7,18,14);
+      ctx.strokeStyle="#ffd39c";ctx.lineWidth=1.4;ctx.strokeRect(29,-7,18,14);
       ctx.restore();
     }
     ctx.rotate(b.angle*.65-state.elapsed*.22);
     ctx.fillStyle="#ff4b65";
-    ctx.fillRect(-19,-12,10,4);ctx.fillRect(9,-12,10,4);
+    ctx.fillRect(-22,-16,12,5);ctx.fillRect(10,-16,12,5);
     // Only the exposed cyan core is vulnerable to friendly projectiles.
     ctx.fillStyle=open?"#89ffff":"#8a2d35";
     ctx.strokeStyle=open?"#e0ffff":"#ff785c";ctx.lineWidth=2.5;
