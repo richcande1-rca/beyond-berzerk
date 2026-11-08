@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.15 — Shield Capsule**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.16 — Armored Turret Sprite**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
 
@@ -50,6 +50,14 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - The second barrel appears on the turret after the graduation ceremony, stays unlocked across lost lives, and resets when starting a new normal game. Graduation explicitly announces **REWARD UNLOCKED // TWIN CANNONS**.
 - Test runs starting at Wave 5 or higher automatically include twin cannons, representing Wave 4 graduation. Test Waves 1–4 use the single forward barrel. Test scores never count toward records.
 - Only the new rear barrel and its existing projectile type are added; the visuals avoid additional shadow blurs for performance. No changes to enemy AI, collision walls, hull durability, player lives, or later wave difficulty.
+
+## Custom armored turret — v0.3.16
+
+- The central player cannon uses the approved top-down cyberpunk armored-turret artwork, replacing the old vector-only design. Dark metal plates, a cyan reactor and orange highlights rotate with the existing aim controls.
+- The artwork is a tiny transparent four-frame **WebP sprite atlas (9.2 KB)**: base single-cannon turret plus three independently rendered honeycomb shield segments. A shield segment dims when its charge is depleted, and the shield disappears before it is unlocked.
+- Clearing Wave 4 still deploys a second barrel 180° behind the first, using the same matching cannon artwork. The existing muzzle flash and reactor shimmer are retained without per-frame asset allocations.
+- All collision geometry, projectile origins, player lives, shields and recharge rules, turret rotation speed, bot AI, damage, rewards and scoring remain **unchanged**. The old canvas turret renders automatically if the sprite cannot load.
+- One graphic file loaded once, with no extra assets inside the frame loop, to keep Chromebook rendering light.
 
 ## Wave 4 shield recharge capsule — v0.3.15
 
