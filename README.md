@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.13 — Cyberpunk Identity**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.14 — Cyberpunk Opening Screen**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
 
@@ -13,6 +13,9 @@ This is a static browser game with **no dependencies or build step**. Open `inde
 For an online version, enable GitHub Pages in **Settings → Pages → Build and deployment → Deploy from a branch**, then select **main** and **/(root)**. Once Pages finishes publishing, the game will be at `https://richcande1-rca.github.io/beyond-berzerk/`.
 
 ## Visual design
+
+- **v0.3.14 opening screen:** A compact neon SECURITY BREACH / HOSTILES INBOUND panel joins the existing logo and stage-clear/end-transmission art. The large illustrated START GAME region is a real keyboard-accessible button with a precisely aligned hit area. The background stays dark, and the artwork only applies to the initial opening overlay—not pause, test-complete, or game-over overlays.
+- **Performance/fallback:** The opening art is a small 8.9 KB AVIF loaded as an ordinary image. The existing HTML welcome screen remains visible and playable until the artwork successfully decodes. Combat, wave timing and controls are unchanged.
 
 - **v0.3.13 approved cyberpunk artwork:** The large header is the custom two-line **BEYOND BERZERK** logo in blue/red-orange neon; completed waves display the cyan **STAGE CLEAR** sign above the existing graduation degree, motto and reward; normal game over displays the red **END TRANSMISSION** sign above the score summary.
 - The three approved graphics are cropped from one sheet into a compact, transparent AVIF sprite (`assets/cyberpunk-ui.avif`, about 9 KB). The source is the approved Blade Runner-style illustration, not browser text. No byline or extraneous illustrations appear around the header.
