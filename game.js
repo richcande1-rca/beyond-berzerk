@@ -48,6 +48,7 @@
   const SHIELD_CAPSULE_SPEED = 91, SHIELD_CAPSULE_KILL_THRESHOLD = .90;
   const WARDEN_HP = 3, WARDEN_CYCLE = 3.8;
   const ARCHITECT_HP = 4, ARCHITECT_CYCLE = 5.0;
+  const ARC_CANNON_COOLDOWN = 3.0, ARC_CANNON_RANGE = 92;
   const SHIELD_CAPSULE_RADIUS = 16;
   // One physical rotation speed and acceleration for every aiming method.
   const TURRET_MAX_SPEED = 5.6, TURRET_ACCEL = 25, TURRET_BRAKE = 65;
@@ -126,6 +127,7 @@
       shieldFlash:0, shieldFlashArc:-1, heavyLaser:false,
       wave4DirectKills:0, penetrator:false, penCharge:0,
       railFlash:0, railAngle:0,
+      arcCannon:false, arcCharge:0, arcLinks:[],
       waveElapsed:0, waveTotal:0, shieldCapsule:null, shieldCapsuleSeen:false,
       boss:null, bossState:"none", bossWarning:0, bossDefeated:false, clearBossShots:false,
       architectRingSpins:null,
@@ -234,6 +236,7 @@
     state.heavyLaser = state.wave >= 5;
     state.wave4DirectKills = state.heavyLaser ? HEAVY_KILLS_REQUIRED : 0;
     state.penetrator = state.wave >= 7;
+    state.arcCannon = state.wave >= 9;
     state.testStartWave = state.wave;
     state.toSpawn = state.wave===1 ? 15 : Math.min(120,10+state.wave*5);
     state.waveTotal=state.toSpawn;
@@ -600,17 +603,55 @@
     tone(120,.26,"sawtooth",.09,48);
     tone(510,.19,"triangle",.055,135);
   }
+  function arcPathClear(x1,y1,x2,y2) {
+    const steps=Math.max(1,Math.ceil(Math.hypot(x2-x1,y2-y1)/5));
+    for(let i=1;i<steps;i++){
+      const t=i/steps;
+      if(wallHit(x1+(x2-x1)*t,y1+(y2-y1)*t,2))return false;
+    }
+    return true;
+  }
+  function arcChain(start) {
+    // A special primary shot chains to at most two nearby robots, one at
+    // a time. Every hop checks the actual dynamic walls.
+    const used=new Set();
+    let source=start;
+    for(let hop=0;hop<2;hop++){
+      let target=null,nearest=ARC_CANNON_RANGE;
+      for(const candidate of state.bots){
+        if(used.has(candidate))continue;
+        const d=Math.hypot(candidate.x-source.x,candidate.y-source.y);
+        if(d<nearest && d>2 && arcPathClear(source.x,source.y,candidate.x,candidate.y)) {
+          nearest=d;target=candidate;
+        }
+      }
+      if(!target)break;
+      used.add(target);
+      state.arcLinks.push({x1:source.x,y1:source.y,x2:target.x,y2:target.y,life:.20});
+      if(state.arcLinks.length>12)state.arcLinks.shift();
+      target.hp--;
+      burst(target.x,target.y,"#a9faff",4,.30);
+      tone(770+hop*180,.085,"triangle",.026,1200+hop*50);
+      if(target.hp<=0){
+        const index=state.bots.indexOf(target);
+        if(index>=0)scrap(index,false,"chain");
+      }
+      source={x:target.x,y:target.y};
+    }
+  }
   function firePlayer() {
     const angle=state.aim*Math.PI/4, dx=Math.cos(angle),dy=Math.sin(angle);
     // Normal front and rear streams stay completely unchanged. The railgun
     // is a separate automatic discharge on the regular FIRE cadence.
     const railReady=state.penetrator && state.penCharge<=0;
+    const arcReady=state.arcCannon && state.arcCharge<=0;
+    if(arcReady)state.arcCharge=ARC_CANNON_COOLDOWN;
     const damage=state.heavyLaser?2:1;
     const color=state.heavyLaser?"#dbadff":"#ecfdff";
     state.shots.push({x:CX+dx*27,y:CY+dy*27,
       vx:dx*610,vy:dy*610,life:.7,friendly:true,size:3.3,
-      color,damage,penetrating:false});
-    burst(CX+dx*28,CY+dy*28,"#90faff",2,.15);
+      color:arcReady?"#92eeff":color,damage,penetrating:false,arc:arcReady});
+    burst(CX+dx*28,CY+dy*28,arcReady?"#c0ffff":"#90faff",2,.15);
     if(state.twinCannons){
       state.shots.push({x:CX-dx*27,y:CY-dy*27,
         vx:-dx*610,vy:-dy*610,life:.7,friendly:true,size:3.3,
@@ -855,6 +896,7 @@
               burst(s.x,s.y,s.penetrating?"#ffe9ab":"#ffffff",4,.27);
               if (b.hp<=0) scrap(k,false);
               else tone(170,.07,"triangle",.025,110);
+              if(s.arc)arcChain({x:b.x,y:b.y});
               if (!s.penetrating) {hit=true;break;}
               // A Penetrator continues through the rest of the swarm.
               // Its lethal damage removes each bot immediately, so none can
@@ -1134,6 +1176,10 @@
           state.penetrator=true;
           state.penCharge=0;
         }
+        if (state.wave===9) {
+          state.arcCannon=true;
+          state.arcCharge=0;
+        }
         state.toSpawn=Math.min(120,10+state.wave*5);
         state.waveTotal=state.toSpawn;
         state.spawnClock=.35;
@@ -1147,7 +1193,8 @@
         const gained=state.wave===4?" — SHIELD ONLINE":
           state.wave===5?" — TWIN CANNONS ONLINE"+
             (state.heavyLaser?" + HEAVY LASER ONLINE":""):
-          state.wave===7?" — RAILGUN ONLINE":"";
+          state.wave===7?" — RAILGUN ONLINE":
+          state.wave===9?" — ARC CANNON ONLINE":"";
         setStatus("WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName()+gained);
         if (state.wave%3===0) state.rings.forEach((ring,i)=>{
           ring.reverseClock=Math.min(ring.reverseClock,2+i*1.3);
@@ -1204,6 +1251,11 @@
       }
     } else state.shieldRegen=0;
     if(state.penetrator) state.penCharge=Math.max(0,state.penCharge-dt);
+    if(state.arcCannon) state.arcCharge=Math.max(0,state.arcCharge-dt);
+    for(let i=state.arcLinks.length-1;i>=0;i--){
+      state.arcLinks[i].life-=dt;
+      if(state.arcLinks[i].life<=0)state.arcLinks.splice(i,1);
+    }
     state.railFlash=Math.max(0,state.railFlash-dt);
     state.fireClock-=dt;
     state.announceClock=Math.max(0,state.announceClock-dt);
@@ -1790,6 +1842,23 @@
     ctx.fillText("S",0,0);
     ctx.restore();
   }
+  function drawArcLinks() {
+    if(!state.arcLinks.length)return;
+    ctx.save();ctx.lineCap="round";
+    for(const a of state.arcLinks){
+      const alpha=Math.max(0,a.life/.20);
+      ctx.globalAlpha=alpha;
+      ctx.strokeStyle="#55bcf4";ctx.lineWidth=5;
+      ctx.beginPath();ctx.moveTo(a.x1,a.y1);
+      ctx.lineTo(a.x2,a.y2);ctx.stroke();
+      ctx.strokeStyle="#f0ffff";ctx.lineWidth=1.7;
+      ctx.beginPath();ctx.moveTo(a.x1,a.y1);
+      const mx=(a.x1+a.x2)/2,my=(a.y1+a.y2)/2;
+      ctx.lineTo(mx-3*Math.sin(state.elapsed*23),my+3*Math.cos(state.elapsed*21));
+      ctx.lineTo(a.x2,a.y2);ctx.stroke();
+    }
+    ctx.restore();
+  }
   function drawRailBlast() {
     if(state.railFlash<=0)return;
     const fade=Math.min(1,state.railFlash/RAILGUN_FLASH);
@@ -2204,16 +2273,25 @@
     else if(state.penetrator)
       label(state.penCharge<=0?"RAILGUN READY":"RAIL "+state.penCharge.toFixed(1)+"s",
         380,705,13,"#ffdb71");
+    if(state.arcCannon)
+      label(state.arcCharge<=0?"ARC READY":"ARC "+state.arcCharge.toFixed(1)+"s",
+        570,705,12,"#9cf6ff");
     else if(state.heavyLaser)
       label("HEAVY LASER",380,705,13,"#dbadff");
-    if(state.wave===4 && (state.bossState==="warning" || state.bossState==="entering"))
-      label("WARDEN INBOUND",W-26,706,16,"#ff7b67","right");
+    if((state.wave===4 || state.wave===8) &&
+        (state.bossState==="warning" || state.bossState==="entering"))
+      label(state.wave===8?"ARCHITECT INBOUND":"WARDEN INBOUND",
+        W-26,706,15,"#ff7b67","right");
+    else if(state.boss?.type==="architect")
+      label("ARCHITECT "+state.boss.hp+"/"+ARCHITECT_HP+
+        (architectCoreOpen(state.boss)?" CORE OPEN":" SEALED"),
+        W-26,706,13,architectCoreOpen(state.boss)?"#a7faff":"#e8acff","right");
     else if(state.boss)
       label("WARDEN "+state.boss.hp+"/"+WARDEN_HP+
         (wardenCoreOpen(state.boss)?" CORE OPEN":" ARMORED"),
         W-26,706,14,wardenCoreOpen(state.boss)?"#8ffaff":"#ffae8c","right");
-    else if(state.wave===4 && state.bossDefeated)
-      label("WARDEN DOWN",W-26,706,15,"#88ffdf","right");
+    else if((state.wave===4 || state.wave===8) && state.bossDefeated)
+      label(state.wave===8?"ARCHITECT DOWN":"WARDEN DOWN",W-26,706,15,"#88ffdf","right");
     else label("ROBOTS: "+String(state.bots.length+state.toSpawn).padStart(2,"0"),
       W-26,706,17,"#f8d89b","right");
     if(state.comboClock>0)label("CHAIN x"+state.combo,655,705,15,"#ffa3c9","center");
@@ -2320,6 +2398,7 @@
           "UNLOCKED // TWIN CANNONS + HEAVY LASER":
           "TWIN CANNONS // LASER "+state.wave4DirectKills+"/"+HEAVY_KILLS_REQUIRED+" DIRECT KILLS":
         state.wave===6?"REWARD UNLOCKED // RAILGUN":
+        state.wave===8?"REWARD UNLOCKED // ARC CANNON":
         "NEXT CLASS // WAVE "+String(state.wave+1).padStart(2,"0");
       ctx.fillText(reward,0,y+(artReady?128:169));
     } else {
@@ -2344,7 +2423,7 @@
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
     const visual=visualEvolution();
     drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
-    drawShockwaves();drawBots();drawShieldCapsule();drawWarden();drawShots();drawRailBlast();drawParticles();drawImpacts();drawTurret();
+    drawShockwaves();drawBots();drawShieldCapsule();drawWarden();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();
     // The perimeter alarm flashes during the warning and the boss entry.
     if(state.wave===4 && (state.bossState==="warning" || state.bossState==="entering") &&
         Math.floor(state.elapsed*5)%2===0) {
