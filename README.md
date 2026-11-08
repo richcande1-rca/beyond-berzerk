@@ -2,9 +2,9 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.19 — Warden Visual Upgrade**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.20 — Automatic Railgun**.
 
-You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
+You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
 
 ## Play
 
@@ -89,13 +89,21 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - Only **one capsule appears** in Wave 4. If it exits uncollected, it does not respawn. If the robots are already gone, the boss warning waits until the capsule has either been hit or finished crossing. The capsule is cleaned up at the next wave transition and works in normal runs or Test Wave 4.
 - The shield still unlocks from clearing Wave 3. The robot mix, wall physics, weapon damage, shield regeneration and existing graduation reward requirements remain unchanged.
 
-## Graduated arsenal — v0.3.11
+## Automatic Railgun — v0.3.20
+
+- **Wave 6 graduation unlocks the Railgun for Wave 7 onward**, replacing the earlier underwhelming Penetrator shot. There is no separate weapon button, no manual charging, and no waiting to fire: while holding the existing FIRE button or Space, the turret automatically discharges every **4.5 seconds** when ready.
+- **Full-length electrical gold blast.** An immediate ray tears through all rotating walls, deals 3 damage once to each robot in its path (including heavy armored bots), and clears hostile projectiles along the beam. The blast uses a visible 0.24-second gold/white-hot streak, a brief muzzle bloom, audible two-part discharge and more pronounced recoil.
+- **The ordinary weapon stream is preserved.** The front cannon still fires its normal or Heavy Laser shots, and the rear twin cannon still fires alongside it. The Railgun is an additional blast, not a replacement for a regular bullet. The existing .115-second normal firing cadence and turret rotation physics do not change.
+- A gold coil on the sprite indicates readiness. The HUD now reads **RAILGUN READY** when charged or **RAIL X.Xs** while recharging, replacing the unclear `PEN READY`. The Wave 6 diploma says **RAILGUN**.
+- No new sprites, particle streams, rendering blur filters or dependencies. The Railgun's ray is a few canvas strokes and one bounded on-fire collision pass, preserving the Chromebook performance budget. Test Wave 7 starts equipped; no changes to earlier waves, shields, the Warden or the scoring model.
+
+## Graduated arsenal — v0.3.11 (historical rules; Railgun updated in v0.3.20)
 
 - **Wave 4 clear: Twin Cannons.** The simultaneous front/back firing upgrade now arrives in Wave 5 instead of Wave 2. Wave 1–4 use only the front cannon.
 - **Wave 3 clear: Rechargeable shield.** Unlocks a separate three-charge cyan shield around the turret for Wave 4 onward. Each charge absorbs one hostile projectile; each hit resets the recharge timer. After six uninterrupted seconds, one charge regenerates, repeating until all three are restored. The existing 0.5-second projectile grace applies. Direct robot contact still costs a full life and bypasses the shield; surviving lives begin with a fully charged shield. Existing three-hit hull durability remains unchanged.
 - **Wave 4 participation challenge: Heavy Laser.** Land **at least eight direct weapon kills during Wave 4**, then graduate to unlock double-damage shots in Wave 5, when the twin cannons also arrive. Armored bots take one hit. Kills from moving walls and chain reactions do not count; the Wave 4 HUD displays the direct-kill counter. Without eight direct kills, the twin cannons are still awarded, but the Heavy Laser is not.
-- **Wave 6 clear: Penetrator Cannon.** From Wave 7 onward, every 4.5 seconds the next manually aimed **front-cannon shot** is a gold Penetrator. It crosses all wall segments, destroys multiple robots, including armored ones, and can destroy hostile projectiles without disappearing. The rear cannon continues firing normal or Heavy Laser shots. Firing rate and number of projectiles per salvo are unchanged.
-- **Test Mode:** Starting at Wave 4 includes the shield but not twin cannons. Starting at Wave 5 or higher simulates earning both twin cannons and the Heavy Laser; Wave 7 or higher starts with a charged Penetrator. Starting on Wave 4 still requires the direct-kill challenge to earn Heavy Laser for Wave 5, but earns twin cannons regardless. Test scores remain separate.
+- **Wave 6 clear: Railgun.** Originally a periodic Penetrator projectile; superseded in v0.3.20 by the automatic full-arena gold Railgun blast described above. The original front and rear cannon shots continue firing, and the normal firing cadence is unchanged.
+- **Test Mode:** Starting at Wave 4 includes the shield but not twin cannons. Starting at Wave 5 or higher simulates earning both twin cannons and the Heavy Laser; Wave 7 or higher starts with a ready Railgun. Starting on Wave 4 still requires the direct-kill challenge to earn Heavy Laser for Wave 5, but earns twin cannons regardless. Test scores remain separate.
 - **Performance:** The original upgrades use simple arc and stroke drawing without new shadow blur; the rear-barrel shot begins in Wave 5 rather than Wave 2. This release does not claim to resolve previously reported Wave 5 lag.
 
 ## Evolving wall architecture — v0.3.10
@@ -138,8 +146,8 @@ Select **TEST WAVE** in the status bar (default Wave 4; any integer from 1 throu
 - Independent rings occasionally reverse direction, with a short amber warning. Corridors also contract and expand in later waves.
 - **Sector Spectacle:** Wave 1 starts in classic navy; Wave 2 switches to a bold cyan RADAR sweep; Wave 3 unveils a violet PRISM lattice; Wave 4 turns into an amber REACTOR; Wave 5 becomes an emerald VECTOR tunnel; Wave 6 forms icy PHANTOM gears and faint ghost rings; Wave 7 reveals a purple KALEIDOSCOPE; Wave 8 pulses with golden energy waves; Wave 9+ enters the magenta COSMOS field. The wallpaper remains decorative, but the walls themselves now have distinctive per-wave layouts and physically matching hitboxes.
 - Visual intensity starts meaningfully at Wave 2 instead of near-invisible: exponentially increasing detail through Wave 9, then capped draw counts for Chromebook performance. Waves beyond 9 continue shifting hue/rhythm without piling on geometry. Each cleared sector gets a radiant victory transition and a themed incoming-wave reveal. As of v0.3.10, the real wall layouts and their collision footprints also change by wave; projectiles, robot AI, and equipment keep their existing mechanics.
-- Normal player shots and enemy shots collide with the first wall they hit; charged Penetrator shots pass through walls and expire at the outer arena boundary.
-- Turret lasers can intercept hostile projectiles in flight. Regular shots and enemy shots both vanish in a cyan-white spark; charged Penetrator shots destroy hostile shots but continue flying. Manual aiming is required and interceptions award no bonus points.
+- Normal player shots and enemy shots collide with the first wall they hit; the automatic Railgun ray ignores the wall geometry and reaches the arena perimeter.
+- Turret lasers can intercept hostile projectiles in flight. Regular shots and enemy shots both vanish in a cyan-white spark; the Railgun destroys hostile shots along its beam without losing power. Aiming is still manual; interceptions award no bonus points.
 - Moving walls can scrap robots. Wall kills score fewer points than turret kills.
 - Normal robots: 100 points. Armored robots: 180. Chain kill: 140. Wall kill: 40. Completed wave: +500.
 - Firing now has a brighter muzzle flash, layered laser trails, and sparkling wall impacts.
@@ -167,7 +175,7 @@ The circular arena is now centered within the space between the top and bottom H
 - **Rendering optimization — v0.3.3:** Removes costly per-robot and per-projectile shadow blur, removes blurred particle impact and shockwave strokes, reduces two moving-wall echo paths to one, batches the arena grid into one path, and caches radial gradients per sector/mode. Preserves crisp laser cores and solid robot silhouettes. Wave 4/5 performance still needs real-device validation. The shield and upgraded projectiles were introduced in v0.3.9; further cannons remain unimplemented.
 - **Signal Clarity — v0.3.2:** Reduced arena wallpaper opacity, softened perimeter/wall halos, lowered translucent ghost-ring and wall-trail strength, and restrained the damage flash. Kept the unique geometric composition and colors for each wave. HUD instruments now have opaque dark rails, sharp Oxanium readouts, pale high-contrast numbers and dividers, and zero text bloom. Wave announcements and sector-clear rewards use crisp text on compact dark plates placed above the turret instead of glowing over its center. Wall warning colors, collisions, AI, combat and controls are unchanged. Preserve this contrast and center space when adding future turret defenses and weapons.
 - **Visual reward pass — implemented in v0.3.1:** Earlier v0.3.0 visuals were too faint in Waves 2–3. New signature palettes and geometry start at Wave 2, with a sector-clear celebration and wave-introduction effect. Field art is behind the combat layer, and the center of the decorative field stays clear for the player turret.
-- **Future turret equipment:** Additional powerups, cannons and defensive systems beyond Twin Cannons, the three-charge shield, Heavy Laser and Penetrator require separate discussion and explicit approval. Preserve visual contrast, screen space and the performance budget.
+- **Future turret equipment:** Additional powerups, cannons and defensive systems beyond Twin Cannons, the three-charge shield, Heavy Laser and Railgun require separate discussion and explicit approval. Preserve visual contrast, screen space and the performance budget.
 
 ## First-contact scope
 
