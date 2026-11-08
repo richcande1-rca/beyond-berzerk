@@ -15,6 +15,10 @@
   // One compact asset is loaded once; the prior canvas boss remains fallback.
   const wardenArt = typeof Image === "function" ? new Image() : null;
   if (wardenArt) wardenArt.src = "./assets/warden-sprite.webp?v=0.3.19";
+  // Six actual transparent 144x144 frames: Architect phases 1–3, sealed/open.
+  // Decoded once; the original animated canvas spider remains fallback.
+  const architectArt = typeof Image === "function" ? new Image() : null;
+  if (architectArt) architectArt.src = "./assets/architect-atlas.webp?v=0.3.22";
   const overlay = document.getElementById("overlay");
   const introArt = document.getElementById("intro-art");
   // Keep the original, accessible opening panel if the artwork is unavailable.
@@ -1725,7 +1729,56 @@
         !["entering","active"].includes(state.bossState))return;
     const b=state.boss,open=architectCoreOpen(b);
     ctx.save();ctx.translate(b.x,b.y);
-    // Four articulated, sweeping siege arms: visibly distinct from the Warden.
+    // Use the six-frame sprite sheet, exactly as with the Warden. Each cell
+    // has its reactor centered on this same existing collision position.
+    // The original canvas spider below remains available until the WebP loads.
+    if (architectArt && architectArt.complete &&
+        architectArt.naturalWidth===864 && architectArt.naturalHeight===144) {
+      ctx.save();
+      ctx.rotate(b.angle*.34+Math.sin(state.elapsed*.9)*.12);
+      const unit=144, frame=(Math.min(3,Math.max(1,b.phase))-1)*2;
+      const size=160, offset=-80;
+      ctx.drawImage(architectArt,frame*unit,0,unit,unit,
+        offset,offset,size,size);
+      if(open){
+        // The shutter opens and closes smoothly, without changing the
+        // five-second vulnerability window or the real 14px core hitbox.
+        const clock=b.age%ARCHITECT_CYCLE;
+        const reveal=clamp(Math.min((clock-1.05)/.18,
+          (3.5-clock)/.18),0,1);
+        if(reveal>0) {
+          ctx.save();
+          ctx.globalAlpha*=reveal;
+          ctx.drawImage(architectArt,(frame+1)*unit,0,unit,unit,
+            offset,offset,size,size);
+          ctx.restore();
+        }
+        ctx.save();
+        ctx.globalAlpha*=.40+.50*reveal;
+        ctx.strokeStyle="#f4a4ff";ctx.lineWidth=1.7;
+        ctx.beginPath();ctx.arc(0,0,17+1.8*Math.sin(state.elapsed*9),0,TAU);
+        ctx.stroke();ctx.restore();
+      }
+      // Telegraphing still comes from the four limbs during wall overrides.
+      if(b.phase>=2 && b.reverseWarning>0 &&
+          Math.floor(state.elapsed*9)%2===0){
+        ctx.save();
+        ctx.globalAlpha*=.32+.30*b.reverseWarning;
+        ctx.strokeStyle="#ee9aff";ctx.lineWidth=1.4;
+        for(let k=0;k<4;k++){
+          const a=k*TAU/4+Math.PI/4;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a)*65,Math.sin(a)*65);
+          ctx.lineTo(Math.cos(a)*(R-18),Math.sin(a)*(R-18));
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      ctx.restore();
+      ctx.restore();
+      return;
+    }
+    // Four articulated, sweeping siege arms: visually distinct from the Warden.
     ctx.rotate(b.angle*.34+Math.sin(state.elapsed*.9)*.12);
     for(let i=0;i<4;i++){
       const a=i*TAU/4+Math.PI/4;
