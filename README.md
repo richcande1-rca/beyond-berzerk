@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.21 — The Architect**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.22 — Architect Sprite Upgrade**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
 
@@ -88,6 +88,14 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - A direct hit instantly restores the rechargeable shield to **3/3**, resets its regeneration timer and displays a short status/sound effect. The capsule consumes the collecting shot, but grants no score or robot kills and does not count toward Wave 4's Heavy Laser direct-kill challenge.
 - Only **one capsule appears** in Wave 4. If it exits uncollected, it does not respawn. If the robots are already gone, the boss warning waits until the capsule has either been hit or finished crossing. The capsule is cleaned up at the next wave transition and works in normal runs or Test Wave 4.
 - The shield still unlocks from clearing Wave 3. The robot mix, wall physics, weapon damage, shield regeneration and existing graduation reward requirements remain unchanged.
+
+## Architect boss sprite — v0.3.22
+
+- Replaced the Architect's procedural-only canvas body with a **real six-frame transparent WebP sprite atlas** (`assets/architect-atlas.webp`, 864×144, approximately 60 KB) made from approved industrial-cyberpunk boss concept artwork.
+- Three damage phases each have a **sealed** and an **exposed violet-core** frame. The central visor, asymmetric articulated siege legs, hazard-stripe plates and accumulating mechanical destruction remain readable at gameplay size.
+- The reactor shutters cross-fade over 0.18 seconds at the existing five-second vulnerability rhythm, with a small overlay ring aligned to the real center of the core. A subtle warning signal still draws from the arms when the Architect takes control of the walls.
+- The image is decoded once and drawn with ordinary canvas sprite cropping; no new frames or textures are allocated during play. If WebP is unsupported or the asset hasn't loaded, the **original procedural Architect art remains the fallback**.
+- **Presentation-only:** No changes to the Architect's four hits, actual hitbox, core timing, AI, arena reversals, projectile damage, movement, score or Wave 9 Arc Cannon reward. The Warden remains unchanged.
 
 ## Wave 8 — The Architect, v0.3.21
 
