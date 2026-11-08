@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.16 — Armored Turret Sprite**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.17 — Living Turret**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
 
@@ -50,6 +50,12 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - The second barrel appears on the turret after the graduation ceremony, stays unlocked across lost lives, and resets when starting a new normal game. Graduation explicitly announces **REWARD UNLOCKED // TWIN CANNONS**.
 - Test runs starting at Wave 5 or higher automatically include twin cannons, representing Wave 4 graduation. Test Waves 1–4 use the single forward barrel. Test scores never count toward records.
 - Only the new rear barrel and its existing projectile type are added; the visuals avoid additional shadow blurs for performance. No changes to enemy AI, collision walls, hull durability, player lives, or later wave difficulty.
+
+## Living turret effects — v0.3.17
+
+- **Reactor heartbeat:** A slower, gentle cyan core brightness pulse gets a brief additional boost when the weapon fires. Two tiny status LEDs on the armor blink at different, nonsynchronized intervals (cyan and amber).
+- **Shield reactions:** The spent shield segment briefly shimmers after an absorbed projectile; passive recharge lights the restored segment; a collected shield capsule briefly illuminates all three segments. Initial unlock and life-restoration also receive a brief shimmer. All effects are rendered directly over the existing sprite sheet.
+- **Lightweight and visual only:** No new textures, animations, particles, timers in the browser, glow filters, or game mechanics. The short shield animation uses a state countdown and only overdraws its arc images for approximately half a second. Physics, firing, aiming, hitboxes, shields, upgrades, audio and scoring are unchanged. The legacy canvas turret still works if WebP fails to decode.
 
 ## Custom armored turret — v0.3.16
 
