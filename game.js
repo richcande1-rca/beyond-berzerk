@@ -1749,9 +1749,10 @@
       ctx.strokeStyle=damaged?"#ff8866":"#e4baff";ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(dx*reach+nx*3,dy*reach+ny*3,damaged?6:10,0,TAU);ctx.stroke();
       if(!damaged && b.phase>=2 && b.reverseWarning>0){
+        // Telegraph control beams from intact arms toward the outer ring.
         ctx.strokeStyle="#f797ff";ctx.lineWidth=1.4;
         ctx.beginPath();ctx.moveTo(dx*reach,dy*reach);
-        ctx.lineTo(dx*(R-b.entry*0)+nx*7,dy*(R-b.entry*0)+ny*7);ctx.stroke();
+        ctx.lineTo(dx*(R-24)+nx*7,dy*(R-24)+ny*7);ctx.stroke();
       }
     }
     ctx.rotate(-b.angle*.34-Math.sin(state.elapsed*.9)*.12);
@@ -1786,12 +1787,13 @@
         ctx.stroke();
       }
     }
-    // The vulnerable reactor has an unmistakable pale-violet inner bullseye.
-    ctx.fillStyle=open?"#85f6ff":"#59214b";
-    ctx.strokeStyle=open?"#e9ffff":"#f195e8";ctx.lineWidth=3;
+    // The vulnerable reactor flashes vivid violet, visually distinct
+    // from the Warden's cyan weak point and the player's energy shield.
+    ctx.fillStyle=open?"#d7a1ff":"#59214b";
+    ctx.strokeStyle=open?"#ffffff":"#f195e8";ctx.lineWidth=3;
     ctx.beginPath();ctx.arc(0,0,14,0,TAU);ctx.fill();ctx.stroke();
     if(open){
-      ctx.strokeStyle="#b4ffff";ctx.lineWidth=2;
+      ctx.strokeStyle="#f5c7ff";ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(0,0,20+2*Math.sin(state.elapsed*8),0,TAU);ctx.stroke();
       ctx.fillStyle="#ffffff";
       ctx.beginPath();ctx.arc(0,0,5,0,TAU);ctx.fill();
@@ -2372,7 +2374,7 @@
     else if(state.boss?.type==="architect")
       label("ARCHITECT "+state.boss.hp+"/"+ARCHITECT_HP+
         (architectCoreOpen(state.boss)?" CORE OPEN":" SEALED"),
-        W-26,706,13,architectCoreOpen(state.boss)?"#a7faff":"#e8acff","right");
+        W-26,706,13,architectCoreOpen(state.boss)?"#f3b9ff":"#e8acff","right");
     else if(state.boss)
       label("WARDEN "+state.boss.hp+"/"+WARDEN_HP+
         (wardenCoreOpen(state.boss)?" CORE OPEN":" ARMORED"),
