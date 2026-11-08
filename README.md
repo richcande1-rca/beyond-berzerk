@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.25 — Random Supply Drops**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.26 — Repairs, Overcharge & Extra Lives**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
 
@@ -12,9 +12,17 @@ This is a static browser game with **no dependencies or build step**. Open `inde
 
 For an online version, enable GitHub Pages in **Settings → Pages → Build and deployment → Deploy from a branch**, then select **main** and **/(root)**. Once Pages finishes publishing, the game will be at `https://richcande1-rca.github.io/beyond-berzerk/`.
 
+## Repairs, Overcharge and Score Lives — v0.3.26
+
+- **Classic score milestone lives:** Starting with three lives, earn one extra life at **15,000**, **30,000**, **45,000**, **60,000**, and every additional 15,000 points indefinitely. Each milestone pays out **once per run**, including test runs. The maximum reserve is **five lives**; thresholds reached while already at five are consumed rather than banked. Losing a life later allows another life at the *next* score threshold. A distinct **EXTRA LIFE!** announcement, multi-note fanfare and celebration mark each awarded life. All five life icons fit the existing top-right HUD.
+- **Green Hull Repair drone (~20% of supply crossings):** Identifiable by a bright green medical cross instead of the gold mystery question mark. Shoot it to restore the **hull to 3/3**, without adding shields or lives. If hull is already full, it awards **250 points** instead; those points count normally toward extra-life milestones and high scores.
+- **Rare blue Overcharge drone (~10% of crossings from Wave 4 onward):** Identifiable by a blue lightning bolt. Shooting it immediately refills all **three rechargeable shield charges**, resetting shield regeneration, and instantly readies the **Railgun if it has already been unlocked** (Wave 7 onward). It never unlocks restricted equipment early. A Railgun shot that collects an Overcharge drone is itself immediately recharged rather than having its cooldown overwritten.
+- **Gold mystery drones still provide** Triple Threat (10s), Guardian Drones (12s), or Stasis Field (8s). Repair and Overcharge are **instant** and never cancel a running temporary ability. All five types use the existing single-supply-at-a-time system, shoot-to-collect rules, wall-phasing flight, pause behavior and randomized arrival times.
+- All scoring, rewards and visuals use simple frame updates and canvas shapes; no new buttons, downloads or dependencies. The permanent twin cannons, Heavy Laser, Railgun, Arc Cannon, bosses and sector artwork remain intact.
+
 ## Random Supply Drops — v0.3.25
 
-- **A gold question-mark supply drone occasionally crosses the arena**, flying through rotating walls like the Wave 4 shield capsule. The timing, travel direction, altitude and reward are randomized. Shoot it with a normal player laser or an automatic Railgun beam to collect it; it is never acquired by merely waiting and cannot be collected by enemy shots. A missed drone exits naturally, with another random delay before a new one can appear. Only one supply drone is present at a time; drops pause during wave clear and boss warning/entry, but can appear during an active boss fight.
+- **A gold question-mark supply drone occasionally crosses the arena** (with new green Repair and blue Overcharge variants added in v0.3.26), flying through rotating walls like the Wave 4 shield capsule. The timing, travel direction, altitude and reward are randomized. Shoot it with a normal player laser or an automatic Railgun beam to collect it; it is never acquired by merely waiting and cannot be collected by enemy shots. A missed drone exits naturally, with another random delay before a new one can appear. Only one supply drone is present at a time; drops pause during wave clear and boss warning/entry, but can appear during an active boss fight.
 - **Triple Threat (10 seconds):** The original front (and, after Wave 4, rear) cannon fires a three-shot spread on the ordinary FIRE rhythm. This means three streams before twin cannons, six with both cannons; the original center shot still carries a charged Arc Cannon round when available. All six remain blocked by real walls, while the Railgun continues firing independently. No new button.
 - **Guardian Drones (12 seconds):** Two turquoise satellites orbit the central turret and automatically seek nearby ordinary robots, firing at most two additional small bullets per 0.43 seconds. They do not shoot through actual walls or target bosses. Guardian kills do not count toward Wave 4's direct-player-shot Heavy Laser qualification; ordinary weapons still do.
 - **Stasis Field (8 seconds):** Enemy robot movement, panic motion, and firing frequency slow to **36%** speed; all hostile projectiles currently in flight and newly fired are also slowed to 36%, with interception/path physics adjusted to match. Friendly bullets, Railgun, turret rotation, walls, bosses' movement/reversal logic and recharge systems stay at full speed.
