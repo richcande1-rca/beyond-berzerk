@@ -115,7 +115,8 @@
     return {
       phase:"ready", elapsed:0, modeIndex:0, modeClock:0,
       wave:1, testMode:false, testStartWave:1, score:0, high:highScore(), lives:3, hull:HULL_CAPACITY, shotGrace:0, twinCannons:false,
-      shieldUnlocked:false, shieldCharges:0, shieldRegen:0, heavyLaser:false,
+      shieldUnlocked:false, shieldCharges:0, shieldRegen:0,
+      shieldFlash:0, shieldFlashArc:-1, heavyLaser:false,
       wave4DirectKills:0, penetrator:false, penCharge:0,
       waveElapsed:0, shieldCapsule:null, shieldCapsuleSeen:false,
       aim:6, aimTarget:null, aimVelocity:0,
@@ -131,6 +132,11 @@
   let state = makeState();
 
   function setStatus(message) { statusMessage.textContent = state.testMode ? "TEST // "+message : message; }
+  function flashShield(arc=-1,seconds=.45) {
+    // Graphics-only timer: -1 flashes all live arcs, or a single gained/lost arc.
+    state.shieldFlash=seconds;
+    state.shieldFlashArc=arc;
+  }
   function showOverlay(title, message, button, eyebrow) {
     overlayTitle.textContent = title;
     overlayText.innerHTML = message;
@@ -451,6 +457,7 @@
       if (state.shieldUnlocked && state.shieldCharges>0) {
         state.shieldCharges--;
         state.shieldRegen=0; // Six uninterrupted seconds to regrow one charge.
+        flashShield(state.shieldCharges,.45); // Briefly illuminate the spent arc.
         state.shotGrace=SHOT_GRACE_SECONDS;
         state.flash=.08;state.shake=Math.max(state.shake,3);
         burst(CX,CY,"#57fdff",10,.45);
@@ -470,7 +477,10 @@
     }
     state.lives--;
     state.hull=HULL_CAPACITY;
-    if (state.shieldUnlocked) state.shieldCharges=SHIELD_MAX;
+    if (state.shieldUnlocked) {
+      state.shieldCharges=SHIELD_MAX;
+      flashShield(-1,.45);
+    }
     state.shieldRegen=0;
     state.shotGrace=0;
     state.invuln=3.5; // Preserve existing post-death invulnerability.
@@ -671,6 +681,7 @@
             state.shieldCapsule=null;
             state.shieldCharges=SHIELD_MAX;
             state.shieldRegen=0;
+            flashShield(-1,.55); // Shield pickup gives a quick three-arc ripple.
             state.announce="SHIELDS RECHARGED // 3/3";
             state.announceClock=1.8;
             setStatus("SHIELD CAPSULE HIT — SHIELDS FULL");
@@ -767,6 +778,7 @@
           state.shieldUnlocked=true;
           state.shieldCharges=SHIELD_MAX;
           state.shieldRegen=0;
+          flashShield(-1,.50);
         }
         if (state.wave===5 && state.wave4DirectKills>=HEAVY_KILLS_REQUIRED)
           state.heavyLaser=true;
@@ -839,6 +851,7 @@
       if(state.shieldRegen>=SHIELD_REGEN_SECONDS) {
         state.shieldCharges++;
         state.shieldRegen-=SHIELD_REGEN_SECONDS;
+        flashShield(state.shieldCharges-1,.45); // One restored shield segment.
       }
     } else state.shieldRegen=0;
     if(state.penetrator) state.penCharge=Math.max(0,state.penCharge-dt);
@@ -849,6 +862,7 @@
     state.shake=Math.max(0,state.shake-dt*22);
     state.turretKick=Math.max(0,state.turretKick-dt*10);
     state.muzzleFlash=Math.max(0,state.muzzleFlash-dt);
+    state.shieldFlash=Math.max(0,state.shieldFlash-dt);
     state.comboClock=Math.max(0,state.comboClock-dt);
     if (!state.comboClock) state.combo=0;
     if ((keys.has(" ")||keys.has("Enter")||pointerFiring||buttonFiring) && state.fireClock<=0) {
@@ -1414,15 +1428,45 @@
         ctx.drawImage(turretArt,(i+1)*fw,0,fw,fh,x,y,w,h);
         ctx.restore();
       }
+      // Half-second shield shimmer after an impact, recharge or unlock.
+      // Only a small sprite overdraw while the timer is active; no particles.
+      if (state.shieldFlash>0) {
+        const flicker=.35+.65*Math.abs(Math.sin(state.elapsed*34));
+        ctx.save();
+        ctx.globalAlpha*=Math.min(1,state.shieldFlash/.45)*(.16+.35*flicker);
+        ctx.globalCompositeOperation="lighter";
+        for (let i=0;i<SHIELD_MAX;i++) {
+          if (i===state.shieldFlashArc ||
+              (state.shieldFlashArc===-1 && i<state.shieldCharges))
+            ctx.drawImage(turretArt,(i+1)*fw,0,fw,fh,x,y,w,h);
+        }
+        ctx.restore();
+      }
     }
-    // Gentle reactor shimmer, with no extra geometry or hitbox.
+    // Slow breathing reactor; briefly surges when the cannon fires.
+    // Small flat circles, no per-frame glow filters or shadow blurs.
+    const firingSurge=Math.min(1,state.turretKick);
     ctx.save();
-    ctx.globalAlpha*=.35+.45*pulse;
-    ctx.fillStyle="#adffff";
+    ctx.globalAlpha*=.13+.26*pulse+.21*firingSurge;
+    ctx.fillStyle="#50f4ff";
     ctx.beginPath();
-    ctx.arc(-8.8,.8,2.3+pulse,0,TAU);
+    ctx.arc(-8.8,.8,5.3+1.6*pulse+1.3*firingSurge,0,TAU);
     ctx.fill();
     ctx.restore();
+    ctx.save();
+    ctx.globalAlpha*=.30+.30*pulse+.33*firingSurge;
+    ctx.fillStyle="#ecffff";
+    ctx.beginPath();
+    ctx.arc(-8.8,.8,2.0+.6*pulse+.5*firingSurge,0,TAU);
+    ctx.fill();
+    ctx.restore();
+    // Two chassis indicators use different fixed cycles, not synchronized.
+    const cyanOn=state.elapsed%1.70<.24;
+    const amberOn=(state.elapsed+.47)%2.35<.18;
+    ctx.fillStyle=cyanOn?"#9affff":"#184751";
+    ctx.beginPath();ctx.arc(-26,-22,cyanOn?2.2:1.4,0,TAU);ctx.fill();
+    ctx.fillStyle=amberOn?"#ffc176":"#55371e";
+    ctx.beginPath();ctx.arc(-23,23,amberOn?2.2:1.4,0,TAU);ctx.fill();
     if (state.muzzleFlash>0) {
       const power=state.muzzleFlash/.07;
       for(const side of (state.twinCannons?[0,Math.PI]:[0])) {
@@ -1446,7 +1490,7 @@
   }
   function drawTurret() {
     const angle = state.aim * Math.PI / 4;
-    const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 5.2);
+    const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 2.65);
     const kick = state.turretKick * 8;
     const blink = state.phase==="playing" && state.invuln>0 &&
       Math.floor(state.elapsed*13)%2===0;
