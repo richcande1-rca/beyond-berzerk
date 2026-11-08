@@ -694,8 +694,11 @@
             hit=true;break;
           }
           const boss=state.boss;
+          // When cyan, the outer armor opens a clear path to the reactor.
+          // Otherwise the closed plate stops shots at the outer 35px radius.
           if (boss && state.bossState==="active" &&
-              Math.hypot(s.x-boss.x,s.y-boss.y)<35+s.size) {
+              Math.hypot(s.x-boss.x,s.y-boss.y)<
+                (wardenCoreOpen(boss)?11:35)+s.size) {
             const core=Math.hypot(s.x-boss.x,s.y-boss.y)<11+s.size;
             if (core && wardenCoreOpen(boss) && boss.guard<=0) {
               boss.hp--;
