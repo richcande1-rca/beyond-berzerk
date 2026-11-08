@@ -11,6 +11,10 @@
   // shield charge arcs. Loaded once; the previous vector art remains fallback.
   const turretArt = typeof Image === "function" ? new Image() : null;
   if (turretArt) turretArt.src = "./assets/turret-atlas.webp?v=0.3.16";
+  // Approved Warden concept, rendered as six transparent closed/open frames.
+  // One compact asset is loaded once; the prior canvas boss remains fallback.
+  const wardenArt = typeof Image === "function" ? new Image() : null;
+  if (wardenArt) wardenArt.src = "./assets/warden-sprite.webp?v=0.3.19";
   const overlay = document.getElementById("overlay");
   const introArt = document.getElementById("intro-art");
   // Keep the original, accessible opening panel if the artwork is unavailable.
@@ -1458,6 +1462,57 @@
         (state.bossState!=="active" && state.bossState!=="entering"))return;
     const b=state.boss,open=wardenCoreOpen(b);
     ctx.save();ctx.translate(b.x,b.y);
+    // The real reactor target is still at (0,0) in boss-local coordinates.
+    // Preserve the original hit radius, orbit, attack timing and boss HP.
+    if (wardenArt && wardenArt.complete &&
+        wardenArt.naturalWidth===720 && wardenArt.naturalHeight===120) {
+      ctx.save();
+      ctx.rotate(-b.angle*.65+state.elapsed*.22);
+      const frame=(b.phase-1)*2, unit=120;
+      const x=-59,y=-65,size=118;
+      ctx.drawImage(wardenArt,frame*unit,0,unit,unit,x,y,size,size);
+      // Cross-fade the core shutters for an 0.18s mechanical opening/closing.
+      // The actual weak-point timing remains controlled by wardenCoreOpen().
+      if (open) {
+        const clock=b.age%WARDEN_CYCLE;
+        const reveal=clamp(Math.min((clock-.75)/.18,(2.8-clock)/.18),0,1);
+        if (reveal>0) {
+          ctx.save();
+          ctx.globalAlpha*=reveal;
+          ctx.drawImage(wardenArt,(frame+1)*unit,0,unit,unit,x,y,size,size);
+          ctx.restore();
+        }
+        // Small precise weak-point halo only during the vulnerable window.
+        ctx.save();
+        ctx.globalAlpha*=.3+.45*reveal;
+        ctx.strokeStyle="#7afcff";ctx.lineWidth=1.7;
+        ctx.beginPath();
+        ctx.arc(0,0,13+1.4*Math.sin(state.elapsed*9),0,TAU);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // Asynchronous amber/red indicators make the chassis look powered.
+      if(state.elapsed%1.18<.2) {
+        ctx.fillStyle="#ffcb68";
+        ctx.beginPath();ctx.arc(-44,19,2.1,0,TAU);ctx.fill();
+      }
+      if((state.elapsed+.3)%1.61<.27) {
+        ctx.fillStyle="#ff555d";
+        ctx.beginPath();ctx.arc(43,14,2.1,0,TAU);ctx.fill();
+      }
+      // Phase 3 sparks are a few bright lines, not persistent particles.
+      if (b.phase===3 && Math.floor(state.elapsed*10)%3===0) {
+        ctx.strokeStyle="#ffbb72";ctx.lineWidth=1.4;
+        ctx.beginPath();
+        ctx.moveTo(31,-29);ctx.lineTo(36,-37);ctx.lineTo(42,-35);
+        ctx.moveTo(-36,25);ctx.lineTo(-42,32);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.restore();
+      return;
+    }
+    // Browser asset fallback: use the original canvas Warden geometry.
     ctx.rotate(-b.angle*.65+state.elapsed*.22);
     ctx.fillStyle="#101c2a";ctx.strokeStyle="#ff9568";ctx.lineWidth=3;
     ctx.beginPath();
