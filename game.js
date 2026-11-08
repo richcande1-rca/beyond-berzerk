@@ -1917,6 +1917,17 @@
         (state.bossState!=="active" && state.bossState!=="entering"))return;
     const b=state.boss,open=wardenCoreOpen(b);
     ctx.save();ctx.translate(b.x,b.y);
+    // Lightweight amber danger ring provides a local six-tenths-second cue
+    // before each unpredictable Phase 2/3 orbit reversal.
+    if(b.turnWarning>0) {
+      ctx.save();
+      ctx.globalAlpha*=.58+.22*Math.sin(state.elapsed*22);
+      ctx.lineWidth=2.4;ctx.strokeStyle="#ffb36c";
+      ctx.setLineDash([10,7]);
+      ctx.beginPath();ctx.arc(0,0,65,0,TAU);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
     // The real reactor target is still at (0,0) in boss-local coordinates.
     // Preserve the original hit radius, orbit, attack timing and boss HP.
     if (wardenArt && wardenArt.complete &&
