@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.17 — Living Turret**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.18 — The Warden**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
 
@@ -65,13 +65,21 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - All collision geometry, projectile origins, player lives, shields and recharge rules, turret rotation speed, bot AI, damage, rewards and scoring remain **unchanged**. The old canvas turret renders automatically if the sprite cannot load.
 - One graphic file loaded once, with no extra assets inside the frame loop, to keep Chromebook rendering light.
 
-## Wave 4 shield recharge capsule — v0.3.15
+## The Warden — Wave 4 boss, v0.3.18
 
-- One cyan shield capsule crosses the Wave 4 battlefield after approximately 4.5 seconds of combat, flying straight across the arena above the turret. It ignores wall collision and can pass through both live walls and robots.
+- The **first boss** interrupts Wave 4 after the normal robot swarm is cleared. The game announces **WARNING: SECTOR NOT CLEARED**, flashes the perimeter warning lights, then sends a large armored Warden inward from outside the arena. The graduation diploma and next wave cannot appear until the Warden is defeated.
+- **Three distinct combat phases:** Its octagonal armor rotates and three exterior modules break away one by one. Shoot the **cyan-exposed reactor core** once in each phase; closed red armor blocks ordinary shots. Successful hits close the reactor briefly. Each successive phase increases orbit speed and launches larger aimed volleys (two, three, then five projectiles).
+- The arena's **real rotating walls and projectile collisions stay active**. The hovering boss can pass the walls, but both your ordinary shots and the boss's projectiles are blocked by the walls, so open firing lanes matter. A short warning and entry give the player breathing room before the attack.
+- The Warden awards **1,500 points** upon defeat. The Wave 4 graduation then awards the established **twin cannon** for Wave 5; qualifying for Heavy Laser still requires eight **direct regular-robot kills during Wave 4**, not boss damage. The shield, hull and collision rules are unchanged.
+- **Wave 4 only for this release.** Future every-fourth-wave boss designs remain to be developed. Test Wave 4 includes this boss and its late shield capsule; test scores remain unscored. No new image assets, libraries or per-frame effects have been added.
+
+## Wave 4 shield recharge capsule — v0.3.15; retimed v0.3.18
+
+- One cyan shield capsule crosses the Wave 4 battlefield **after 90% of the wave's robots are eliminated**, rather than on a fixed timer. It flies straight across the arena above the turret, ignoring wall collisions and passing through both walls and robots. A fast chain clear still triggers the one pass.
 - Shoot the capsule with an ordinary friendly projectile when it crosses an open firing lane. Player shots obey the normal wall collision rules, so walls can block a collection shot; hostile projectiles and explosions cannot collect it.
 - A direct hit instantly restores the rechargeable shield to **3/3**, resets its regeneration timer and displays a short status/sound effect. The capsule consumes the collecting shot, but grants no score or robot kills and does not count toward Wave 4's Heavy Laser direct-kill challenge.
-- Only **one capsule appears** in Wave 4. If it exits uncollected, it does not respawn. The capsule is cleaned up at the next wave transition and works in normal runs or Test Wave 4.
-- The shield still unlocks from clearing Wave 3, and the Wave 4 graduation rewards, enemy behavior, wall physics, weapon damage, and future boss design remain unchanged.
+- Only **one capsule appears** in Wave 4. If it exits uncollected, it does not respawn. If the robots are already gone, the boss warning waits until the capsule has either been hit or finished crossing. The capsule is cleaned up at the next wave transition and works in normal runs or Test Wave 4.
+- The shield still unlocks from clearing Wave 3. The robot mix, wall physics, weapon damage, shield regeneration and existing graduation reward requirements remain unchanged.
 
 ## Graduated arsenal — v0.3.11
 
