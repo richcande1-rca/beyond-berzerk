@@ -3,6 +3,10 @@
 
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
+  // The approved cyberpunk sprite sheet is decorative only, loaded once.
+  // If AVIF is unsupported or still loading, the existing canvas labels remain.
+  const cyberArt = typeof Image === "function" ? new Image() : null;
+  if (cyberArt) cyberArt.src = "./assets/cyberpunk-ui.avif?v=0.3.13";
   const overlay = document.getElementById("overlay");
   const overlayTitle = document.getElementById("overlay-title");
   const overlayText = document.getElementById("overlay-text");
@@ -114,6 +118,10 @@
     overlayTitle.textContent = title;
     overlayText.innerHTML = message;
     overlayEyebrow.textContent = eyebrow;
+    const finalTransmission = state.phase === "over" && !state.testMode;
+    overlay.classList.toggle("is-end", finalTransmission);
+    const endArt = document.getElementById("end-transmission-art");
+    if (endArt) endArt.hidden = !finalTransmission;
     startButton.querySelector("span").textContent = "↗";
     startButton.firstChild.textContent = button + " ";
     overlay.classList.remove("hidden");
@@ -1591,23 +1599,33 @@
       ctx.strokeStyle="hsla("+((hue+35)%360)+",100%,75%,.50)";
       ctx.stroke();
 
-      // The graduation diploma floats above the arena, never over the turret.
+      // Preserve the diploma, but replace its old headline with the
+      // approved STAGE CLEAR plaque. Keep its bottom above the player turret.
       const [degree,motto]=graduationFor(state.wave);
-      const y=-CY+108;
-      ctx.fillStyle="#080d1af5";ctx.fillRect(-302,y,604,190);
+      const artReady = !!(cyberArt && cyberArt.complete && cyberArt.naturalWidth >= 660);
+      if (artReady) {
+        // Cropped upper-left stage plaque in the 660 x 271 sprite sheet.
+        ctx.drawImage(cyberArt, 0, 173, 326, 83, -240, -CY+87, 480, 115);
+      }
+      const y=-CY+(artReady?203:108), height=artReady?145:190;
+      ctx.fillStyle="#080d1af5";ctx.fillRect(-302,y,604,height);
       ctx.fillStyle="hsl("+hue+",95%,70%)";
-      ctx.fillRect(-302,y,604,5);ctx.fillRect(-302,y+185,604,5);
+      ctx.fillRect(-302,y,604,4);ctx.fillRect(-302,y+height-4,604,4);
       ctx.fillStyle="#edfaff";ctx.textAlign="center";ctx.textBaseline="alphabetic";
       ctx.shadowBlur=0;
-      ctx.font='900 36px "Oxanium", ui-monospace, monospace';
-      ctx.fillText("WAVE "+String(state.wave).padStart(2,"0")+" CLEARED!",0,y+53);
+      if (!artReady) {
+        ctx.font='900 36px "Oxanium", ui-monospace, monospace';
+        ctx.fillText("WAVE "+String(state.wave).padStart(2,"0")+" CLEARED!",0,y+53);
+      }
       ctx.font='800 13px "Oxanium", ui-monospace, monospace';
       ctx.fillStyle="hsl("+hue+",100%,77%)";
-      ctx.fillText("OFFICIAL GRADUATION CEREMONY",0,y+77);
+      ctx.fillText("OFFICIAL GRADUATION CEREMONY"+
+        (artReady?" // WAVE "+String(state.wave).padStart(2,"0"):""),
+        0,y+(artReady?27:77));
       ctx.font='900 23px "Oxanium", ui-monospace, monospace';
-      ctx.fillStyle="#ffffff";ctx.fillText(degree,0,y+112,574);
+      ctx.fillStyle="#ffffff";ctx.fillText(degree,0,y+(artReady?69:112),574);
       ctx.font='700 15px "Oxanium", ui-monospace, monospace';
-      ctx.fillStyle="#d4e4ef";ctx.fillText(motto,0,y+140,574);
+      ctx.fillStyle="#d4e4ef";ctx.fillText(motto,0,y+(artReady?96:140),574);
       ctx.font='700 13px "Oxanium", ui-monospace, monospace';
       ctx.fillStyle="#ffc982";
       const reward=state.wave===3?"REWARD UNLOCKED // DEFENSE SHIELD":
@@ -1616,7 +1634,7 @@
           "TWIN CANNONS // LASER "+state.wave4DirectKills+"/"+HEAVY_KILLS_REQUIRED+" DIRECT KILLS":
         state.wave===6?"REWARD UNLOCKED // PENETRATOR":
         "NEXT CLASS // WAVE "+String(state.wave+1).padStart(2,"0");
-      ctx.fillText(reward,0,y+169);
+      ctx.fillText(reward,0,y+(artReady?128:169));
     } else {
       // After graduation, let the established sector reveal introduce combat.
       const y=-CY+136;
