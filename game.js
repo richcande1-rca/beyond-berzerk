@@ -642,6 +642,7 @@
     burst(drone.x,drone.y,"#ffffff",7,.4);
   }
   function awardScoreLives() {
+    if(state.phase!=="playing")return;
     // One award at 15k, 30k, 45k, and every subsequent 15k milestone.
     // Milestones are consumed even at the five-life inventory cap.
     let earned=0;
@@ -2346,24 +2347,40 @@
     const d=state.supplyDrone;
     if(!d)return;
     const pulse=.5+.5*Math.sin(state.elapsed*10);
+    const repair=d.kind==="repair",charge=d.kind==="overcharge";
+    const edge=repair?"#7dff9b":charge?"#8bc9ff":"#ffdc67";
+    const bright=repair?"#d9ffe2":charge?"#e1f5ff":"#fff2b1";
     ctx.save();ctx.translate(d.x,d.y);ctx.rotate(state.elapsed*2.3);
-    ctx.strokeStyle="#ffdc67";ctx.lineWidth=2.4;
+    ctx.strokeStyle=edge;ctx.lineWidth=2.4;
     ctx.beginPath();ctx.moveTo(0,-23);ctx.lineTo(23,0);
     ctx.lineTo(0,23);ctx.lineTo(-23,0);ctx.closePath();ctx.stroke();
-    ctx.fillStyle="#2d1b36";ctx.strokeStyle="#fff2b1";ctx.lineWidth=1.6;
+    ctx.fillStyle=repair?"#0b3326":charge?"#0b2547":"#2d1b36";
+    ctx.strokeStyle=bright;ctx.lineWidth=1.6;
     ctx.beginPath();ctx.moveTo(0,-16);ctx.lineTo(16,0);
     ctx.lineTo(0,16);ctx.lineTo(-16,0);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.fillStyle="#fff0aa";
+    ctx.fillStyle=bright;
     for(let i=0;i<4;i++){
       const a=i*Math.PI/2;
       ctx.fillRect(Math.cos(a)*25-3,Math.sin(a)*25-3,6,6);
     }
     ctx.rotate(-state.elapsed*2.3);
-    ctx.textAlign="center";ctx.textBaseline="middle";
-    ctx.font='900 18px "Oxanium", ui-monospace, monospace';
-    ctx.fillStyle="#ffffff";ctx.fillText("?",0,1);
+    if(repair){
+      // A bright green medical cross — instantly identifiable, not mystery ?.
+      ctx.fillStyle="#eafff1";
+      ctx.fillRect(-3,-12,6,24);ctx.fillRect(-12,-3,24,6);
+    } else if(charge) {
+      // Blue electrical lightning, visually different from the shield S.
+      ctx.fillStyle="#e8faff";ctx.beginPath();
+      ctx.moveTo(2,-14);ctx.lineTo(-8,1);ctx.lineTo(-1,1);
+      ctx.lineTo(-5,14);ctx.lineTo(10,-4);ctx.lineTo(2,-4);
+      ctx.closePath();ctx.fill();
+    } else {
+      ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.font='900 18px "Oxanium", ui-monospace, monospace';
+      ctx.fillStyle="#ffffff";ctx.fillText("?",0,1);
+    }
     ctx.globalAlpha=.28+.22*pulse;
-    ctx.strokeStyle="#ffeb92";ctx.lineWidth=1.5;
+    ctx.strokeStyle=edge;ctx.lineWidth=1.5;
     ctx.beginPath();ctx.arc(0,0,28+pulse*2,0,TAU);ctx.stroke();
     ctx.restore();
   }
