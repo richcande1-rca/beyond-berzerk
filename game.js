@@ -37,6 +37,8 @@
   const HULL_CAPACITY = 3; // Projectile durability per life, separate from future shields.
   const SHOT_GRACE_SECONDS = .5; // Simultaneous volleys count as one hit.
   const SHIELD_MAX = 3, SHIELD_REGEN_SECONDS = 6;
+  const SHIELD_CAPSULE_DELAY = 4.5, SHIELD_CAPSULE_SPEED = 91;
+  const SHIELD_CAPSULE_RADIUS = 16;
   // One physical rotation speed and acceleration for every aiming method.
   const TURRET_MAX_SPEED = 5.6, TURRET_ACCEL = 25, TURRET_BRAKE = 65;
   const HEAVY_KILLS_REQUIRED = 8, PENETRATOR_COOLDOWN = 4.5;
@@ -110,7 +112,9 @@
       phase:"ready", elapsed:0, modeIndex:0, modeClock:0,
       wave:1, testMode:false, testStartWave:1, score:0, high:highScore(), lives:3, hull:HULL_CAPACITY, shotGrace:0, twinCannons:false,
       shieldUnlocked:false, shieldCharges:0, shieldRegen:0, heavyLaser:false,
-      wave4DirectKills:0, penetrator:false, penCharge:0, aim:6, aimTarget:null, aimVelocity:0,
+      wave4DirectKills:0, penetrator:false, penCharge:0,
+      waveElapsed:0, shieldCapsule:null, shieldCapsuleSeen:false,
+      aim:6, aimTarget:null, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
       blasts:[], shockwaves:[], impacts:[], combo:0, comboClock:0,
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
@@ -655,6 +659,22 @@
           hit=true;break;
         }
         if (s.friendly) {
+          // Only real turret projectiles can collect the capsule; the projectile
+          // has already passed the usual wall collision check above.
+          const capsule=state.shieldCapsule;
+          if (capsule && Math.hypot(s.x-capsule.x,s.y-capsule.y) <
+              SHIELD_CAPSULE_RADIUS+s.size) {
+            state.shieldCapsule=null;
+            state.shieldCharges=SHIELD_MAX;
+            state.shieldRegen=0;
+            state.announce="SHIELDS RECHARGED // 3/3";
+            state.announceClock=1.8;
+            setStatus("SHIELD CAPSULE HIT — SHIELDS FULL");
+            burst(capsule.x,capsule.y,"#80ffff",18,.9);
+            burst(capsule.x,capsule.y,"#ffffff",8,.4);
+            tone(860,.13,"triangle",.045,1310);
+            hit=true;break;
+          }
           for (let k=state.bots.length-1;k>=0;k--) {
             const b=state.bots[k];
             if (Math.hypot(s.x-b.x,s.y-b.y)<b.size+4) {
@@ -681,6 +701,25 @@
       state.shots = state.shots.filter(s=>s.friendly || Math.hypot(s.x-CX,s.y-CY)>140);
       state.clearNearbyEnemyShots = false;
     }
+  }
+  function updateShieldCapsule(dt) {
+    if (state.wave!==4) return;
+    // One pass per Wave 4. It can go straight through moving walls and bots,
+    // but its hitbox is deliberately separate from the combat collision map.
+    state.waveElapsed+=dt;
+    if (!state.shieldCapsuleSeen && state.waveElapsed>=SHIELD_CAPSULE_DELAY &&
+        state.toSpawn+state.bots.length>0) {
+      state.shieldCapsuleSeen=true;
+      state.shieldCapsule={
+        x:CX-R-24, y:CY-82, vx:SHIELD_CAPSULE_SPEED
+      };
+      state.announce="SHIELD CAPSULE INBOUND — SHOOT TO RECHARGE";
+      state.announceClock=2;
+    }
+    const capsule=state.shieldCapsule;
+    if (!capsule) return;
+    capsule.x+=capsule.vx*dt; // No wallHit: the capsule phases through walls.
+    if (capsule.x>CX+R+24) state.shieldCapsule=null;
   }
   function updateParticles(dt) {
     for (let i=state.particles.length-1;i>=0;i--) {
@@ -713,6 +752,9 @@
       state.waveClock+=dt;
       if (state.waveClock>2) {
         state.wave++;
+        state.waveElapsed=0;
+        state.shieldCapsule=null;
+        state.shieldCapsuleSeen=false;
         // Changing sectors changes real walls as well as the decorative field.
         // Preserve their angular orientation so the handoff feels continuous.
         state.rings=makeRings(state.wave,state.rings);
@@ -811,7 +853,10 @@
     }
     updateWave(dt);
     updateBots(dt);
-    if (state.phase==="playing") updateShots(dt);
+    if (state.phase==="playing") {
+      updateShieldCapsule(dt);
+      updateShots(dt);
+    }
     updateBlasts(dt);
     updateParticles(dt);
     for (let i=state.shockwaves.length-1;i>=0;i--) {
@@ -1253,6 +1298,41 @@
       ctx.restore();
     }
   }
+  function drawShieldCapsule() {
+    const capsule=state.shieldCapsule;
+    if (!capsule || state.wave!==4) return;
+    ctx.save();
+    ctx.translate(capsule.x,capsule.y);
+    const pulse=.5+.5*Math.sin(state.elapsed*7);
+    // Tiny, unmistakable cyan shield emblem with no expensive shadow blur.
+    ctx.lineWidth=2;
+    ctx.strokeStyle="#62faff";
+    ctx.beginPath();
+    ctx.arc(0,0,SHIELD_CAPSULE_RADIUS+2+pulse*2,0,TAU);
+    ctx.stroke();
+    ctx.rotate(state.elapsed*1.3);
+    ctx.fillStyle="#06434d";
+    ctx.strokeStyle="#e4ffff";
+    ctx.beginPath();
+    for(let k=0;k<6;k++){
+      const a=k*TAU/6-Math.PI/2;
+      const x=Math.cos(a)*SHIELD_CAPSULE_RADIUS;
+      const y=Math.sin(a)*SHIELD_CAPSULE_RADIUS;
+      if(k===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.rotate(-state.elapsed*1.3);
+    ctx.fillStyle="#74fbff";ctx.strokeStyle="#baffff";ctx.lineWidth=1.6;
+    ctx.beginPath();
+    ctx.moveTo(0,-10);ctx.lineTo(9,-6);ctx.lineTo(7,5);
+    ctx.lineTo(0,11);ctx.lineTo(-7,5);ctx.lineTo(-9,-6);ctx.closePath();
+    ctx.fill();ctx.stroke();
+    ctx.fillStyle="#083443";
+    ctx.font='900 12px "Oxanium", ui-monospace, monospace';
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText("S",0,0);
+    ctx.restore();
+  }
   function drawShots() {
     ctx.save();ctx.lineCap="round";
     for (const s of state.shots) {
@@ -1667,7 +1747,7 @@
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
     const visual=visualEvolution();
     drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
-    drawShockwaves();drawBots();drawShots();drawParticles();drawImpacts();drawTurret();
+    drawShockwaves();drawBots();drawShieldCapsule();drawShots();drawParticles();drawImpacts();drawTurret();
     ctx.restore();
     if(state.flash>0) {
       ctx.fillStyle="rgba(255,50,95,"+(state.flash*.18)+")";
