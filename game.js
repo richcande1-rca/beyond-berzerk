@@ -52,6 +52,9 @@
   const SHIELD_CAPSULE_SPEED = 91, SHIELD_CAPSULE_KILL_THRESHOLD = .90;
   const WARDEN_HP = 3, WARDEN_CYCLE = 3.8;
   const ARCHITECT_HP = 4, ARCHITECT_CYCLE = 5.0;
+  // Phase-specific reactor openings, progressively shorter but still fair.
+  const WARDEN_OPEN_WINDOWS = [null,[.85,2.20],[1.0,1.98],[1.12,1.88]];
+  const ARCHITECT_OPEN_WINDOWS = [null,[1.2,2.80],[1.30,2.45],[1.42,2.33]];
   const ARC_CANNON_COOLDOWN = 3.0, ARC_CANNON_RANGE = 92;
   const SHIELD_CAPSULE_RADIUS = 16;
   // One physical rotation speed and acceleration for every aiming method.
@@ -520,9 +523,11 @@
       " — "+state.lives+" LIVES");
   }
   function architectCoreOpen(b) {
-    return state.wave===8 && state.bossState==="active" &&
-      b?.type==="architect" &&
-      b.age%ARCHITECT_CYCLE>=1.05 && b.age%ARCHITECT_CYCLE<3.5;
+    if(state.wave!==8 || state.bossState!=="active" ||
+        b?.type!=="architect")return false;
+    const clock=b.age%ARCHITECT_CYCLE;
+    const [start,end]=ARCHITECT_OPEN_WINDOWS[b.phase];
+    return clock>=start && clock<end;
   }
   function restoreArchitectRings() {
     if(!state.architectRingSpins)return;
@@ -883,8 +888,10 @@
               } else {
                 boss.phase=WARDEN_HP-boss.hp+1;
                 boss.age=Math.ceil(boss.age/WARDEN_CYCLE)*WARDEN_CYCLE;
-                state.announce="ARMOR BREACHED // PHASE "+boss.phase;
-                state.announceClock=1.2;
+                if(boss.phase>=2)boss.turnClock=boss.phase===3?1.5:3.0;
+                state.announce=boss.phase===3?"WARDEN // FINAL ASSAULT":
+                  "ARMOR BREACHED // PHASE "+boss.phase;
+                state.announceClock=1.5;
                 setStatus("WARDEN CORE HIT — "+boss.hp+" REMAIN");
               }
             } else {
@@ -928,13 +935,14 @@
   function wardenCoreOpen(boss) {
     if(state.bossState!=="active")return false;
     const clock=boss.age%WARDEN_CYCLE;
-    return clock>=.75 && clock<2.8;
+    const [start,end]=WARDEN_OPEN_WINDOWS[boss.phase];
+    return clock>=start && clock<end;
   }
   function fireWarden(boss) {
-    const count=boss.phase===1?2:boss.phase===2?3:5;
+    const count=boss.phase===1?2:boss.phase===2?3:6;
     if(state.shots.filter(s=>!s.friendly).length+count>65)return;
     const angle=Math.atan2(CY-boss.y,CX-boss.x);
-    const speed=165+boss.phase*19;
+    const speed=165+boss.phase*19+(boss.phase===3?22:0);
     for(let i=0;i<count;i++) {
       const spread=(i-(count-1)/2)*(boss.phase===1?.19:.17);
       const a=angle+spread;
@@ -955,7 +963,8 @@
         state.boss={
           x:CX+Math.cos(-1.0)*(R+40),y:CY+Math.sin(-1.0)*(R+40),
           angle:-1.0,age:0,phase:1,hp:WARDEN_HP,
-          guard:0,entry:1.15,fireClock:2.0
+          guard:0,entry:1.15,fireClock:2.0,
+          orbitDir:1,turnClock:5.5,turnWarning:0
         };
         state.announce="THE WARDEN APPROACHES";
         state.announceClock=1.7;
@@ -983,8 +992,30 @@
     }
     if(state.bossState!=="active")return;
     b.age+=dt;b.guard=Math.max(0,b.guard-dt);
-    b.angle+=(.38+(b.phase-1)*.13)*dt;
-    const radius=210+7*Math.sin(b.age*.62);
+    // Later phases telegraph and reverse their orbits, giving the player
+    // a visible cue without a cheap instantaneous teleport.
+    if(b.phase>=2){
+      if(b.turnWarning>0){
+        b.turnWarning=Math.max(0,b.turnWarning-dt);
+        if(!b.turnWarning){
+          b.orbitDir*=-1;
+          b.turnClock=b.phase===3?3.4:5.3;
+          burst(b.x,b.y,"#ffb36c",8,.34);
+        }
+      }else{
+        b.turnClock-=dt;
+        if(b.turnClock<=0){
+          b.turnWarning=.60;
+          state.announce="WARDEN // FLANK REVERSAL";
+          state.announceClock=.95;
+          tone(360,.13,"triangle",.030,180);
+        }
+      }
+    }
+    const speed=b.phase===3?.94:b.phase===2?.62:.38;
+    b.angle+=b.orbitDir*speed*dt;
+    const radius=210+(b.phase===1?7:14)*Math.sin(b.age*(b.phase===3?1.05:.73))+
+      (b.phase===3?7*Math.sin(b.age*1.93+.9):0);
     b.x=CX+Math.cos(b.angle)*radius;
     b.y=CY+Math.sin(b.angle)*radius;
     b.fireClock-=dt;
@@ -992,7 +1023,7 @@
       // Enemy volleys obey the existing wall hitboxes and firing lanes.
       if(clearShotPath(b.x,b.y)) {
         fireWarden(b);
-        b.fireClock=[0,2.65,2.15,1.7][b.phase];
+        b.fireClock=[0,2.65,1.9,1.12][b.phase];
       } else b.fireClock=.28;
     }
   }
@@ -1880,7 +1911,8 @@
       // The actual weak-point timing remains controlled by wardenCoreOpen().
       if (open) {
         const clock=b.age%WARDEN_CYCLE;
-        const reveal=clamp(Math.min((clock-.75)/.18,(2.8-clock)/.18),0,1);
+        const [start,end]=WARDEN_OPEN_WINDOWS[b.phase];
+        const reveal=clamp(Math.min((clock-start)/.16,(end-clock)/.16),0,1);
         if (reveal>0) {
           ctx.save();
           ctx.globalAlpha*=reveal;
