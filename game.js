@@ -41,7 +41,8 @@
   const HULL_CAPACITY = 3; // Projectile durability per life, separate from future shields.
   const SHOT_GRACE_SECONDS = .5; // Simultaneous volleys count as one hit.
   const SHIELD_MAX = 3, SHIELD_REGEN_SECONDS = 6;
-  const SHIELD_CAPSULE_DELAY = 4.5, SHIELD_CAPSULE_SPEED = 91;
+  const SHIELD_CAPSULE_SPEED = 91, SHIELD_CAPSULE_KILL_THRESHOLD = .90;
+  const WARDEN_HP = 3, WARDEN_CYCLE = 3.8;
   const SHIELD_CAPSULE_RADIUS = 16;
   // One physical rotation speed and acceleration for every aiming method.
   const TURRET_MAX_SPEED = 5.6, TURRET_ACCEL = 25, TURRET_BRAKE = 65;
@@ -118,7 +119,8 @@
       shieldUnlocked:false, shieldCharges:0, shieldRegen:0,
       shieldFlash:0, shieldFlashArc:-1, heavyLaser:false,
       wave4DirectKills:0, penetrator:false, penCharge:0,
-      waveElapsed:0, shieldCapsule:null, shieldCapsuleSeen:false,
+      waveElapsed:0, waveTotal:0, shieldCapsule:null, shieldCapsuleSeen:false,
+      boss:null, bossState:"none", bossWarning:0, bossDefeated:false, clearBossShots:false,
       aim:6, aimTarget:null, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
       blasts:[], shockwaves:[], impacts:[], combo:0, comboClock:0,
@@ -226,6 +228,7 @@
     state.penetrator = state.wave >= 7;
     state.testStartWave = state.wave;
     state.toSpawn = state.wave===1 ? 15 : Math.min(120,10+state.wave*5);
+    state.waveTotal=state.toSpawn;
     state.announce = (testMode ? "TEST // " : "") +
       "WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName();
     state.announceClock = 2.2;
@@ -690,6 +693,42 @@
             tone(860,.13,"triangle",.045,1310);
             hit=true;break;
           }
+          const boss=state.boss;
+          if (boss && state.bossState==="active" &&
+              Math.hypot(s.x-boss.x,s.y-boss.y)<35+s.size) {
+            const core=Math.hypot(s.x-boss.x,s.y-boss.y)<11+s.size;
+            if (core && wardenCoreOpen(boss) && boss.guard<=0) {
+              boss.hp--;
+              boss.guard=.70;
+              burst(boss.x,boss.y,"#b8fcff",17,.9);
+              tone(470+(WARDEN_HP-boss.hp)*150,.16,"sawtooth",.06,1050);
+              state.shake=Math.max(state.shake,7);
+              if (boss.hp<=0) {
+                state.score+=1500;
+                if (!state.testMode && state.score>state.high) {
+                  state.high=state.score;storeHigh();
+                }
+                state.boss=null;state.bossDefeated=true;
+                state.bossState="defeated";
+                state.clearBossShots=true; // Defer array changes until after loop.
+                state.announce="THE WARDEN DESTROYED";
+                state.announceClock=2;
+                setStatus("WARDEN DEFEATED — TWIN CANNONS EARNED");
+                burst(boss.x,boss.y,"#ffac66",42,1.5);
+                tone(130,.4,"sawtooth",.07,55);
+              } else {
+                boss.phase=WARDEN_HP-boss.hp+1;
+                boss.age=Math.ceil(boss.age/WARDEN_CYCLE)*WARDEN_CYCLE;
+                state.announce="ARMOR BREACHED // PHASE "+boss.phase;
+                state.announceClock=1.2;
+                setStatus("WARDEN CORE HIT — "+boss.hp+" REMAIN");
+              }
+            } else {
+              burst(s.x,s.y,"#ff9d64",3,.25);
+              tone(165,.045,"triangle",.012,130);
+            }
+            hit=true;break;
+          }
           for (let k=state.bots.length-1;k>=0;k--) {
             const b=state.bots[k];
             if (Math.hypot(s.x-b.x,s.y-b.y)<b.size+4) {
@@ -716,14 +755,74 @@
       state.shots = state.shots.filter(s=>s.friendly || Math.hypot(s.x-CX,s.y-CY)>140);
       state.clearNearbyEnemyShots = false;
     }
+    if (state.clearBossShots) {
+      state.shots=state.shots.filter(s=>s.friendly);
+      state.clearBossShots=false;
+    }
+  }
+  function wardenCoreOpen(boss) {
+    const clock=boss.age%WARDEN_CYCLE;
+    return clock>=.75 && clock<2.8;
+  }
+  function fireWarden(boss) {
+    const count=boss.phase===1?2:boss.phase===2?3:5;
+    if(state.shots.filter(s=>!s.friendly).length+count>65)return;
+    const angle=Math.atan2(CY-boss.y,CX-boss.x);
+    const speed=165+boss.phase*19;
+    for(let i=0;i<count;i++) {
+      const spread=(i-(count-1)/2)*(boss.phase===1?.19:.17);
+      const a=angle+spread;
+      state.shots.push({
+        x:boss.x+Math.cos(a)*27,y:boss.y+Math.sin(a)*27,
+        vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,
+        life:2.4,friendly:false,size:3.2,color:"#ff7258"
+      });
+    }
+    tone(205+boss.phase*35,.085,"sawtooth",.026,90);
+  }
+  function updateWarden(dt) {
+    if(state.wave!==4)return;
+    if(state.bossState==="warning") {
+      state.bossWarning-=dt;
+      if(state.bossWarning<=0) {
+        state.bossState="active";
+        state.boss={
+          x:CX+Math.cos(-1.0)*214,y:CY+Math.sin(-1.0)*214,
+          angle:-1.0,age:0,phase:1,hp:WARDEN_HP,
+          guard:0,fireClock:2.0
+        };
+        state.announce="THE WARDEN // REACTOR EXPOSED WHEN CYAN";
+        state.announceClock=2.8;
+        setStatus("BOSS ENGAGED — TARGET THE CYAN CORE");
+        tone(100,.55,"sawtooth",.055,250);
+      }
+      return;
+    }
+    if(state.bossState!=="active" || !state.boss)return;
+    const b=state.boss;
+    b.age+=dt;b.guard=Math.max(0,b.guard-dt);
+    b.angle+=(.38+(b.phase-1)*.13)*dt;
+    const radius=210+7*Math.sin(b.age*.62);
+    b.x=CX+Math.cos(b.angle)*radius;
+    b.y=CY+Math.sin(b.angle)*radius;
+    b.fireClock-=dt;
+    if(b.fireClock<=0) {
+      // Enemy volleys obey the existing wall hitboxes and firing lanes.
+      if(clearShotPath(b.x,b.y)) {
+        fireWarden(b);
+        b.fireClock=[0,2.65,2.15,1.7][b.phase];
+      } else b.fireClock=.28;
+    }
   }
   function updateShieldCapsule(dt) {
     if (state.wave!==4) return;
-    // One pass per Wave 4. It can go straight through moving walls and bots,
-    // but its hitbox is deliberately separate from the combat collision map.
+    // Once 90% of robots have been eliminated, exactly one capsule flies by.
+    // The threshold is based on enemy count, not elapsed time or play speed.
     state.waveElapsed+=dt;
-    if (!state.shieldCapsuleSeen && state.waveElapsed>=SHIELD_CAPSULE_DELAY &&
-        state.toSpawn+state.bots.length>0) {
+    const eliminated=state.waveTotal-(state.toSpawn+state.bots.length);
+    if (!state.shieldCapsuleSeen && state.bossState==="none" &&
+        state.waveTotal>0 &&
+        eliminated>=Math.ceil(state.waveTotal*SHIELD_CAPSULE_KILL_THRESHOLD)) {
       state.shieldCapsuleSeen=true;
       state.shieldCapsule={
         x:CX-R-24, y:CY-82, vx:SHIELD_CAPSULE_SPEED
@@ -753,6 +852,21 @@
       }
     }
     if (!state.toSpawn && !state.bots.length) {
+      if(state.wave===4 && !state.bossDefeated) {
+        // Wave 4 cannot graduate until the capsule pass and Warden defeat.
+        if(!state.shieldCapsuleSeen || state.shieldCapsule)return;
+        if(state.bossState==="none") {
+          state.bossState="warning";
+          state.bossWarning=2.35;
+          state.shots=state.shots.filter(s=>s.friendly);
+          state.announce="WARNING: SECTOR NOT CLEARED";
+          state.announceClock=2.35;
+          state.flash=.14;
+          tone(185,.28,"sawtooth",.055,120);
+          setStatus("WARNING: SECTOR NOT CLEARED");
+        }
+        return;
+      }
       if (state.waveClock===0) {
         // Begin a single, two-second graduation for every cleared wave.
         // Decorative only: no changes to rings, hitboxes or combat timing.
@@ -768,8 +882,9 @@
       if (state.waveClock>2) {
         state.wave++;
         state.waveElapsed=0;
-        state.shieldCapsule=null;
-        state.shieldCapsuleSeen=false;
+        state.shieldCapsule=null;state.shieldCapsuleSeen=false;
+        state.boss=null;state.bossState="none";
+        state.bossWarning=0;state.bossDefeated=false;
         // Changing sectors changes real walls as well as the decorative field.
         // Preserve their angular orientation so the handoff feels continuous.
         state.rings=makeRings(state.wave,state.rings);
@@ -787,6 +902,7 @@
           state.penCharge=0;
         }
         state.toSpawn=Math.min(120,10+state.wave*5);
+        state.waveTotal=state.toSpawn;
         state.spawnClock=.35;
         state.waveClock=0;
         state.invuln=Math.max(state.invuln,.8);
@@ -873,6 +989,7 @@
     updateBots(dt);
     if (state.phase==="playing") {
       updateShieldCapsule(dt);
+      updateWarden(dt);
       updateShots(dt);
     }
     updateBlasts(dt);
@@ -1316,6 +1433,41 @@
       ctx.restore();
     }
   }
+  function drawWarden() {
+    if(state.wave!==4 || state.bossState!=="active" || !state.boss)return;
+    const b=state.boss,open=wardenCoreOpen(b);
+    ctx.save();ctx.translate(b.x,b.y);
+    ctx.rotate(-b.angle*.65+state.elapsed*.22);
+    ctx.fillStyle="#101c2a";ctx.strokeStyle="#ff9568";ctx.lineWidth=3;
+    ctx.beginPath();
+    for(let i=0;i<8;i++){
+      const a=i*TAU/8+Math.PI/8;
+      const x=Math.cos(a)*33,y=Math.sin(a)*33;
+      if(!i)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.closePath();ctx.fill();ctx.stroke();
+    for(let i=0;i<b.hp;i++) {
+      ctx.save();ctx.rotate(i*TAU/3-Math.PI/2);
+      ctx.fillStyle="#bf4b45";ctx.fillRect(19,-6,16,12);
+      ctx.strokeStyle="#ffd39c";ctx.lineWidth=1.4;ctx.strokeRect(19,-6,16,12);
+      ctx.restore();
+    }
+    ctx.rotate(b.angle*.65-state.elapsed*.22);
+    ctx.fillStyle="#ff4b65";
+    ctx.fillRect(-19,-12,10,4);ctx.fillRect(9,-12,10,4);
+    // Only the exposed cyan core is vulnerable to friendly projectiles.
+    ctx.fillStyle=open?"#89ffff":"#8a2d35";
+    ctx.strokeStyle=open?"#e0ffff":"#ff785c";ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.arc(0,0,11,0,TAU);ctx.fill();ctx.stroke();
+    if(open) {
+      const pulse=1.4+Math.sin(state.elapsed*11)*1.1;
+      ctx.strokeStyle="#80ffff";ctx.lineWidth=1.3;
+      ctx.beginPath();ctx.arc(0,0,16+pulse,0,TAU);ctx.stroke();
+    } else {
+      line(-9,0,9,0,"#ffad82",2);
+    }
+    ctx.restore();
+  }
   function drawShieldCapsule() {
     const capsule=state.shieldCapsule;
     if (!capsule || state.wave!==4) return;
@@ -1726,7 +1878,16 @@
         380,705,13,"#ffd88a");
     else if(state.heavyLaser)
       label("HEAVY LASER",380,705,13,"#dbadff");
-    label("ROBOTS: "+String(state.bots.length+state.toSpawn).padStart(2,"0"),W-26,706,17,"#f8d89b","right");
+    if(state.wave===4 && state.bossState==="warning")
+      label("WARDEN INBOUND",W-26,706,16,"#ff7b67","right");
+    else if(state.boss)
+      label("WARDEN "+state.boss.hp+"/"+WARDEN_HP+
+        (wardenCoreOpen(state.boss)?" CORE OPEN":" ARMORED"),
+        W-26,706,14,wardenCoreOpen(state.boss)?"#8ffaff":"#ffae8c","right");
+    else if(state.wave===4 && state.bossDefeated)
+      label("WARDEN DOWN",W-26,706,15,"#88ffdf","right");
+    else label("ROBOTS: "+String(state.bots.length+state.toSpawn).padStart(2,"0"),
+      W-26,706,17,"#f8d89b","right");
     if(state.comboClock>0)label("CHAIN x"+state.combo,655,705,15,"#ffa3c9","center");
     const remaining=Math.ceil(DURATIONS[state.modeIndex]-state.modeClock);
     label("SHIFT IN "+remaining+"s",527,704,12,"#b2bdd5","center");
@@ -1855,7 +2016,7 @@
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
     const visual=visualEvolution();
     drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
-    drawShockwaves();drawBots();drawShieldCapsule();drawShots();drawParticles();drawImpacts();drawTurret();
+    drawShockwaves();drawBots();drawShieldCapsule();drawWarden();drawShots();drawParticles();drawImpacts();drawTurret();
     ctx.restore();
     if(state.flash>0) {
       ctx.fillStyle="rgba(255,50,95,"+(state.flash*.18)+")";
