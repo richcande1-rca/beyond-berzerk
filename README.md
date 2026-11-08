@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.20 — Automatic Railgun**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.21 — The Architect**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
 
@@ -89,6 +89,20 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - Only **one capsule appears** in Wave 4. If it exits uncollected, it does not respawn. If the robots are already gone, the boss warning waits until the capsule has either been hit or finished crossing. The capsule is cleaned up at the next wave transition and works in normal runs or Test Wave 4.
 - The shield still unlocks from clearing Wave 3. The robot mix, wall physics, weapon damage, shield regeneration and existing graduation reward requirements remain unchanged.
 
+## Wave 8 — The Architect, v0.3.21
+
+- **The second boss appears after clearing the Wave 8 robot swarm.** Graduation is blocked by a 2.7-second **ARENA CONTROL COMPROMISED** warning, followed by a huge four-arm siege robot entering from outside the arena. It is visually distinct from the Warden: an articulated spider-like chassis, dark industrial plating, magenta sensors and a central **violet** reactor. Damage progressively breaks its arms and exposes circuitry.
+- **Four exposed-reactor hits to defeat.** The central core visibly opens for part of a repeating five-second cycle; ordinary gunfire can only hurt it through a clear wall lane and during an opening. The automatic gold Railgun **ignores the physical walls** and can hit that same vulnerable core through the Wave 8 PULSE plates, but cannot damage sealed armor. Core hits are spaced out by a short guard interval.
+- **Three phases:** In Phase 1 its four arms sweep and its twin electrical volleys challenge the center. After the first core hit, Phase 2 telegraphs and then reverses the actual rotating arena ring directions for 2.2-second intervals, briefly restoring the original directions between overrides. After the second hit, Phase 3 accelerates real wall rotations and fires larger, faster volleys, with more frequent overrides. Wall collision and friendly/hostile shot blocking use these same rotating walls, not fake decorative geometry.
+- **Boss victory:** A 3,000-point bonus, enemy projectile cleanup and restored pre-boss wall spin directions. Only then can Wave 8 graduate and award the Arc Cannon for Wave 9. The Warden remains solely Wave 4; later every-fourth-wave bosses are not yet authored.
+
+## Wave 9 — Arc Cannon, v0.3.21
+
+- **Automatically integrated with the normal firing rhythm** and no new control: every 3 seconds, the next front-cannon round is charged with cyan chain lightning. When it strikes a robot, electricity jumps from that target to up to **two distinct nearby robots**, in sequence, within 92 pixels per hop.
+- A chain hop checks solid, rotating wall collision along its full line. **Electricity cannot jump through walls.** Each hop delivers one damage, and armored robots may survive the chain; kills and chain bursts use the existing score and particle rules.
+- HUD: compact **ARC READY** or recharge timing beside the wave number. A brief two-link flash marks a successful chain. The Railgun, twin cannons, Heavy Laser and rechargeable shields remain unlocked and operate normally; a Wave 9 test run includes Arc Cannon automatically.
+- Lightweight canvas drawing; no new image assets, inputs, external libraries or heavy persistent particles.
+
 ## Automatic Railgun — v0.3.20
 
 - **Wave 6 graduation unlocks the Railgun for Wave 7 onward**, replacing the earlier underwhelming Penetrator shot. There is no separate weapon button, no manual charging, and no waiting to fire: while holding the existing FIRE button or Space, the turret automatically discharges every **4.5 seconds** when ready.
@@ -103,7 +117,7 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - **Wave 3 clear: Rechargeable shield.** Unlocks a separate three-charge cyan shield around the turret for Wave 4 onward. Each charge absorbs one hostile projectile; each hit resets the recharge timer. After six uninterrupted seconds, one charge regenerates, repeating until all three are restored. The existing 0.5-second projectile grace applies. Direct robot contact still costs a full life and bypasses the shield; surviving lives begin with a fully charged shield. Existing three-hit hull durability remains unchanged.
 - **Wave 4 participation challenge: Heavy Laser.** Land **at least eight direct weapon kills during Wave 4**, then graduate to unlock double-damage shots in Wave 5, when the twin cannons also arrive. Armored bots take one hit. Kills from moving walls and chain reactions do not count; the Wave 4 HUD displays the direct-kill counter. Without eight direct kills, the twin cannons are still awarded, but the Heavy Laser is not.
 - **Wave 6 clear: Railgun.** Originally a periodic Penetrator projectile; superseded in v0.3.20 by the automatic full-arena gold Railgun blast described above. The original front and rear cannon shots continue firing, and the normal firing cadence is unchanged.
-- **Test Mode:** Starting at Wave 4 includes the shield but not twin cannons. Starting at Wave 5 or higher simulates earning both twin cannons and the Heavy Laser; Wave 7 or higher starts with a ready Railgun. Starting on Wave 4 still requires the direct-kill challenge to earn Heavy Laser for Wave 5, but earns twin cannons regardless. Test scores remain separate.
+- **Test Mode:** Starting at Wave 4 includes the shield but not twin cannons. Starting at Wave 5 or higher simulates earning both twin cannons and the Heavy Laser; Wave 7 or higher starts with a ready Railgun, while Wave 9 or higher also starts with Arc Cannon. Wave 4 and Wave 8 test runs must still defeat their respective bosses to graduate. Starting Wave 4 requires the direct-kill challenge for Heavy Laser but always earns twin cannons after the Warden. Test scores remain separate.
 - **Performance:** The original upgrades use simple arc and stroke drawing without new shadow blur; the rear-barrel shot begins in Wave 5 rather than Wave 2. This release does not claim to resolve previously reported Wave 5 lag.
 
 ## Evolving wall architecture — v0.3.10
@@ -175,7 +189,7 @@ The circular arena is now centered within the space between the top and bottom H
 - **Rendering optimization — v0.3.3:** Removes costly per-robot and per-projectile shadow blur, removes blurred particle impact and shockwave strokes, reduces two moving-wall echo paths to one, batches the arena grid into one path, and caches radial gradients per sector/mode. Preserves crisp laser cores and solid robot silhouettes. Wave 4/5 performance still needs real-device validation. The shield and upgraded projectiles were introduced in v0.3.9; further cannons remain unimplemented.
 - **Signal Clarity — v0.3.2:** Reduced arena wallpaper opacity, softened perimeter/wall halos, lowered translucent ghost-ring and wall-trail strength, and restrained the damage flash. Kept the unique geometric composition and colors for each wave. HUD instruments now have opaque dark rails, sharp Oxanium readouts, pale high-contrast numbers and dividers, and zero text bloom. Wave announcements and sector-clear rewards use crisp text on compact dark plates placed above the turret instead of glowing over its center. Wall warning colors, collisions, AI, combat and controls are unchanged. Preserve this contrast and center space when adding future turret defenses and weapons.
 - **Visual reward pass — implemented in v0.3.1:** Earlier v0.3.0 visuals were too faint in Waves 2–3. New signature palettes and geometry start at Wave 2, with a sector-clear celebration and wave-introduction effect. Field art is behind the combat layer, and the center of the decorative field stays clear for the player turret.
-- **Future turret equipment:** Additional powerups, cannons and defensive systems beyond Twin Cannons, the three-charge shield, Heavy Laser and Railgun require separate discussion and explicit approval. Preserve visual contrast, screen space and the performance budget.
+- **Future turret equipment:** Additional powerups, cannons and defensive systems beyond Twin Cannons, the three-charge shield, Heavy Laser, Railgun and Arc Cannon require separate discussion and explicit approval. Preserve visual contrast, screen space and the performance budget.
 
 ## First-contact scope
 
