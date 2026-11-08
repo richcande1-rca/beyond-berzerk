@@ -2277,6 +2277,67 @@
     }
     ctx.restore();
   }
+  function drawSupplyDrone() {
+    const d=state.supplyDrone;
+    if(!d)return;
+    const pulse=.5+.5*Math.sin(state.elapsed*10);
+    ctx.save();ctx.translate(d.x,d.y);ctx.rotate(state.elapsed*2.3);
+    ctx.strokeStyle="#ffdc67";ctx.lineWidth=2.4;
+    ctx.beginPath();ctx.moveTo(0,-23);ctx.lineTo(23,0);
+    ctx.lineTo(0,23);ctx.lineTo(-23,0);ctx.closePath();ctx.stroke();
+    ctx.fillStyle="#2d1b36";ctx.strokeStyle="#fff2b1";ctx.lineWidth=1.6;
+    ctx.beginPath();ctx.moveTo(0,-16);ctx.lineTo(16,0);
+    ctx.lineTo(0,16);ctx.lineTo(-16,0);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle="#fff0aa";
+    for(let i=0;i<4;i++){
+      const a=i*Math.PI/2;
+      ctx.fillRect(Math.cos(a)*25-3,Math.sin(a)*25-3,6,6);
+    }
+    ctx.rotate(-state.elapsed*2.3);
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.font='900 18px "Oxanium", ui-monospace, monospace';
+    ctx.fillStyle="#ffffff";ctx.fillText("?",0,1);
+    ctx.globalAlpha=.28+.22*pulse;
+    ctx.strokeStyle="#ffeb92";ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(0,0,28+pulse*2,0,TAU);ctx.stroke();
+    ctx.restore();
+  }
+  function drawPowerEffects() {
+    if(!state.powerup)return;
+    ctx.save();ctx.translate(CX,CY);
+    const t=state.elapsed;
+    if(state.powerup==="guardian"){
+      // Two satellite drones orbit the turret and fire independently.
+      for(let i=0;i<2;i++){
+        const a=state.guardianAngle+i*Math.PI;
+        const x=Math.cos(a)*58,y=Math.sin(a)*58;
+        ctx.save();ctx.translate(x,y);ctx.rotate(a);
+        ctx.fillStyle="#072c38";ctx.strokeStyle="#81fff0";ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(13,0);
+        ctx.lineTo(0,12);ctx.lineTo(-13,0);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.fillStyle="#ffffff";ctx.beginPath();ctx.arc(0,0,4,0,TAU);ctx.fill();
+        ctx.restore();
+      }
+    } else if(state.powerup==="stasis"){
+      ctx.globalAlpha=.38+.12*Math.sin(t*5);
+      ctx.strokeStyle="#91c9ff";ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(0,0,72+2*Math.sin(t*3),0,TAU);ctx.stroke();
+      ctx.strokeStyle="#d3f5ff";ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.arc(0,0,84,0,TAU);ctx.stroke();
+    } else if(state.powerup==="triple"){
+      ctx.rotate(state.aim*Math.PI/4);
+      ctx.globalAlpha=.72+.16*Math.sin(t*8);
+      ctx.strokeStyle="#ffd074";ctx.lineWidth=3;ctx.beginPath();
+      for(const side of (state.twinCannons?[0,Math.PI]:[0])){
+        for(const a of [-.17,.17]){
+          const x=Math.cos(side+a),y=Math.sin(side+a);
+          ctx.moveTo(x*34,y*34);ctx.lineTo(x*46,y*46);
+        }
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   function drawShieldCapsule() {
     const capsule=state.shieldCapsule;
     if (!capsule || state.wave!==4) return;
@@ -2764,6 +2825,18 @@
       label(state.wave===8?"ARCHITECT DOWN":"WARDEN DOWN",W-26,706,15,"#88ffdf","right");
     else label("ROBOTS: "+String(state.bots.length+state.toSpawn).padStart(2,"0"),
       W-26,706,17,"#f8d89b","right");
+    if(state.powerup){
+      const title=state.powerup==="triple"?"TRIPLE THREAT":
+        state.powerup==="guardian"?"GUARDIAN DRONES":"STASIS FIELD";
+      const color=state.powerup==="triple"?"#ffd681":
+        state.powerup==="guardian"?"#92ffe8":"#a9cfff";
+      const duration=POWERUP_DURATIONS[state.powerup];
+      // The region just outside the circular arena stays free of HUD labels.
+      ctx.fillStyle="#071323eb";ctx.fillRect(345,652,270,21);
+      ctx.fillStyle=color;
+      ctx.fillRect(346,670,268*state.powerClock/duration,2);
+      label(title+"  "+state.powerClock.toFixed(1)+"s",480,667,12,color,"center");
+    }
     if(state.comboClock>0)label("CHAIN x"+state.combo,655,705,15,"#ffa3c9","center");
     const remaining=Math.ceil(DURATIONS[state.modeIndex]-state.modeClock);
     label("SHIFT IN "+remaining+"s",527,704,12,"#b2bdd5","center");
@@ -2893,7 +2966,7 @@
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
     const visual=visualEvolution();
     drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
-    drawShockwaves();drawBots();drawShieldCapsule();drawWarden();drawArchitect();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();
+    drawShockwaves();drawBots();drawSupplyDrone();drawShieldCapsule();drawWarden();drawArchitect();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();drawPowerEffects();
     // The perimeter alarm flashes during the warning and the boss entry.
     if((state.wave===4 || state.wave===8) &&
         (state.bossState==="warning" || state.bossState==="entering") &&
