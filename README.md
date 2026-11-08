@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.22 — Architect Sprite Upgrade**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.23 — Boss Fury**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
 
@@ -64,6 +64,14 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - Clearing Wave 4 still deploys a second barrel 180° behind the first, using the same matching cannon artwork. The existing muzzle flash and reactor shimmer are retained without per-frame asset allocations.
 - All collision geometry, projectile origins, player lives, shields and recharge rules, turret rotation speed, bot AI, damage, rewards and scoring remain **unchanged**. The old canvas turret renders automatically if the sprite cannot load.
 - One graphic file loaded once, with no extra assets inside the frame loop, to keep Chromebook rendering light.
+
+## Boss Fury — v0.3.23
+
+- **Boss fights now escalate by phase**, without increasing their hit points, changing hitboxes, altering their rewards or adding any weapon controls. Wave 4's Warden still needs three core hits; Wave 8's Architect still needs four. Bosses continue to block graduation until defeated.
+- **Tighter reactor exposure:** The Warden's cyan core remains open for **1.35s, 0.98s, then 0.76s** per 3.8-second cycle, down from 2.05 seconds each phase. The Architect's violet core opens for **1.60s, 1.15s, then 0.91s** per five-second cycle, down from 2.45 seconds. Closed armor is invulnerable as before, and the existing sprite shutters now animate at the exact revised openings.
+- **Warden's flanking maneuvers:** Phase 1 remains a familiar orbit; later phases change direction after a 0.6-second warning. An amber halo and audible cue telegraph each reversal. Orbit speed increases by phase, with a more irregular radius. Final phase fires **six** faster shots per volley, on a 1.12-second attack cadence.
+- **Architect's arena control:** From Phase 2 onward, the boss glides between the inner and outer wall lanes and reverses its orbit as it repositions—no teleporting. Phase 3 moves faster, keeps the original real-wall reversal mechanics, increases wall rotation to 2.0× its existing boss baseline and fires **six** faster projectiles per volley on a 1.10-second cadence.
+- Changes are lightweight numeric combat and animation adjustments, with no new boss images, libraries, heavy particle effects or per-frame allocations. Test Waves **4** and **8** allow immediate boss playtesting.
 
 ## Warden visual upgrade — v0.3.19
 
