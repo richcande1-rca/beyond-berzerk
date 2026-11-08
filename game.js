@@ -372,7 +372,7 @@
       }
       const boost = modeName() === "SPIN" ? 1 : modeName() === "MORPH" ? .12 : 1.65;
       const architectSpeed=architectActive && state.bossState==="active" &&
-        state.boss.phase===3?1.85:1;
+        state.boss.phase===3?2.0:1;
       ring.angle += ring.speed * ring.spin * boost * architectSpeed * dt *
         (1 + Math.min(.7,(state.wave - 1) * .045));
     }
@@ -566,6 +566,7 @@
       b.phase=Math.min(3,ARCHITECT_HP-b.hp+1);
       b.age=0; // Restore a brief closed-core interval after each hit.
       b.reverseClock=b.phase===2?2.2:b.phase===3?1.5:b.reverseClock;
+      b.laneClock=b.phase===2?1.8:.85;
       state.announce="ARCHITECT ARMOR FRACTURED // PHASE "+b.phase;
       state.announceClock=1.8;
       setStatus("ARCHITECT CORE HIT — "+b.hp+" REMAIN");
@@ -1028,10 +1029,10 @@
     }
   }
   function fireArchitect(b) {
-    const count=b.phase===1?2:b.phase===2?3:4;
+    const count=b.phase===1?2:b.phase===2?3:6;
     if(state.shots.filter(s=>!s.friendly).length+count>62)return;
     const aim=Math.atan2(CY-b.y,CX-b.x);
-    const speed=180+b.phase*21;
+    const speed=180+b.phase*21+(b.phase===3?20:0);
     for(let i=0;i<count;i++){
       const a=aim+(i-(count-1)/2)*.18;
       state.shots.push({x:b.x+Math.cos(a)*42,y:b.y+Math.sin(a)*42,
@@ -1051,7 +1052,8 @@
         state.boss={type:"architect",phase:1,hp:ARCHITECT_HP,
           x:CX,y:CY-R-45,angle:-Math.PI/2,age:0,guard:0,
           entry:1.45,fireClock:1.7,reverseClock:5.5,reverseWarning:0,
-          reverseTime:0};
+          reverseTime:0,radius:170,laneTarget:170,laneClock:4.4,
+          orbitDir:1};
         state.announce="THE ARCHITECT // ARENA OVERRIDE";
         state.announceClock=2.2;
         setStatus("BOSS INBOUND — THE ARCHITECT");
@@ -1077,8 +1079,24 @@
     }
     if(state.bossState!=="active")return;
     b.age+=dt;b.guard=Math.max(0,b.guard-dt);
-    b.angle+=(.24+(b.phase-1)*.12)*dt;
-    const radius=170+8*Math.sin(b.age*.7);
+    if(b.phase>=2) {
+      b.laneClock-=dt;
+      if(b.laneClock<=0){
+        // The Architect moves between wall rings rather than camping on
+        // one orbit. No teleport: translate radially at a capped speed.
+        b.laneTarget=b.laneTarget<175?196:147;
+        b.laneClock=b.phase===3?2.75:4.1;
+        b.orbitDir*=-1;
+        state.announce="ARCHITECT // SECTOR SHIFT";
+        state.announceClock=1.1;
+        tone(290,.16,"triangle",.030,520);
+      }
+      const radialSpeed=b.phase===3?42:30;
+      b.radius+=clamp(b.laneTarget-b.radius,-radialSpeed*dt,radialSpeed*dt);
+    }
+    const orbitSpeed=b.phase===3?.84:b.phase===2?.50:.24;
+    b.angle+=b.orbitDir*orbitSpeed*dt;
+    const radius=b.radius+(b.phase===1?8:5)*Math.sin(b.age*.9);
     b.x=CX+Math.cos(b.angle)*radius;
     b.y=CY+Math.sin(b.angle)*radius;
     // Unlike the Warden, this boss operates the real wall state. A warning
@@ -1087,7 +1105,7 @@
       b.reverseTime=Math.max(0,b.reverseTime-dt);
       if(!b.reverseTime) {
         state.rings.forEach((r,i)=>r.spin=state.architectRingSpins[i]);
-        b.reverseClock=b.phase===3?3.2:5.0;
+        b.reverseClock=b.phase===3?2.9:5.0;
         state.announce="WALL CONTROL RESTORED";
         state.announceClock=1;
       }
@@ -1116,7 +1134,7 @@
     if(b.fireClock<=0) {
       if(clearShotPath(b.x,b.y)) {
         fireArchitect(b);
-        b.fireClock=b.phase===1?2.15:b.phase===2?1.85:1.42;
+        b.fireClock=b.phase===1?2.15:b.phase===2?1.75:1.10;
       } else b.fireClock=.25;
     }
   }
@@ -1775,8 +1793,9 @@
         // The shutter opens and closes smoothly, without changing the
         // five-second vulnerability window or the real 14px core hitbox.
         const clock=b.age%ARCHITECT_CYCLE;
-        const reveal=clamp(Math.min((clock-1.05)/.18,
-          (3.5-clock)/.18),0,1);
+        const [start,end]=ARCHITECT_OPEN_WINDOWS[b.phase];
+        const reveal=clamp(Math.min((clock-start)/.16,
+          (end-clock)/.16),0,1);
         if(reveal>0) {
           ctx.save();
           ctx.globalAlpha*=reveal;
