@@ -280,3 +280,55 @@ body{
   .version span{font-size:9px}
   .end-transmission-art{margin:0 auto 4px}
 }
+
+/* CYBERPUNK OPENING PANEL v0.3.14 — approved opening-screen art.
+   The image is a visual skin; the real START button remains focusable/clickable.
+   Without a successfully decoded image, the original opening screen survives. */
+.intro-art{display:none}
+.overlay.is-intro.has-intro-art{
+  padding:clamp(7px,2vw,18px);
+  background:rgba(3,6,17,.73);
+  backdrop-filter:blur(3px) saturate(.85);
+}
+.overlay.is-intro.has-intro-art .overlay-card{
+  width:min(100%,860px);max-width:860px;
+  aspect-ratio:900/556;
+  height:auto;min-height:0;padding:0;
+  background:transparent;border:0;border-radius:0;box-shadow:none;clip-path:none;
+  isolation:isolate;
+}
+.overlay.is-intro.has-intro-art .overlay-card:before,
+.overlay.is-intro.has-intro-art .overlay-card:after{display:none}
+.overlay.is-intro.has-intro-art .intro-art{
+  display:block;position:absolute;inset:0;width:100%;height:100%;
+  object-fit:contain;pointer-events:none;user-select:none;
+  filter:drop-shadow(0 0 12px #fb1e8b35);
+}
+.overlay.is-intro.has-intro-art .overlay-rail,
+.overlay.is-intro.has-intro-art .eyebrow,
+.overlay.is-intro.has-intro-art #overlay-title,
+.overlay.is-intro.has-intro-art #overlay-text{display:none}
+.overlay.is-intro.has-intro-art #start-btn{
+  position:absolute;z-index:2;left:20.5%;top:68.9%;
+  width:60%;height:19%;min-height:0;
+  padding:0;margin:0;
+  border:0;border-radius:0;box-shadow:none;
+  background:transparent;color:transparent;font-size:0;line-height:0;
+  transform:none;clip-path:polygon(8% 0,92% 0,100% 18%,100% 80%,92% 100%,8% 100%,0 80%,0 20%);
+  cursor:pointer;
+}
+.overlay.is-intro.has-intro-art #start-btn span{font-size:0}
+.overlay.is-intro.has-intro-art #start-btn:hover{
+  background:linear-gradient(180deg,#9feaff12,#04d1ff13 60%,#fff3);
+}
+.overlay.is-intro.has-intro-art #start-btn:active{
+  background:#20e4ff33;
+}
+.overlay.is-intro.has-intro-art #start-btn:focus-visible{
+  outline:3px solid #f2fdff;outline-offset:3px;
+  background:#15cfff16;
+}
+@media (max-width:430px){
+  .overlay.is-intro.has-intro-art{padding:4px}
+  .overlay.is-intro.has-intro-art #start-btn{left:20%;width:60%}
+}
