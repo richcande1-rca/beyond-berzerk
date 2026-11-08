@@ -7,6 +7,10 @@
   // If AVIF is unsupported or still loading, the existing canvas labels remain.
   const cyberArt = typeof Image === "function" ? new Image() : null;
   if (cyberArt) cyberArt.src = "./assets/cyberpunk-ui.avif?v=0.3.13";
+  // Four transparent 120x110 frames: armored turret, then three separate
+  // shield charge arcs. Loaded once; the previous vector art remains fallback.
+  const turretArt = typeof Image === "function" ? new Image() : null;
+  if (turretArt) turretArt.src = "./assets/turret-atlas.webp?v=0.3.16";
   const overlay = document.getElementById("overlay");
   const introArt = document.getElementById("intro-art");
   // Keep the original, accessible opening panel if the artwork is unavailable.
@@ -1384,6 +1388,62 @@
     }
     ctx.restore();
   }
+  function drawCustomTurret(angle,pulse) {
+    if (!turretArt || !turretArt.complete ||
+        turretArt.naturalWidth!==480 || turretArt.naturalHeight!==110) return false;
+    // Source composition is centered on the actual rotating chassis pivot.
+    // Its footprint matches the previous ~45px shield and 50px cannon.
+    const fw=120, fh=110, x=-50.88, y=-47.12, w=104.96, h=95.92;
+    ctx.save();
+    ctx.rotate(angle);
+    if (state.twinCannons) {
+      // Mirror the approved barrel behind the armor, only after Wave 4 clears.
+      // Using the same source makes front and back cannons visibly match.
+      ctx.save();
+      ctx.rotate(Math.PI);
+      ctx.translate(-Math.min(2,state.turretKick*2),0);
+      ctx.drawImage(turretArt,72,44,44,19,12,-8.5,38,17);
+      ctx.restore();
+    }
+    // The complete single-barrel turret stays anchored while it rotates.
+    ctx.drawImage(turretArt,0,0,fw,fh,x,y,w,h);
+    if (state.shieldUnlocked) {
+      for (let i=0;i<SHIELD_MAX;i++) {
+        ctx.save();
+        ctx.globalAlpha*=i<state.shieldCharges?1:.11;
+        ctx.drawImage(turretArt,(i+1)*fw,0,fw,fh,x,y,w,h);
+        ctx.restore();
+      }
+    }
+    // Gentle reactor shimmer, with no extra geometry or hitbox.
+    ctx.save();
+    ctx.globalAlpha*=.35+.45*pulse;
+    ctx.fillStyle="#adffff";
+    ctx.beginPath();
+    ctx.arc(-8.8,.8,2.3+pulse,0,TAU);
+    ctx.fill();
+    ctx.restore();
+    if (state.muzzleFlash>0) {
+      const power=state.muzzleFlash/.07;
+      for(const side of (state.twinCannons?[0,Math.PI]:[0])) {
+        ctx.save();
+        ctx.rotate(side);
+        ctx.globalAlpha*=power;
+        ctx.fillStyle="#f9ffff";
+        ctx.beginPath();
+        ctx.moveTo(47,-4);
+        ctx.lineTo(65+power*7,-7);
+        ctx.lineTo(58,0);
+        ctx.lineTo(65+power*7,7);
+        ctx.lineTo(47,4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+    return true;
+  }
   function drawTurret() {
     const angle = state.aim * Math.PI / 4;
     const pulse = 0.5 + 0.5 * Math.sin(state.elapsed * 5.2);
@@ -1394,6 +1454,10 @@
     ctx.save();
     ctx.translate(CX, CY);
     if (blink) ctx.globalAlpha = .4;
+    if (drawCustomTurret(angle,pulse)) {
+      ctx.restore();
+      return;
+    }
 
     // Fixed, anchored neon defense platform.
     ctx.save();
