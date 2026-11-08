@@ -24,6 +24,8 @@
   const HULL_CAPACITY = 3; // Projectile durability per life, separate from future shields.
   const SHOT_GRACE_SECONDS = .5; // Simultaneous volleys count as one hit.
   const SHIELD_MAX = 3, SHIELD_REGEN_SECONDS = 6;
+  // One physical rotation speed and acceleration for every aiming method.
+  const TURRET_MAX_SPEED = 5.6, TURRET_ACCEL = 25, TURRET_BRAKE = 65;
   const HEAVY_KILLS_REQUIRED = 8, PENETRATOR_COOLDOWN = 4.5;
   const WAVE_NAMES = ["FIRST CONTACT", "SIDEWINDERS", "CROSSFIRE",
     "HEAVY METAL", "DOGPILE", "TOTAL MAYHEM", "REACTOR SPIN",
@@ -95,7 +97,7 @@
       phase:"ready", elapsed:0, modeIndex:0, modeClock:0,
       wave:1, testMode:false, testStartWave:1, score:0, high:highScore(), lives:3, hull:HULL_CAPACITY, shotGrace:0, twinCannons:false,
       shieldUnlocked:false, shieldCharges:0, shieldRegen:0, heavyLaser:false,
-      wave4DirectKills:0, penetrator:false, penCharge:0, aim:6, aimVelocity:0,
+      wave4DirectKills:0, penetrator:false, penCharge:0, aim:6, aimTarget:null, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
       blasts:[], shockwaves:[], impacts:[], combo:0, comboClock:0,
       toSpawn:0, spawnClock:.4, waveClock:0, fireClock:0,
@@ -729,27 +731,42 @@
       }
     } else state.waveClock=0;
   }
-  function updateKeyboardAim(dt) {
-    // Either arrow-key pair provides unlimited 360-degree rotation:
-    // Left / Up counterclockwise; Right / Down clockwise. Q / E are aliases.
+  function updateAim(dt) {
+    // Arrow/Q/E keys supply a direction. Mouse, touch, WASD and the pad supply
+    // a destination, but ALL steering shares one capped angular velocity.
     const ccw = keys.has("ArrowLeft") || keys.has("ArrowUp") || keys.has("q") || keys.has("Q");
     const cw = keys.has("ArrowRight") || keys.has("ArrowDown") || keys.has("e") || keys.has("E");
-    const maxSpeed = 5.6; // ~321 degrees per second: fast enough for keyboard sweeps
-    const accel = 25, brake = 65; // quick response and short braking distance
-    const desiredVelocity = ccw === cw ? 0 : (cw ? maxSpeed : -maxSpeed);
+    const manual = ccw !== cw;
+    let error = 0, desiredVelocity = 0;
+    if (manual) {
+      state.aimTarget = null; // Manual keys take over from the last pointer target.
+      desiredVelocity = cw ? TURRET_MAX_SPEED : -TURRET_MAX_SPEED;
+    } else if (state.aimTarget !== null) {
+      error = angleDiff(state.aimTarget * Math.PI/4, state.aim * Math.PI/4);
+      // Approach smoothly; never bypass the speed limit for a new target.
+      const approachSpeed = Math.sqrt(2 * TURRET_BRAKE * Math.abs(error));
+      desiredVelocity = Math.sign(error) * Math.min(TURRET_MAX_SPEED, approachSpeed);
+      if (Math.abs(error) < .001) desiredVelocity = 0;
+    }
     const slowing = Math.abs(desiredVelocity) < Math.abs(state.aimVelocity) ||
       (desiredVelocity && state.aimVelocity && Math.sign(desiredVelocity) !== Math.sign(state.aimVelocity));
-    const maxChange = (slowing ? brake : accel) * dt;
+    const maxChange = (slowing ? TURRET_BRAKE : TURRET_ACCEL) * dt;
     state.aimVelocity += clamp(desiredVelocity - state.aimVelocity, -maxChange, maxChange);
-
-    if (state.aimVelocity !== 0) {
-      state.aim = ((state.aim + state.aimVelocity * dt * 4 / Math.PI) % 8 + 8) % 8;
+    let turn = state.aimVelocity * dt;
+    if (!manual && state.aimTarget !== null && Math.sign(turn) === Math.sign(error) &&
+        Math.abs(turn) >= Math.abs(error)) {
+      // The small final step lands on target rather than jumping across it.
+      turn = error;
+      state.aimVelocity = 0;
+    }
+    if (turn !== 0) {
+      state.aim = ((state.aim + turn * 4 / Math.PI) % 8 + 8) % 8;
       syncAimPad();
     }
   }
 
   function update(dt) {
-    updateKeyboardAim(dt);
+    updateAim(dt);
     updateArena(dt);
     state.invuln=Math.max(0,state.invuln-dt);
     state.shotGrace=Math.max(0,state.shotGrace-dt);
@@ -1642,21 +1659,22 @@
     const closest = Math.round(state.aim) % 8;
     for(const button of padButtons) button.classList.toggle("active",Number(button.dataset.dir)===closest);
   }
-  function setAim(x,y) {
+  function setAimTarget(x,y) {
     if (Math.hypot(x-CX,y-CY)<18) return;
-    let theta=Math.atan2(y-CY,x-CX);
-    state.aim=((theta/(Math.PI/4))%8+8)%8;
-    state.aimVelocity=0; // Precision pointer and eight-way aim override momentum.
-    syncAimPad();
+    const theta=Math.atan2(y-CY,x-CX);
+    state.aimTarget=((theta/(Math.PI/4))%8+8)%8;
+  }
+  function setQuickAimTarget(direction) {
+    state.aimTarget=direction;
   }
   function keyAim() {
-    // Keep eight-way WASD shortcuts; arrow keys now use smooth rotation.
+    // WASD select one of eight destinations; all turns remain speed-limited.
     const left=keys.has("a")||keys.has("A");
     const right=keys.has("d")||keys.has("D");
     const up=keys.has("w")||keys.has("W");
     const down=keys.has("s")||keys.has("S");
     const x=Number(right)-Number(left), y=Number(down)-Number(up);
-    if (x||y) setAim(CX+x*100,CY+y*100);
+    if (x||y) setAimTarget(CX+x*100,CY+y*100);
   }
   function canvasPoint(event) {
     const rect=canvas.getBoundingClientRect();
@@ -1712,13 +1730,13 @@
   document.addEventListener("visibilitychange",()=>{if(document.hidden && state.phase==="playing")pause();});
   canvas.addEventListener("pointermove",event=>{
     if(event.pointerType==="mouse"||pointerFiring||event.buttons) {
-      const p=canvasPoint(event);setAim(p.x,p.y);
+      const p=canvasPoint(event);setAimTarget(p.x,p.y);
     }
   });
   canvas.addEventListener("pointerdown",event=>{
     if(state.phase!=="playing")return;
     event.preventDefault();
-    const p=canvasPoint(event);setAim(p.x,p.y);
+    const p=canvasPoint(event);setAimTarget(p.x,p.y);
     pointerFiring=true;
     try{canvas.setPointerCapture(event.pointerId);}catch{}
   });
@@ -1728,9 +1746,9 @@
   canvas.addEventListener("lostpointercapture",endPointer);
   for (const button of padButtons) {
     button.addEventListener("pointerdown",event=>{
-      event.preventDefault();state.aim=Number(button.dataset.dir);state.aimVelocity=0;syncAimPad();
+      event.preventDefault();setQuickAimTarget(Number(button.dataset.dir));
     });
-    button.addEventListener("click",()=>{state.aim=Number(button.dataset.dir);state.aimVelocity=0;syncAimPad();});
+    button.addEventListener("click",()=>setQuickAimTarget(Number(button.dataset.dir)));
   }
   fireButton.addEventListener("pointerdown",event=>{
     event.preventDefault();
