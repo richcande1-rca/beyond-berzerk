@@ -234,3 +234,49 @@ body{
   .test-launch label{font-size:8px}
   .actions .test-launch button{padding:7px 6px;font-size:9px}
 }
+
+/* CYBERPUNK ASSET UI v0.3.13 — approved art only on title, stage clear, end.
+   One tiny transparent AVIF sprite; the combat arena's colors stay unchanged. */
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.masthead{min-height:0;align-items:center;padding:0 4px 1px;margin-bottom:8px;background:transparent;border-bottom:0}
+.masthead:after{display:none}
+.brand{min-width:0;flex:0 1 auto}
+.brand h1.cyber-brand{display:block;margin:0;transform:none;font-size:inherit;letter-spacing:normal;line-height:1}
+.brand-art{
+  display:block;width:clamp(250px,48vw,545px);aspect-ratio:660/147;
+  background-image:url("./assets/cyberpunk-ui.avif?v=0.3.13");
+  background-repeat:no-repeat;background-size:100% auto;background-position:top left;
+  filter:drop-shadow(0 0 7px #00b6ff38);
+}
+.version{align-self:center;justify-content:center;flex:0 0 auto}
+.version span{font-size:13px;color:#ff9759;text-shadow:0 0 10px #ff5a764a}
+.end-transmission-art{
+  width:min(100%,510px);aspect-ratio:334/76;margin:6px auto 12px;
+  background-image:url("./assets/cyberpunk-ui.avif?v=0.3.13");
+  background-repeat:no-repeat;background-size:197.61% auto;
+  background-position:100% 90.26%;
+  filter:drop-shadow(0 0 8px #f2357170);
+}
+.end-transmission-art[hidden]{display:none}
+.overlay.is-end #overlay-title{
+  position:absolute;overflow:hidden;width:1px;height:1px;clip:rect(0,0,0,0);
+  white-space:nowrap;margin:0;padding:0;
+}
+.overlay.is-end .eyebrow{display:none}
+@media (min-width:741px){
+  .cabinet{
+    width:min(100%,calc((100vh - 190px) * 1.333333333));
+    width:min(100%,calc((100dvh - 190px) * 1.333333333));
+  }
+}
+@media (max-width:740px){
+  .masthead{min-height:0;padding:0 2px 1px;margin-bottom:8px}
+  .brand-art{width:clamp(205px,57vw,380px)}
+  .version span{font-size:10px}
+  .end-transmission-art{margin:0 auto 6px}
+}
+@media (max-width:430px){
+  .brand-art{width:min(61vw,265px)}
+  .version span{font-size:9px}
+  .end-transmission-art{margin:0 auto 4px}
+}
