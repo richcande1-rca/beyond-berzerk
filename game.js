@@ -61,6 +61,10 @@
   const TURRET_MAX_SPEED = 5.6, TURRET_ACCEL = 25, TURRET_BRAKE = 65;
   const HEAVY_KILLS_REQUIRED = 8, RAILGUN_COOLDOWN = 4.5;
   const RAILGUN_DAMAGE = 3, RAILGUN_RADIUS = 8, RAILGUN_FLASH = .24;
+  const SUPPLY_RADIUS = 18, SUPPLY_SPEED = 108;
+  const POWERUP_DURATIONS = {triple:10,guardian:12,stasis:8};
+  const POWERUP_TYPES = ["triple","guardian","stasis"];
+  const STASIS_SCALE = .36;
   // Sector names match what players actually see, not unrelated generic
   // combat labels. Wave 10+ can retain the expanding endless-run title pool.
   const WAVE_NAMES = ["FIRST CONTACT", "RADAR SWEEP", "PRISM FRACTURE",
@@ -137,6 +141,8 @@
       wave4DirectKills:0, penetrator:false, penCharge:0,
       railFlash:0, railAngle:0,
       arcCannon:false, arcCharge:0, arcLinks:[],
+      supplyDrone:null,dropClock:rnd(14,24),powerup:null,
+      powerClock:0,lastPowerup:null,guardianClock:0,guardianAngle:0,
       waveElapsed:0, waveTotal:0, shieldCapsule:null, shieldCapsuleSeen:false,
       boss:null, bossState:"none", bossWarning:0, bossDefeated:false, clearBossShots:false,
       architectRingSpins:null,
@@ -575,6 +581,86 @@
     }
     return true;
   }
+  function collectSupplyDrone() {
+    const drone=state.supplyDrone;
+    if(!drone)return;
+    let pick=POWERUP_TYPES[Math.floor(Math.random()*POWERUP_TYPES.length)];
+    // No same prize twice in a row; keep every pickup surprising.
+    if(pick===state.lastPowerup)
+      pick=POWERUP_TYPES[(POWERUP_TYPES.indexOf(pick)+1+
+        Math.floor(Math.random()*2))%POWERUP_TYPES.length];
+    state.supplyDrone=null;
+    state.powerup=pick;
+    state.lastPowerup=pick;
+    state.powerClock=POWERUP_DURATIONS[pick];
+    state.guardianClock=0;
+    state.dropClock=rnd(18,29);
+    const title=pick==="triple"?"TRIPLE THREAT":
+      pick==="guardian"?"GUARDIAN DRONES":"STASIS FIELD";
+    state.announce=title+" ACTIVATED";
+    state.announceClock=2.1;
+    setStatus("SUPPLY SECURED — "+title);
+    burst(drone.x,drone.y,"#f8da7f",16,.72);
+    burst(drone.x,drone.y,"#ffffff",7,.4);
+    tone(560,.13,"triangle",.052,1100);
+    tone(940,.20,"triangle",.036,1540,.11);
+  }
+  function updateSupplyDrone(dt) {
+    if(state.supplyDrone){
+      state.supplyDrone.x+=state.supplyDrone.vx*dt;
+      if(state.supplyDrone.x>CX+R+SUPPLY_RADIUS+14 ||
+          state.supplyDrone.x<CX-R-SUPPLY_RADIUS-14){
+        state.supplyDrone=null;
+        state.dropClock=rnd(18,29);
+      }
+      return;
+    }
+    // No drops in introductions, on empty cleared waves, or when a boss
+    // is announcing/entering. A live boss may still draw a lucky supply.
+    const combat=state.toSpawn>0 || state.bots.length>0 ||
+      state.bossState==="active";
+    if(!combat || state.waveClock>0 ||
+        state.bossState==="warning" || state.bossState==="entering")return;
+    state.dropClock-=dt;
+    if(state.dropClock>0)return;
+    const lanes=[-146,-104,-63,-25,38,83,132];
+    const dir=Math.random()<.5?1:-1;
+    state.supplyDrone={
+      x:CX-dir*(R+SUPPLY_RADIUS+10),
+      y:CY+lanes[Math.floor(Math.random()*lanes.length)],
+      vx:dir*SUPPLY_SPEED
+    };
+    state.announce="SUPPLY DRONE INBOUND // SHOOT TO CLAIM";
+    state.announceClock=1.7;
+    tone(720,.08,"square",.025,450);
+  }
+  function updateGuardians(dt) {
+    if(state.powerup!=="guardian")return;
+    state.guardianAngle+=dt*1.65;
+    state.guardianClock-=dt;
+    if(state.guardianClock>0)return;
+    state.guardianClock=.43;
+    if(state.shots.filter(shot=>shot.friendly).length>72)return;
+    for(let i=0;i<2;i++){
+      const a=state.guardianAngle+i*Math.PI;
+      const x=CX+Math.cos(a)*58,y=CY+Math.sin(a)*58;
+      let target=null,nearest=158;
+      for(const bot of state.bots){
+        const d=Math.hypot(bot.x-x,bot.y-y);
+        if(d>=nearest || !arcPathClear(x,y,bot.x,bot.y))continue;
+        nearest=d;target=bot;
+      }
+      if(!target)continue;
+      const aim=Math.atan2(target.y-y,target.x-x);
+      state.shots.push({x,y,vx:Math.cos(aim)*395,vy:Math.sin(aim)*395,
+        life:.52,friendly:true,size:2.7,damage:1,
+        color:"#9cfff2",guardian:true});
+      burst(x,y,"#82ffe9",2,.13);
+    }
+  }
+  function hostileScale(shot) {
+    return !shot.friendly && state.powerup==="stasis"?STASIS_SCALE:1;
+  }
   function fireRailgun(angle,dx,dy) {
     // A true rail blast, not one slightly thicker ordinary projectile.
     // Instant straight-line damage crosses every arena wall. Robots and
@@ -595,6 +681,13 @@
       if(rx*dx+ry*dy>=24 && rx*dx+ry*dy<=range &&
           Math.abs(rx*dy-ry*dx)<=RAILGUN_RADIUS+13)
         hitArchitect(architect);
+    }
+    const drone=state.supplyDrone;
+    if(drone) {
+      const rx=drone.x-CX,ry=drone.y-CY;
+      if(rx*dx+ry*dy>=24 && rx*dx+ry*dy<=range &&
+          Math.abs(rx*dy-ry*dx)<=RAILGUN_RADIUS+SUPPLY_RADIUS)
+        collectSupplyDrone();
     }
     // The old Penetrator could shoot down hostile bolts. Retain that advantage.
     state.shots=state.shots.filter(s=>{
@@ -660,16 +753,23 @@
     if(arcReady)state.arcCharge=ARC_CANNON_COOLDOWN;
     const damage=state.heavyLaser?2:1;
     const color=state.heavyLaser?"#dbadff":"#ecfdff";
-    state.shots.push({x:CX+dx*27,y:CY+dy*27,
-      vx:dx*610,vy:dy*610,life:.7,friendly:true,size:3.3,
-      color:arcReady?"#92eeff":color,damage,penetrating:false,arc:arcReady});
-    burst(CX+dx*28,CY+dy*28,arcReady?"#c0ffff":"#90faff",2,.15);
-    if(state.twinCannons){
-      state.shots.push({x:CX-dx*27,y:CY-dy*27,
-        vx:-dx*610,vy:-dy*610,life:.7,friendly:true,size:3.3,
-        color,damage,penetrating:false});
-      burst(CX-dx*28,CY-dy*28,"#90faff",2,.15);
+    // Triple Threat retains the exact center shot (including Arc Cannon).
+    // Additional +/- spread bullets behave like ordinary wall-blocked lasers.
+    const spread=state.powerup==="triple"?[-.17,0,.17]:[0];
+    for(const offset of spread){
+      const a=angle+offset,fx=Math.cos(a),fy=Math.sin(a);
+      state.shots.push({x:CX+fx*27,y:CY+fy*27,
+        vx:fx*610,vy:fy*610,life:.7,friendly:true,size:3.3,
+        color:arcReady&&offset===0?"#92eeff":color,
+        damage,penetrating:false,arc:arcReady&&offset===0});
+      if(state.twinCannons){
+        state.shots.push({x:CX-fx*27,y:CY-fy*27,
+          vx:-fx*610,vy:-fy*610,life:.7,friendly:true,size:3.3,
+          color,damage,penetrating:false});
+      }
     }
+    burst(CX+dx*28,CY+dy*28,arcReady?"#c0ffff":"#90faff",2,.15);
+    if(state.twinCannons)burst(CX-dx*28,CY-dy*28,"#90faff",2,.15);
     state.turretKick=1;
     state.muzzleFlash=.07;
     if(railReady)fireRailgun(angle,dx,dy);
@@ -695,12 +795,13 @@
   function updateBots(dt) {
     for (let i=state.bots.length-1;i>=0;i--) {
       const b=state.bots[i];
-      b.age+=dt;
+      const botDt=dt*(state.powerup==="stasis"?STASIS_SCALE:1);
+      b.age+=botDt;
       let d=dist(b.x,b.y), a=polar(b.x,b.y);
       const preferred = b.type==="gunner"?153:b.type==="flank"?108:
         b.type==="rush"?69:83;
       let heading=a+Math.PI;
-      let speed=b.speed*dt;
+      let speed=b.speed*botDt;
       let nearest=null,distanceToRing=Infinity;
       for (const ring of state.rings) {
         const delta=d-ringShape(ring).radius;
@@ -711,7 +812,7 @@
       // Runners press inward; flankers orbit; gunners seek a firing lane.
       // Each role retains wall-avoiding behavior and a safe central pocket.
       if (b.panic>0) {
-        b.panic=Math.max(0,b.panic-dt);
+        b.panic=Math.max(0,b.panic-botDt);
         heading=b.panicAngle;
         speed*=1.5;
       } else if (d<preferred+6) {
@@ -747,7 +848,7 @@
       }
       d=dist(b.x,b.y);
       if (d<30) {burst(b.x,b.y,"#ff4baf",12);state.bots.splice(i,1);playerHit("contact");continue;}
-      b.shotClock-=dt;
+      b.shotClock-=botDt;
       const fireRange=b.type==="gunner"?190:b.type==="flank"?138:
         b.type==="rush"?94:125;
       if (b.shotClock<=0 && d<fireRange && clearShotPath(b.x,b.y)) {
@@ -758,15 +859,16 @@
     }
   }
   function shotPathClear(shot, seconds) {
-    // Penetrators ignore walls, but still expire at the arena perimeter.
+    // All projectile path checks use the same Stasis scaling as movement.
+    const factor=hostileScale(shot);
     if (shot.penetrating) {
-      const x=shot.x+shot.vx*seconds,y=shot.y+shot.vy*seconds;
+      const x=shot.x+shot.vx*seconds*factor,y=shot.y+shot.vy*seconds*factor;
       return dist(x,y)<=R+21;
     }
     // Interceptions cannot occur through the arena's moving walls.
-    const steps=Math.max(1,Math.ceil(Math.hypot(shot.vx,shot.vy)*seconds/4));
+    const steps=Math.max(1,Math.ceil(Math.hypot(shot.vx,shot.vy)*seconds*factor/4));
     for (let i=1;i<=steps;i++) {
-      const t=seconds*i/steps;
+      const t=seconds*i*factor/steps;
       const x=shot.x+shot.vx*t,y=shot.y+shot.vy*t;
       if (dist(x,y)>R+21 || wallHit(x,y,shot.size)) return false;
     }
@@ -783,7 +885,8 @@
     for (const a of friendly) {
       for (const b of hostile) {
         const rx=a.x-b.x, ry=a.y-b.y;
-        const vx=a.vx-b.vx, vy=a.vy-b.vy;
+        const factor=hostileScale(b);
+        const vx=a.vx-b.vx*factor, vy=a.vy-b.vy*factor;
         const limit=Math.min(dt,a.life,b.life);
         const t=clamp(-(rx*vx+ry*vy)/Math.max(1,vx*vx+vy*vy),0,limit);
         const dx=rx+vx*t, dy=ry+vy*t;
@@ -798,8 +901,9 @@
       if (!shotPathClear(a,t) || !shotPathClear(b,t)) continue;
       if (!a.penetrating) intercepted.add(a); // Penetrator survives interceptions.
       intercepted.add(b);
-      const x=(a.x+a.vx*t+b.x+b.vx*t)/2;
-      const y=(a.y+a.vy*t+b.y+b.vy*t)/2;
+      const factor=hostileScale(b);
+      const x=(a.x+a.vx*t+b.x+b.vx*t*factor)/2;
+      const y=(a.y+a.vy*t+b.y+b.vy*t*factor)/2;
       burst(x,y,"#f6ffff",10,.72);
       burst(x,y,"#59eaff",5,.38);
       state.impacts.push({x,y,life:.23,maxLife:.23,color:"#d9ffff"});
@@ -814,12 +918,13 @@
     for (let i=state.shots.length-1;i>=0;i--) {
       const s=state.shots[i];
       if (!s) continue; // Defensive guard if another combat event changes the list.
-      s.life-=dt;
+      const shotDt=dt*hostileScale(s);
+      s.life-=shotDt;
       if (s.life<=0) {state.shots.splice(i,1);continue;}
-      const steps=Math.max(1,Math.ceil(Math.hypot(s.vx,s.vy)*dt/5));
+      const steps=Math.max(1,Math.ceil(Math.hypot(s.vx,s.vy)*shotDt/5));
       let hit=false;
       for (let j=0;j<steps;j++) {
-        s.x+=s.vx*dt/steps;s.y+=s.vy*dt/steps;
+        s.x+=s.vx*shotDt/steps;s.y+=s.vy*shotDt/steps;
         const struckWall=!s.penetrating && wallHit(s.x,s.y,s.size);
         if (dist(s.x,s.y)>R+21 || struckWall) {
           burst(s.x,s.y,s.friendly?"#45fefa":"#ff9551",struckWall?8:5,.42);
@@ -846,6 +951,12 @@
             burst(capsule.x,capsule.y,"#80ffff",18,.9);
             burst(capsule.x,capsule.y,"#ffffff",8,.4);
             tone(860,.13,"triangle",.045,1310);
+            hit=true;break;
+          }
+          const drone=state.supplyDrone;
+          if(drone && Math.hypot(s.x-drone.x,s.y-drone.y)<
+              SUPPLY_RADIUS+s.size){
+            collectSupplyDrone();
             hit=true;break;
           }
           const boss=state.boss;
@@ -908,7 +1019,7 @@
             if (Math.hypot(s.x-b.x,s.y-b.y)<b.size+4) {
               b.hp-=s.damage||1;
               burst(s.x,s.y,s.penetrating?"#ffe9ab":"#ffffff",4,.27);
-              if (b.hp<=0) scrap(k,false);
+              if (b.hp<=0) scrap(k,false,s.guardian?"guardian":"shot");
               else tone(170,.07,"triangle",.025,110);
               if(s.arc)arcChain({x:b.x,y:b.y});
               if (!s.penetrating) {hit=true;break;}
@@ -1212,6 +1323,7 @@
         state.wave++;
         state.waveElapsed=0;
         state.shieldCapsule=null;state.shieldCapsuleSeen=false;
+        state.supplyDrone=null; // A missed pass does not cross graduation.
         state.boss=null;state.bossState="none";
         state.bossWarning=0;state.bossDefeated=false;
         state.architectRingSpins=null;
@@ -1313,6 +1425,13 @@
     }
     state.railFlash=Math.max(0,state.railFlash-dt);
     state.fireClock-=dt;
+    if(state.powerup){
+      state.powerClock=Math.max(0,state.powerClock-dt);
+      if(state.powerClock===0){
+        state.powerup=null;
+        state.guardianClock=0;
+      }
+    }
     state.announceClock=Math.max(0,state.announceClock-dt);
     state.revealClock=Math.max(0,state.revealClock-dt);
     state.flash=Math.max(0,state.flash-dt);
@@ -1327,7 +1446,9 @@
       state.fireClock=.115;
     }
     updateWave(dt);
+    updateSupplyDrone(dt);
     updateBots(dt);
+    updateGuardians(dt);
     if (state.phase==="playing") {
       updateShieldCapsule(dt);
       updateWarden(dt);
