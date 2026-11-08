@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.18 — The Warden**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.19 — Warden Visual Upgrade**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
 
@@ -64,6 +64,14 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - Clearing Wave 4 still deploys a second barrel 180° behind the first, using the same matching cannon artwork. The existing muzzle flash and reactor shimmer are retained without per-frame asset allocations.
 - All collision geometry, projectile origins, player lives, shields and recharge rules, turret rotation speed, bot AI, damage, rewards and scoring remain **unchanged**. The old canvas turret renders automatically if the sprite cannot load.
 - One graphic file loaded once, with no extra assets inside the frame loop, to keep Chromebook rendering light.
+
+## Warden visual upgrade — v0.3.19
+
+- The Wave 4 Warden now uses the **approved industrial cyberpunk boss concept** as an actual transparent sprite rather than simple vector geometry. It has layered gunmetal armor, a recognizable red visor, heavy asymmetric side cannons, and cyan/amber reactor hardware.
+- One compact **six-frame WebP atlas (~35 KB)** shows the boss at three damage levels, each with **sealed and exposed reactor** versions: pristine, one broken side module with exposed machinery and smoke, then heavily shattered plating with sparks. The six frames were extracted from the approved artwork and sized for the arena.
+- The reactor shutters **visually open and close over 0.18 seconds** at the existing vulnerability windows. A small cyan target ring is shown only while vulnerable. Two asynchronous chassis lights and minimal critical-damage sparks make the boss feel powered without spawning new particle effects.
+- The sprite is decoded once, never generated per frame. The original canvas Warden draws automatically when the artwork is unavailable or WebP decoding fails.
+- **Presentation-only:** No changes to Warden HP, exposed-core timing, collision radius, firing pattern, orbit speed, wave-clear requirements, shield capsule, score, controls, or rewards. The cyan reactor remains aligned to the actual core hitbox; this is not a boss difficulty change.
 
 ## The Warden — Wave 4 boss, v0.3.18
 
