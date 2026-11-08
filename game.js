@@ -764,6 +764,7 @@
     }
   }
   function wardenCoreOpen(boss) {
+    if(state.bossState!=="active")return false;
     const clock=boss.age%WARDEN_CYCLE;
     return clock>=.75 && clock<2.8;
   }
@@ -788,21 +789,37 @@
     if(state.bossState==="warning") {
       state.bossWarning-=dt;
       if(state.bossWarning<=0) {
-        state.bossState="active";
+        state.bossState="entering";
         state.boss={
-          x:CX+Math.cos(-1.0)*214,y:CY+Math.sin(-1.0)*214,
+          x:CX+Math.cos(-1.0)*(R+40),y:CY+Math.sin(-1.0)*(R+40),
           angle:-1.0,age:0,phase:1,hp:WARDEN_HP,
-          guard:0,fireClock:2.0
+          guard:0,entry:1.15,fireClock:2.0
         };
-        state.announce="THE WARDEN // REACTOR EXPOSED WHEN CYAN";
-        state.announceClock=2.8;
-        setStatus("BOSS ENGAGED — TARGET THE CYAN CORE");
+        state.announce="THE WARDEN APPROACHES";
+        state.announceClock=1.7;
+        setStatus("THE WARDEN — INBOUND");
         tone(100,.55,"sawtooth",.055,250);
       }
       return;
     }
-    if(state.bossState!=="active" || !state.boss)return;
+    if(!state.boss)return;
     const b=state.boss;
+    if(state.bossState==="entering") {
+      b.entry=Math.max(0,b.entry-dt);
+      const progress=1-b.entry/1.15;
+      const radius=R+40-(R+40-210)*progress;
+      b.x=CX+Math.cos(b.angle)*radius;
+      b.y=CY+Math.sin(b.angle)*radius;
+      if(b.entry<=0) {
+        state.bossState="active";
+        b.age=0;
+        state.announce="THE WARDEN // SHOOT THE CYAN CORE";
+        state.announceClock=2.4;
+        setStatus("BOSS ENGAGED — TARGET THE CYAN CORE");
+      }
+      return;
+    }
+    if(state.bossState!=="active")return;
     b.age+=dt;b.guard=Math.max(0,b.guard-dt);
     b.angle+=(.38+(b.phase-1)*.13)*dt;
     const radius=210+7*Math.sin(b.age*.62);
@@ -1437,7 +1454,8 @@
     }
   }
   function drawWarden() {
-    if(state.wave!==4 || state.bossState!=="active" || !state.boss)return;
+    if(state.wave!==4 || !state.boss ||
+        (state.bossState!=="active" && state.bossState!=="entering"))return;
     const b=state.boss,open=wardenCoreOpen(b);
     ctx.save();ctx.translate(b.x,b.y);
     ctx.rotate(-b.angle*.65+state.elapsed*.22);
@@ -1881,7 +1899,7 @@
         380,705,13,"#ffd88a");
     else if(state.heavyLaser)
       label("HEAVY LASER",380,705,13,"#dbadff");
-    if(state.wave===4 && state.bossState==="warning")
+    if(state.wave===4 && (state.bossState==="warning" || state.bossState==="entering"))
       label("WARDEN INBOUND",W-26,706,16,"#ff7b67","right");
     else if(state.boss)
       label("WARDEN "+state.boss.hp+"/"+WARDEN_HP+
@@ -1911,7 +1929,7 @@
     ctx.textAlign="center";ctx.textBaseline="alphabetic";
     ctx.font='800 27px "Oxanium", ui-monospace, monospace';
     ctx.shadowBlur=0;ctx.fillStyle="#f8fbff";
-    ctx.fillText(state.announce,CX,111);
+    ctx.fillText(state.announce,CX,111,452);
     ctx.restore();
   }
 
@@ -2020,6 +2038,12 @@
     const visual=visualEvolution();
     drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
     drawShockwaves();drawBots();drawShieldCapsule();drawWarden();drawShots();drawParticles();drawImpacts();drawTurret();
+    // The perimeter alarm flashes during the warning and the boss entry.
+    if(state.wave===4 && (state.bossState==="warning" || state.bossState==="entering") &&
+        Math.floor(state.elapsed*5)%2===0) {
+      ctx.strokeStyle="#ff465a";ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(CX,CY,R+17,0,TAU);ctx.stroke();
+    }
     ctx.restore();
     if(state.flash>0) {
       ctx.fillStyle="rgba(255,50,95,"+(state.flash*.18)+")";
