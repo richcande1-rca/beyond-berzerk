@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.12 — Consistent Controls**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.13 — Cyberpunk Identity**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; the Wave 6 Penetrator reward is the exception and passes through walls. Robot swarms get larger and faster with each wave.
 
@@ -14,10 +14,10 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 
 ## Visual design
 
-- Industrial sci-fi masthead and menus with Teko display typography and Oxanium system labels (web fonts; local fallbacks included).
-- Amber / warning-red / gunmetal start, pause, and game-over panels replace the earlier magenta-and-cyan menu treatment.
-- The start screen emphasizes the threat rather than a gameplay description; detailed controls remain below the cabinet.
-- The game-over label **END OF TRANSMISSION** and the existing combat controls are unchanged; in v0.3.10 the in-canvas wall layouts evolve by sector.
+- **v0.3.13 approved cyberpunk artwork:** The large header is the custom two-line **BEYOND BERZERK** logo in blue/red-orange neon; completed waves display the cyan **STAGE CLEAR** sign above the existing graduation degree, motto and reward; normal game over displays the red **END TRANSMISSION** sign above the score summary.
+- The three approved graphics are cropped from one sheet into a compact, transparent AVIF sprite (`assets/cyberpunk-ui.avif`, about 9 KB). The source is the approved Blade Runner-style illustration, not browser text. No byline or extraneous illustrations appear around the header.
+- Title/game-over graphics are placed by CSS; the stage-clear sign is drawn only during the in-canvas graduation ceremony. Art decoding occurs once, and a legacy text fallback renders if AVIF is unavailable.
+- The surrounding industrial overlay cards and HUD remain readable. Combat rendering, arcade mechanics, weapon upgrades, enemy behavior and boss progression are unchanged. Bosses are still future work.
 
 ## Controls
 
