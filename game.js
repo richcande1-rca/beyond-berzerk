@@ -1396,26 +1396,41 @@
       for(const r of [98,166,233]){ctx.moveTo(r,0);ctx.arc(0,0,r,0,TAU);}
       ctx.stroke();
     }
-    // Wave 3: an unmistakable purple prism lattice, not merely three circles.
+    // Wave 3 — PRISM: enormous crystalline spires with broken facets.
+    // Sharp edges, translucent triangular planes, no decorative circles.
     else if(v.stage===3) {
-      ctx.save();ctx.rotate(-t*.17);
-      ctx.fillStyle=ink(20,.16);ctx.strokeStyle=ink(32,.60);ctx.lineWidth=2.8;
-      for(let k=0;k<9;k++) {
-        const a=k*TAU/9, r=169+12*Math.sin(t*1.4+k);
+      ctx.save();ctx.rotate(-t*.11);
+      for(let k=0;k<7;k++){
+        const a=k*TAU/7;
+        const s=Math.sin(t*.8+k*2.1),r=204+18*s;
+        ctx.save();ctx.rotate(a);
+        ctx.fillStyle=k%2?ink(28,.20,43):ink(-20,.18,50);
+        ctx.strokeStyle=k%2?ink(45,.88,82):ink(0,.84,76);
+        ctx.lineWidth=2.6;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(a)*76,Math.sin(a)*76);
-        ctx.lineTo(Math.cos(a-.26)*r,Math.sin(a-.26)*r);
-        ctx.lineTo(Math.cos(a)*255,Math.sin(a)*255);
-        ctx.lineTo(Math.cos(a+.26)*r,Math.sin(a+.26)*r);
+        ctx.moveTo(78,-12);ctx.lineTo(r*.79,-43);
+        ctx.lineTo(254,-6);ctx.lineTo(r*.75,36);
         ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.strokeStyle=ink(90,.60,92);ctx.lineWidth=1.3;
+        ctx.beginPath();ctx.moveTo(78,-12);ctx.lineTo(254,-6);
+        ctx.lineTo(r*.75,36);ctx.stroke();
+        ctx.fillStyle=ink(95,.10,85);
+        ctx.beginPath();ctx.moveTo(r*.79,-43);ctx.lineTo(254,-6);
+        ctx.lineTo(r*.65,-1);ctx.closePath();ctx.fill();
+        ctx.restore();
       }
       ctx.restore();
-      ctx.strokeStyle=ink(-35,.43);ctx.lineWidth=2.5;ctx.beginPath();
-      for(let k=0;k<3;k++){
-        const r=105+k*65+8*Math.sin(t*2+k);
-        ctx.moveTo(r,0);ctx.arc(0,0,r,0,TAU);
+      // Floating splinters gently counter-rotate behind the real walls.
+      ctx.save();ctx.rotate(t*.19);
+      ctx.fillStyle=ink(55,.28,79);ctx.strokeStyle=ink(18,.78,83);
+      ctx.lineWidth=1.4;ctx.beginPath();
+      for(let k=0;k<14;k++){
+        const a=k*TAU/14,r=228+(k%3)*9;
+        const x=Math.cos(a)*r,y=Math.sin(a)*r;
+        ctx.moveTo(x,y-12);ctx.lineTo(x+9,y);ctx.lineTo(x,y+15);
+        ctx.lineTo(x-6,y);ctx.closePath();
       }
-      ctx.stroke();
+      ctx.fill();ctx.stroke();ctx.restore();
     }
     // Wave 4: hot, rotating reactor blades and segmented amber arcs.
     else if(v.stage===4) {
@@ -1439,66 +1454,122 @@
       }
       ctx.stroke();
     }
-    // Wave 5: a living emerald vector corridor. Background only; hitboxes
-    // stay exactly where the real wall segments are rendered.
+    // Wave 5 — VECTOR: a luminous circuit board, all 90-degree pathways.
+    // No circular motif: square buses, stacked traces and switching junctions.
     else if(v.stage===5) {
-      ctx.save();ctx.rotate(.16*Math.sin(t*.36));
-      ctx.strokeStyle=ink(0,.54);ctx.lineWidth=2.2;ctx.beginPath();
-      for(let x=-252;x<=252;x+=43) {
-        for(let y=-270;y<=270;y+=30) {
-          const bx=x+24*Math.sin(y*.018+t*.8+x*.009);
-          if(y===-270)ctx.moveTo(bx,y);else ctx.lineTo(bx,y);
-        }
-      }
-      for(let y=-252;y<=252;y+=53){
-        for(let x=-276;x<=276;x+=30){
-          const by=y+19*Math.sin(x*.02-t*.7+y*.013);
-          if(x===-276)ctx.moveTo(x,by);else ctx.lineTo(x,by);
-        }
-      }
-      ctx.stroke();ctx.restore();
-      ctx.strokeStyle=ink(65,.44);ctx.lineWidth=3;ctx.strokeRect(-218,-218,436,436);
-    }
-    // Wave 6: icy gear geometry, backed by non-colliding dashed echoes.
-    else if(v.stage===6) {
-      for(let j=0;j<2;j++) {
-        const r=j?226:144, teeth=j?36:24;
-        ctx.save();ctx.rotate(t*(j?-.22:.32));
-        ctx.strokeStyle=ink(j?55:0,.68);ctx.lineWidth=j?2.8:3.5;
+      ctx.save();
+      ctx.strokeStyle=ink(0,.60,65);ctx.lineWidth=2.8;ctx.lineJoin="miter";
+      ctx.strokeRect(-238,-238,476,476);
+      ctx.strokeStyle=ink(44,.30,74);ctx.lineWidth=1.3;
+      ctx.strokeRect(-211,-211,422,422);
+      // Bus traces converge on four squared-off power modules.
+      for(let i=0;i<4;i++){
+        ctx.save();ctx.rotate(i*Math.PI/2);
+        ctx.fillStyle=ink(0,.18,37);
+        ctx.strokeStyle=ink(0,.82,76);
+        ctx.lineWidth=2.5;
+        ctx.fillRect(-53,-247,106,54);ctx.strokeRect(-53,-247,106,54);
+        ctx.fillStyle=ink(66,.75,90);
+        ctx.fillRect(-32,-232,64,5);
         ctx.beginPath();
-        for(let k=0;k<=teeth*2;k++){
-          const a=k*TAU/(teeth*2),rr=r+(k%2?9:-9);
-          if(k===0)ctx.moveTo(Math.cos(a)*rr,Math.sin(a)*rr);
-          else ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);
+        for(let line=0;line<4;line++){
+          const x=-40+line*26;
+          ctx.moveTo(x,-194);ctx.lineTo(x,-162);
+          ctx.lineTo(x+(line%2?13:-13),-162);
+          ctx.lineTo(x+(line%2?13:-13),-102);
         }
-        ctx.closePath();ctx.stroke();ctx.restore();
+        ctx.stroke();
+        ctx.restore();
       }
-      ctx.strokeStyle=ink(-40,.38);ctx.lineWidth=2;ctx.beginPath();
-      for(const r of [111,184,256]){ctx.moveTo(r,0);ctx.arc(0,0,r,0,TAU);}
+      ctx.strokeStyle=ink(75,.66,78);ctx.lineWidth=2.4;ctx.beginPath();
+      for(let i=-3;i<=3;i++){
+        const offset=i*39,turn=i%2?24:-24;
+        ctx.moveTo(-246,offset);ctx.lineTo(-180,offset);
+        ctx.lineTo(-180,offset+turn);ctx.lineTo(-118,offset+turn);
+        ctx.moveTo(246,offset);ctx.lineTo(180,offset);
+        ctx.lineTo(180,offset-turn);ctx.lineTo(118,offset-turn);
+      }
       ctx.stroke();
-    }
-    // Wave 7: jewel-like kaleidoscopic facets with independent counter-spin.
-    else if(v.stage===7) {
-      ctx.save();ctx.rotate(t*.16);
-      ctx.strokeStyle=ink(35,.75);ctx.fillStyle=ink(0,.13);ctx.lineWidth=2.7;
-      for(let k=0;k<12;k++){
-        const a=k*TAU/12, b=a+.32*Math.sin(t*.57);
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a)*82,Math.sin(a)*82);
-        ctx.lineTo(Math.cos(a-.21)*222,Math.sin(a-.21)*222);
-        ctx.lineTo(Math.cos(b)*260,Math.sin(b)*260);
-        ctx.lineTo(Math.cos(a+.21)*222,Math.sin(a+.21)*222);
-        ctx.closePath();ctx.fill();ctx.stroke();
+      // Small moving square charge packets show data flow along the buses.
+      ctx.fillStyle=ink(98,.98,91);
+      for(let i=0;i<8;i++){
+        const side=i%2?1:-1,x=side*(118+((t*26+i*47)%104));
+        const y=(Math.floor(i/2)-1.5)*62;
+        ctx.fillRect(x-4,y-4,8,8);
       }
       ctx.restore();
-      ctx.save();ctx.rotate(-t*.2);ctx.strokeStyle=ink(-65,.46);ctx.lineWidth=2;
-      ctx.beginPath();
-      for(let k=0;k<12;k++){
-        const a=k*TAU/12;
-        if(k===0)ctx.moveTo(Math.cos(a)*182,Math.sin(a)*182);
-        else ctx.lineTo(Math.cos(a)*182,Math.sin(a)*182);
+    }
+    // Wave 6 — PHANTOM: a broken machine graveyard, not intact circles.
+    // Jagged shattered gearing and intermittent cold electrical fractures.
+    else if(v.stage===6) {
+      for(let j=0;j<3;j++){
+        const a=(j*TAU/3)+t*(j%2?-.07:.09);
+        const r=j===0?125:j===1?183:243,teeth=j===0?18:24;
+        ctx.save();ctx.rotate(a);
+        ctx.strokeStyle=ink(j*35,.70,75);ctx.lineWidth=j===0?4.5:3.2;
+        ctx.beginPath();
+        for(let k=0;k<teeth;k++){
+          // Entire missing clusters give the gears a wrecked silhouette.
+          if((k+j*3)%8===0 || (k+j*2)%11===0)continue;
+          const th=k*TAU/teeth,th2=(k+.7)*TAU/teeth;
+          const r1=r+(k%3===0?13:-5),r2=r+((k+1)%3===0?13:-5);
+          ctx.moveTo(Math.cos(th)*r1,Math.sin(th)*r1);
+          ctx.lineTo(Math.cos(th2)*r2,Math.sin(th2)*r2);
+        }
+        ctx.stroke();
+        ctx.restore();
       }
-      ctx.closePath();ctx.stroke();ctx.restore();
+      // Torn conductor cables and occasional cold blue flicker.
+      ctx.strokeStyle=ink(50,.64,76);ctx.lineWidth=2.3;ctx.beginPath();
+      for(let j=0;j<6;j++){
+        const x=-228+j*84,phase=j*1.27;
+        ctx.moveTo(x,-249);ctx.lineTo(x+18,-197);
+        ctx.lineTo(x-15,-168);ctx.lineTo(x+25,-122);
+        ctx.moveTo(-249,x);ctx.lineTo(-196,x-19);
+        ctx.lineTo(-164,x+12);ctx.lineTo(-120,x-13);
+      }
+      ctx.stroke();
+      if(Math.floor(t*3.5)%5<2){
+        ctx.strokeStyle=ink(100,.96,94);ctx.lineWidth=2.4;ctx.beginPath();
+        for(let j=0;j<5;j++){
+          const x=-235+j*105,y=175+14*Math.sin(j*1.8);
+          ctx.moveTo(x,y);ctx.lineTo(x+21,y-18);
+          ctx.lineTo(x+14,y-27);ctx.lineTo(x+40,y-47);
+        }
+        ctx.stroke();
+      }
+    }
+    // Wave 7 — KALEIDOSCOPE: four giant hinged mirror assemblies.
+    // Counter-rotating diamond mirrors fill the quadrants, not radial petals.
+    else if(v.stage===7) {
+      ctx.save();ctx.rotate(t*.085);
+      for(let k=0;k<4;k++){
+        ctx.save();ctx.rotate(k*Math.PI/2);
+        const fold=.15+.10*Math.sin(t*.75+k*Math.PI/2);
+        ctx.fillStyle=ink(k*21,.22,48);
+        ctx.strokeStyle=ink(k*20+40,.87,84);ctx.lineWidth=3;
+        ctx.beginPath();
+        ctx.moveTo(86,0);ctx.lineTo(167,-105);
+        ctx.lineTo(254,0);ctx.lineTo(167,105);
+        ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.fillStyle=ink(115,.17,84);ctx.beginPath();
+        ctx.moveTo(86,0);ctx.lineTo(167,-105);
+        ctx.lineTo(167+fold*80,0);ctx.closePath();ctx.fill();
+        ctx.strokeStyle=ink(105,.87,94);ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(86,0);ctx.lineTo(254,0);
+        ctx.moveTo(167,-105);ctx.lineTo(167+fold*80,0);ctx.lineTo(167,105);
+        ctx.stroke();ctx.restore();
+      }
+      ctx.restore();
+      // Crisp mirrored squares turn the entire arena into a folding lens.
+      ctx.save();ctx.rotate(-t*.15);
+      ctx.strokeStyle=ink(-45,.66,83);ctx.lineWidth=2.5;
+      ctx.strokeRect(-161,-161,322,322);
+      ctx.restore();
+      ctx.save();ctx.rotate(t*.22+Math.PI/4);
+      ctx.strokeStyle=ink(88,.78,89);ctx.lineWidth=2;
+      ctx.strokeRect(-102,-102,204,204);
+      ctx.restore();
     }
     // Wave 8: golden expanding wavefronts and accelerating radial gauges.
     else if(v.stage===8) {
@@ -1518,25 +1589,31 @@
       }
       ctx.stroke();ctx.restore();
     }
-    // Wave 9+ is maximum bounded complexity. Future wave numbers keep changing
-    // hue and timing, but never add a fresh unbounded layer of geometry.
+    // Wave 9+ — COSMOS: empty black space, fractured gravity wells and
+    // four-dimensional tesseracts. Sparse on purpose: the void is the motif.
     else {
-      ctx.save();ctx.rotate(-t*.12);
-      ctx.strokeStyle=ink(0,.74);ctx.lineWidth=2.7;ctx.beginPath();
-      for(let k=0;k<14;k++){
-        for(let j=0;j<=16;j++){
-          const r=77+j*11.1,a=k*TAU/14+j*.075+Math.sin(t*.8+j*.25)*.09;
-          if(j===0)ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);
-          else ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
-        }
-      }
-      ctx.stroke();ctx.restore();
-      ctx.strokeStyle=ink(105,.48);ctx.lineWidth=2.5;ctx.beginPath();
-      for(let k=0;k<4;k++){
-        const r=95+k*48+12*Math.sin(t*1.5+k);
-        ctx.moveTo(r,0);ctx.arc(0,0,r,0,TAU);
+      ctx.save();ctx.rotate(-t*.038);
+      ctx.strokeStyle=ink(8,.54,86);ctx.lineWidth=2.2;
+      // Thin dimensional fractures, deliberately discontinuous.
+      ctx.beginPath();
+      for(let k=0;k<9;k++){
+        const a=k*TAU/9+.3,ra=143+18*Math.sin(t*.48+k);
+        const x=Math.cos(a)*ra,y=Math.sin(a)*ra;
+        ctx.moveTo(x-16,y-18);ctx.lineTo(x+7,y+5);
+        ctx.lineTo(x-3,y+18);
       }
       ctx.stroke();
+      ctx.restore();
+      ctx.save();ctx.rotate(t*.062);
+      for(let i=0;i<4;i++){
+        const a=i*TAU/4+.5;
+        const x=Math.cos(a)*225,y=Math.sin(a)*225;
+        ctx.strokeStyle=ink(60+i*17,.56,91);ctx.lineWidth=1.8;
+        ctx.beginPath();ctx.moveTo(x-24,y-17);ctx.lineTo(x+25,y+21);
+        ctx.stroke();
+        ctx.fillStyle=ink(135,.85,94);ctx.fillRect(x-2,y-2,4,4);
+      }
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -1552,10 +1629,10 @@
     if(!(i&(1<<axis)))TESSERACT_EDGES.push([i,i|(1<<axis),axis===3]);
 
   function drawTesseracts(v) {
-    if(v.stage<5)return;
-    // At most four tesseracts regardless of wave number. No glow/shadow,
-    // images, geometry allocation per vertex, or gameplay collision hooks.
-    const amount=Math.min(4,v.stage-4);
+    // The 4D signature belongs exclusively to Cosmos, not Waves 5–8.
+    if(v.stage!==9)return;
+    // Four bounded, lightweight wireframe tesseracts. No glow or collision.
+    const amount=4;
     const time=state.elapsed*Math.min(v.tempo,2.2);
     ctx.save();
     ctx.translate(CX,CY);
@@ -1603,7 +1680,9 @@
   }
 
   function drawEvolutionGhosts(v) {
-    if(v.stage<6)return;
+    // Only PULSE retains this legacy arc echo. Other waves now have
+    // distinct non-circular identities; their real walls remain visible.
+    if(v.stage!==8)return;
     // Decorative arcs are unmistakably thin and dashed, never collision walls.
     ctx.save();ctx.setLineDash([3,11]);ctx.lineWidth=1.5;
     ctx.strokeStyle="hsla("+((v.hue+75)%360)+",96%,77%,.21)";
