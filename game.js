@@ -50,7 +50,8 @@
   const SHIELD_CAPSULE_RADIUS = 16;
   // One physical rotation speed and acceleration for every aiming method.
   const TURRET_MAX_SPEED = 5.6, TURRET_ACCEL = 25, TURRET_BRAKE = 65;
-  const HEAVY_KILLS_REQUIRED = 8, PENETRATOR_COOLDOWN = 4.5;
+  const HEAVY_KILLS_REQUIRED = 8, RAILGUN_COOLDOWN = 4.5;
+  const RAILGUN_DAMAGE = 3, RAILGUN_RADIUS = 8, RAILGUN_FLASH = .24;
   const WAVE_NAMES = ["FIRST CONTACT", "SIDEWINDERS", "CROSSFIRE",
     "HEAVY METAL", "DOGPILE", "TOTAL MAYHEM", "REACTOR SPIN",
     "PANIC LOOP", "ROBOT RIOT", "CRITICAL MASS"];
@@ -123,6 +124,7 @@
       shieldUnlocked:false, shieldCharges:0, shieldRegen:0,
       shieldFlash:0, shieldFlashArc:-1, heavyLaser:false,
       wave4DirectKills:0, penetrator:false, penCharge:0,
+      railFlash:0, railAngle:0,
       waveElapsed:0, waveTotal:0, shieldCapsule:null, shieldCapsuleSeen:false,
       boss:null, bossState:"none", bossWarning:0, bossDefeated:false, clearBossShots:false,
       aim:6, aimTarget:null, aimVelocity:0,
@@ -501,19 +503,50 @@
     else setStatus((kind==="contact"?"ROBOT CONTACT":"HULL BREACH")+
       " — "+state.lives+" LIVES");
   }
+  function fireRailgun(angle,dx,dy) {
+    // A true rail blast, not one slightly thicker ordinary projectile.
+    // Instant straight-line damage crosses every arena wall. Robots and
+    // incoming projectiles are hit once each, regardless of wall position.
+    const range=R+19;
+    for(let k=state.bots.length-1;k>=0;k--) {
+      const b=state.bots[k],rx=b.x-CX,ry=b.y-CY;
+      const along=rx*dx+ry*dy;
+      const offset=Math.abs(rx*dy-ry*dx);
+      if(along<24 || along>range+b.size || offset>b.size+RAILGUN_RADIUS)continue;
+      b.hp-=RAILGUN_DAMAGE;
+      if(b.hp<=0)scrap(k,false);
+      else burst(b.x,b.y,"#ffda72",8,.55);
+    }
+    // The old Penetrator could shoot down hostile bolts. Retain that advantage.
+    state.shots=state.shots.filter(s=>{
+      if(s.friendly)return true;
+      const rx=s.x-CX,ry=s.y-CY;
+      const along=rx*dx+ry*dy;
+      const struck=along>=24 && along<=range+6 &&
+        Math.abs(rx*dy-ry*dx)<=RAILGUN_RADIUS+s.size;
+      if(struck)burst(s.x,s.y,"#fff3a8",5,.35);
+      return !struck;
+    });
+    state.railAngle=angle;
+    state.railFlash=RAILGUN_FLASH;
+    state.penCharge=RAILGUN_COOLDOWN;
+    state.shake=Math.max(state.shake,5.5);
+    burst(CX+dx*46,CY+dy*46,"#ffe39c",10,.5);
+    // Two layered low-frequency transients, triggered only by each rail shot.
+    tone(120,.26,"sawtooth",.09,48);
+    tone(510,.19,"triangle",.055,135);
+  }
   function firePlayer() {
     const angle=state.aim*Math.PI/4, dx=Math.cos(angle),dy=Math.sin(angle);
-    // Only the forward barrel fires the periodic manually aimed Penetrator;
-    // the original rear barrel continues to fire heavy lasers normally.
-    const penetration=state.penetrator && state.penCharge<=0;
-    if (penetration) state.penCharge=PENETRATOR_COOLDOWN;
+    // Normal front and rear streams stay completely unchanged. The railgun
+    // is a separate automatic discharge on the regular FIRE cadence.
+    const railReady=state.penetrator && state.penCharge<=0;
     const damage=state.heavyLaser?2:1;
     const color=state.heavyLaser?"#dbadff":"#ecfdff";
     state.shots.push({x:CX+dx*27,y:CY+dy*27,
       vx:dx*610,vy:dy*610,life:.7,friendly:true,size:3.3,
-      color:penetration?"#ffd46c":color,damage:penetration?3:damage,
-      penetrating:penetration});
-    burst(CX+dx*28,CY+dy*28,penetration?"#ffe6aa":"#90faff",2,.15);
+      color,damage,penetrating:false});
+    burst(CX+dx*28,CY+dy*28,"#90faff",2,.15);
     if(state.twinCannons){
       state.shots.push({x:CX-dx*27,y:CY-dy*27,
         vx:-dx*610,vy:-dy*610,life:.7,friendly:true,size:3.3,
@@ -522,7 +555,8 @@
     }
     state.turretKick=1;
     state.muzzleFlash=.07;
-    tone(740,.055,"square",.033,420);
+    if(railReady)fireRailgun(angle,dx,dy);
+    else tone(740,.055,"square",.033,420);
   }
   function fireBot(bot) {
     if (state.shots.filter(s=>!s.friendly).length>65) return;
@@ -938,7 +972,7 @@
         const gained=state.wave===4?" — SHIELD ONLINE":
           state.wave===5?" — TWIN CANNONS ONLINE"+
             (state.heavyLaser?" + HEAVY LASER ONLINE":""):
-          state.wave===7?" — PENETRATOR ONLINE":"";
+          state.wave===7?" — RAILGUN ONLINE":"";
         setStatus("WAVE " + String(state.wave).padStart(2,"0") + " — " + waveName()+gained);
         if (state.wave%3===0) state.rings.forEach((ring,i)=>{
           ring.reverseClock=Math.min(ring.reverseClock,2+i*1.3);
@@ -995,6 +1029,7 @@
       }
     } else state.shieldRegen=0;
     if(state.penetrator) state.penCharge=Math.max(0,state.penCharge-dt);
+    state.railFlash=Math.max(0,state.railFlash-dt);
     state.fireClock-=dt;
     state.announceClock=Math.max(0,state.announceClock-dt);
     state.revealClock=Math.max(0,state.revealClock-dt);
@@ -1579,6 +1614,39 @@
     ctx.fillText("S",0,0);
     ctx.restore();
   }
+  function drawRailBlast() {
+    if(state.railFlash<=0)return;
+    const fade=Math.min(1,state.railFlash/RAILGUN_FLASH);
+    const dx=Math.cos(state.railAngle),dy=Math.sin(state.railAngle);
+    const x1=CX+dx*27,y1=CY+dy*27;
+    const x2=CX+dx*(R+19),y2=CY+dy*(R+19);
+    ctx.save();
+    ctx.lineCap="round";
+    ctx.globalAlpha*=fade;
+    // One intense wide beam, a bright internal channel, and a white-hot core.
+    // No blur filters, particle streams, or new images each frame.
+    for(const [width,color] of [[27,"#ffa92c"],[13,"#ffe083"],[4.5,"#ffffff"]]){
+      ctx.strokeStyle=color;ctx.lineWidth=width;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    }
+    // Controlled zig-zag along the discharge makes it read as electricity,
+    // not simply a large ordinary bullet. No random allocations.
+    const nx=-dy,ny=dx;
+    ctx.strokeStyle="#fff0a3";ctx.lineWidth=2.4;
+    ctx.beginPath();ctx.moveTo(x1,y1);
+    for(let j=1;j<9;j++){
+      const along=27+j*(R-8)/9;
+      const wobble=Math.sin(j*18.13+state.railAngle*3.3)*7;
+      ctx.lineTo(CX+dx*along+nx*wobble,CY+dy*along+ny*wobble);
+    }
+    ctx.lineTo(x2,y2);ctx.stroke();
+    // Visible muzzle bloom appears with either sprite or vector fallback.
+    ctx.fillStyle="#fff4a3";
+    ctx.beginPath();ctx.arc(CX+dx*43,CY+dy*43,8+12*fade,0,TAU);ctx.fill();
+    ctx.fillStyle="#fff";
+    ctx.beginPath();ctx.arc(CX+dx*43,CY+dy*43,5+4*fade,0,TAU);ctx.fill();
+    ctx.restore();
+  }
   function drawShots() {
     ctx.save();ctx.lineCap="round";
     for (const s of state.shots) {
@@ -1695,6 +1763,14 @@
     ctx.beginPath();ctx.arc(-26,-22,cyanOn?2.2:1.4,0,TAU);ctx.fill();
     ctx.fillStyle=amberOn?"#ffc176":"#55371e";
     ctx.beginPath();ctx.arc(-23,23,amberOn?2.2:1.4,0,TAU);ctx.fill();
+    if(state.penetrator) {
+      // A gold coil indicates the automatic railgun is charged.
+      ctx.save();
+      ctx.globalAlpha*=state.penCharge<=0?.95:.24;
+      ctx.strokeStyle="#ffcf57";ctx.lineWidth=2.8;
+      ctx.beginPath();ctx.arc(-8.8,.8,9.5,0,TAU);ctx.stroke();
+      ctx.restore();
+    }
     if (state.muzzleFlash>0) {
       const power=state.muzzleFlash/.07;
       for(const side of (state.twinCannons?[0,Math.PI]:[0])) {
@@ -1950,8 +2026,8 @@
         "/"+HEAVY_KILLS_REQUIRED,380,705,13,
         state.wave4DirectKills>=HEAVY_KILLS_REQUIRED?"#c8ff9b":"#ffc982");
     else if(state.penetrator)
-      label(state.penCharge<=0?"PEN READY":"PEN "+state.penCharge.toFixed(1)+"s",
-        380,705,13,"#ffd88a");
+      label(state.penCharge<=0?"RAILGUN READY":"RAIL "+state.penCharge.toFixed(1)+"s",
+        380,705,13,"#ffdb71");
     else if(state.heavyLaser)
       label("HEAVY LASER",380,705,13,"#dbadff");
     if(state.wave===4 && (state.bossState==="warning" || state.bossState==="entering"))
@@ -2067,7 +2143,7 @@
         state.wave===4 ? state.wave4DirectKills>=HEAVY_KILLS_REQUIRED ?
           "UNLOCKED // TWIN CANNONS + HEAVY LASER":
           "TWIN CANNONS // LASER "+state.wave4DirectKills+"/"+HEAVY_KILLS_REQUIRED+" DIRECT KILLS":
-        state.wave===6?"REWARD UNLOCKED // PENETRATOR":
+        state.wave===6?"REWARD UNLOCKED // RAILGUN":
         "NEXT CLASS // WAVE "+String(state.wave+1).padStart(2,"0");
       ctx.fillText(reward,0,y+(artReady?128:169));
     } else {
@@ -2092,7 +2168,7 @@
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
     const visual=visualEvolution();
     drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
-    drawShockwaves();drawBots();drawShieldCapsule();drawWarden();drawShots();drawParticles();drawImpacts();drawTurret();
+    drawShockwaves();drawBots();drawShieldCapsule();drawWarden();drawShots();drawRailBlast();drawParticles();drawImpacts();drawTurret();
     // The perimeter alarm flashes during the warning and the boss entry.
     if(state.wave===4 && (state.bossState==="warning" || state.bossState==="entering") &&
         Math.floor(state.elapsed*5)%2===0) {
