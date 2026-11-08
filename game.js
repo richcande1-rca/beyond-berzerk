@@ -1720,6 +1720,93 @@
       ctx.restore();
     }
   }
+  function drawArchitect() {
+    if(state.wave!==8 || !state.boss || state.boss.type!=="architect" ||
+        !["entering","active"].includes(state.bossState))return;
+    const b=state.boss,open=architectCoreOpen(b);
+    ctx.save();ctx.translate(b.x,b.y);
+    // Four articulated, sweeping siege arms: visibly distinct from the Warden.
+    ctx.rotate(b.angle*.34+Math.sin(state.elapsed*.9)*.12);
+    for(let i=0;i<4;i++){
+      const a=i*TAU/4+Math.PI/4;
+      const dx=Math.cos(a),dy=Math.sin(a),nx=-dy,ny=dx;
+      const damaged=(b.phase>=2 && i===1)||(b.phase>=3 && i===3);
+      const reach=damaged?48:69;
+      const hinge=30+5*Math.sin(b.age*2.6+i*1.9);
+      ctx.strokeStyle=damaged?"#94505f":"#0c1326";ctx.lineWidth=18;ctx.lineCap="square";
+      ctx.beginPath();ctx.moveTo(dx*20,dy*20);
+      ctx.lineTo(dx*hinge+nx*8,dy*hinge+ny*8);
+      ctx.lineTo(dx*reach+nx*3,dy*reach+ny*3);ctx.stroke();
+      ctx.strokeStyle=damaged?"#ff9169":"#a1a9bb";
+      ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(dx*24,dy*24);
+      ctx.lineTo(dx*hinge+nx*8,dy*hinge+ny*8);
+      ctx.lineTo(dx*reach+nx*3,dy*reach+ny*3);ctx.stroke();
+      ctx.fillStyle=damaged?"#ffab73":"#f2a1ff";
+      ctx.beginPath();ctx.arc(dx*hinge+nx*8,dy*hinge+ny*8,5,0,TAU);ctx.fill();
+      ctx.fillStyle=damaged?"#642b37":"#351d55";
+      ctx.beginPath();ctx.arc(dx*reach+nx*3,dy*reach+ny*3,damaged?6:10,0,TAU);ctx.fill();
+      ctx.strokeStyle=damaged?"#ff8866":"#e4baff";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(dx*reach+nx*3,dy*reach+ny*3,damaged?6:10,0,TAU);ctx.stroke();
+      if(!damaged && b.phase>=2 && b.reverseWarning>0){
+        ctx.strokeStyle="#f797ff";ctx.lineWidth=1.4;
+        ctx.beginPath();ctx.moveTo(dx*reach,dy*reach);
+        ctx.lineTo(dx*(R-b.entry*0)+nx*7,dy*(R-b.entry*0)+ny*7);ctx.stroke();
+      }
+    }
+    ctx.rotate(-b.angle*.34-Math.sin(state.elapsed*.9)*.12);
+    // Broad spider shell with a sensor visor and layered turret plating.
+    ctx.fillStyle="#0a1428";ctx.strokeStyle="#cb90fb";ctx.lineWidth=4.5;
+    ctx.beginPath();
+    for(let k=0;k<8;k++){
+      const t=k*TAU/8+Math.PI/8;
+      const x=Math.cos(t)*38,y=Math.sin(t)*38;
+      if(!k)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle="#70809b";ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(-33,-17);ctx.lineTo(-15,-33);
+    ctx.moveTo(33,-17);ctx.lineTo(15,-33);ctx.stroke();
+    ctx.fillStyle="#f052d9";
+    ctx.fillRect(-25,-15,12,5);ctx.fillRect(13,-15,12,5);
+    // Fractured plating, spent capacitors and exposed wiring increase by phase.
+    if(b.phase>=2) {
+      ctx.strokeStyle="#ffb36d";ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(25,24);ctx.lineTo(12,9);ctx.lineTo(31,-3);
+      ctx.stroke();
+      ctx.fillStyle="#f5a372";ctx.fillRect(20,13,5,7);
+    }
+    if(b.phase>=3) {
+      ctx.strokeStyle="#ffa7eb";ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(-29,20);ctx.lineTo(-11,8);ctx.lineTo(-23,-8);
+      ctx.stroke();
+      if(Math.floor(state.elapsed*12)%3===0){
+        ctx.strokeStyle="#fff2ad";ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(-40,27);ctx.lineTo(-48,35);ctx.lineTo(-43,41);
+        ctx.stroke();
+      }
+    }
+    // The vulnerable reactor has an unmistakable pale-violet inner bullseye.
+    ctx.fillStyle=open?"#85f6ff":"#59214b";
+    ctx.strokeStyle=open?"#e9ffff":"#f195e8";ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(0,0,14,0,TAU);ctx.fill();ctx.stroke();
+    if(open){
+      ctx.strokeStyle="#b4ffff";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,20+2*Math.sin(state.elapsed*8),0,TAU);ctx.stroke();
+      ctx.fillStyle="#ffffff";
+      ctx.beginPath();ctx.arc(0,0,5,0,TAU);ctx.fill();
+    }else{
+      ctx.strokeStyle="#ff7acb";ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(10,0);ctx.stroke();
+    }
+    // Four breakaway armor indicators reflect four successful core hits.
+    for(let k=0;k<b.hp;k++){
+      const a=k*TAU/4-Math.PI/2;
+      ctx.fillStyle="#ffc2ef";
+      ctx.beginPath();ctx.arc(Math.cos(a)*33,Math.sin(a)*33,3,0,TAU);ctx.fill();
+    }
+    ctx.restore();
+  }
   function drawWarden() {
     if(state.wave!==4 || !state.boss ||
         (state.bossState!=="active" && state.bossState!=="entering"))return;
@@ -2275,7 +2362,7 @@
         380,705,13,"#ffdb71");
     if(state.arcCannon)
       label(state.arcCharge<=0?"ARC READY":"ARC "+state.arcCharge.toFixed(1)+"s",
-        570,705,12,"#9cf6ff");
+        561,51,11,"#9cf6ff");
     else if(state.heavyLaser)
       label("HEAVY LASER",380,705,13,"#dbadff");
     if((state.wave===4 || state.wave===8) &&
@@ -2423,9 +2510,10 @@
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
     const visual=visualEvolution();
     drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
-    drawShockwaves();drawBots();drawShieldCapsule();drawWarden();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();
+    drawShockwaves();drawBots();drawShieldCapsule();drawWarden();drawArchitect();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();
     // The perimeter alarm flashes during the warning and the boss entry.
-    if(state.wave===4 && (state.bossState==="warning" || state.bossState==="entering") &&
+    if((state.wave===4 || state.wave===8) &&
+        (state.bossState==="warning" || state.bossState==="entering") &&
         Math.floor(state.elapsed*5)%2===0) {
       ctx.strokeStyle="#ff465a";ctx.lineWidth=3;
       ctx.beginPath();ctx.arc(CX,CY,R+17,0,TAU);ctx.stroke();
