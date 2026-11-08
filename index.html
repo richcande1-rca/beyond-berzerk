@@ -9,21 +9,22 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700;800&amp;family=Teko:wght@500;600;700&amp;display=swap">
-  <link rel="stylesheet" href="./styles.css?v=0.3.13">
-  <script src="./game.js?v=0.3.13" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=0.3.14">
+  <script src="./game.js?v=0.3.14" defer></script>
 </head>
 <body>
   <main class="shell">
     <header class="masthead">
       <div class="brand"><h1 class="cyber-brand"><span class="brand-art" aria-hidden="true"></span><span class="sr-only">BEYOND BERZERK</span></h1></div>
-      <div class="version"><span>V 0.3.13</span></div>
+      <div class="version"><span>V 0.3.14</span></div>
     </header>
 
     <section class="cabinet" aria-label="Beyond Berzerk arcade game">
       <div class="screen">
         <canvas id="game" width="960" height="720" aria-label="Game arena: rotate the turret freely through 360 degrees, shoot approaching robots, and survive shifting maze walls">Your browser needs HTML canvas to play.</canvas>
-        <div class="overlay" id="overlay">
+        <div class="overlay is-intro" id="overlay">
           <div class="overlay-card">
+            <img class="intro-art" id="intro-art" src="./assets/intro-panel.avif?v=0.3.14" alt="" aria-hidden="true" decoding="async">
             <div class="overlay-rail" aria-hidden="true">
               <span><span class="danger-dot"></span>SECURITY BREACH</span>
               <span>SECTOR // 01</span>
