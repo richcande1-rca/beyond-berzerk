@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.24 — Sector Identity**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.25 — Random Supply Drops**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
 
@@ -11,6 +11,15 @@ You command a stationary 360-degree rotating turret while tiny robots swarm thro
 This is a static browser game with **no dependencies or build step**. Open `index.html` in a modern browser.
 
 For an online version, enable GitHub Pages in **Settings → Pages → Build and deployment → Deploy from a branch**, then select **main** and **/(root)**. Once Pages finishes publishing, the game will be at `https://richcande1-rca.github.io/beyond-berzerk/`.
+
+## Random Supply Drops — v0.3.25
+
+- **A gold question-mark supply drone occasionally crosses the arena**, flying through rotating walls like the Wave 4 shield capsule. The timing, travel direction, altitude and reward are randomized. Shoot it with a normal player laser or an automatic Railgun beam to collect it; it is never acquired by merely waiting and cannot be collected by enemy shots. A missed drone exits naturally, with another random delay before a new one can appear. Only one supply drone is present at a time; drops pause during wave clear and boss warning/entry, but can appear during an active boss fight.
+- **Triple Threat (10 seconds):** The original front (and, after Wave 4, rear) cannon fires a three-shot spread on the ordinary FIRE rhythm. This means three streams before twin cannons, six with both cannons; the original center shot still carries a charged Arc Cannon round when available. All six remain blocked by real walls, while the Railgun continues firing independently. No new button.
+- **Guardian Drones (12 seconds):** Two turquoise satellites orbit the central turret and automatically seek nearby ordinary robots, firing at most two additional small bullets per 0.43 seconds. They do not shoot through actual walls or target bosses. Guardian kills do not count toward Wave 4's direct-player-shot Heavy Laser qualification; ordinary weapons still do.
+- **Stasis Field (8 seconds):** Enemy robot movement, panic motion, and firing frequency slow to **36%** speed; all hostile projectiles currently in flight and newly fired are also slowed to 36%, with interception/path physics adjusted to match. Friendly bullets, Railgun, turret rotation, walls, bosses' movement/reversal logic and recharge systems stay at full speed.
+- The pickup is chosen randomly from these **three** temporary effects, avoiding an identical reward on consecutive collections. A new pickup replaces the current temporary powerup; regular permanent graduation upgrades and shields never disappear. A compact countdown strip near the bottom of the combat arena, glowing barrel arcs, orbiting guardians or a blue stasis ring clearly show which temporary ability is active.
+- Lightweight rendering: only ordinary canvas paths, no texture files, browser timers or new controls. One drone per crossing, up to two guardian shots per volley, no runaway effects. All gameplay updates use the existing frame-based delta, so pause stops the countdown. The proposed Plasma Storm, Iron Dome and rare Annihilator remain **design ideas only**, not implemented in this release.
 
 ## Visual design
 
