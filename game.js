@@ -47,6 +47,7 @@
   const SHIELD_MAX = 3, SHIELD_REGEN_SECONDS = 6;
   const SHIELD_CAPSULE_SPEED = 91, SHIELD_CAPSULE_KILL_THRESHOLD = .90;
   const WARDEN_HP = 3, WARDEN_CYCLE = 3.8;
+  const ARCHITECT_HP = 4, ARCHITECT_CYCLE = 5.0;
   const SHIELD_CAPSULE_RADIUS = 16;
   // One physical rotation speed and acceleration for every aiming method.
   const TURRET_MAX_SPEED = 5.6, TURRET_ACCEL = 25, TURRET_BRAKE = 65;
@@ -127,6 +128,7 @@
       railFlash:0, railAngle:0,
       waveElapsed:0, waveTotal:0, shieldCapsule:null, shieldCapsuleSeen:false,
       boss:null, bossState:"none", bossWarning:0, bossDefeated:false, clearBossShots:false,
+      architectRingSpins:null,
       aim:6, aimTarget:null, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
       blasts:[], shockwaves:[], impacts:[], combo:0, comboClock:0,
@@ -330,10 +332,15 @@
       setStatus("ARENA " + modeName());
       tone(modeName()==="MELTDOWN" ? 180 : 420,.26,"sawtooth",.045,750);
     }
+    const architectActive=state.wave===8 &&
+      (state.bossState==="entering" || state.bossState==="active") &&
+      state.boss?.type==="architect";
     for (const [index,ring] of state.rings.entries()) {
+      // During the boss encounter, the Architect owns real ring reversals.
+      // Otherwise keep the original staggered reversal schedule untouched.
       // Each ring has its own staggered reversal clock. The one-second
       // warning makes the change readable, not a surprise collision.
-      if (state.wave >= 2) {
+      if (state.wave >= 2 && !architectActive) {
         if (!ring.reversePending) {
           ring.reverseClock -= dt;
           if (ring.reverseClock <= 0) {
@@ -354,7 +361,9 @@
         }
       }
       const boost = modeName() === "SPIN" ? 1 : modeName() === "MORPH" ? .12 : 1.65;
-      ring.angle += ring.speed * ring.spin * boost * dt *
+      const architectSpeed=architectActive && state.bossState==="active" &&
+        state.boss.phase===3?1.85:1;
+      ring.angle += ring.speed * ring.spin * boost * architectSpeed * dt *
         (1 + Math.min(.7,(state.wave - 1) * .045));
     }
   }
@@ -503,6 +512,54 @@
     else setStatus((kind==="contact"?"ROBOT CONTACT":"HULL BREACH")+
       " — "+state.lives+" LIVES");
   }
+  function architectCoreOpen(b) {
+    return state.wave===8 && state.bossState==="active" &&
+      b?.type==="architect" &&
+      b.age%ARCHITECT_CYCLE>=1.05 && b.age%ARCHITECT_CYCLE<3.5;
+  }
+  function restoreArchitectRings() {
+    if(!state.architectRingSpins)return;
+    state.rings.forEach((r,i)=>{
+      r.spin=state.architectRingSpins[i];
+      r.reversePending=false;r.warning=0;
+      r.reverseClock=7+i*2.7;
+    });
+    state.architectRingSpins=null;
+  }
+  function hitArchitect(b) {
+    // Both direct turret shots and the Railgun can breach the visible core.
+    // The auto Railgun ignores the Architect's rotating physical wall plates.
+    if(!architectCoreOpen(b) || b.guard>0)return false;
+    b.hp--;
+    b.guard=.85;
+    state.shake=Math.max(state.shake,8);
+    burst(b.x,b.y,"#a4faff",19,1);
+    tone(420+(ARCHITECT_HP-b.hp)*140,.19,"sawtooth",.065,980);
+    if(b.hp<=0) {
+      state.score+=3000;
+      if(!state.testMode && state.score>state.high) {
+        state.high=state.score;storeHigh();
+      }
+      restoreArchitectRings();
+      state.boss=null;
+      state.bossState="defeated";
+      state.bossDefeated=true;
+      state.clearBossShots=true;
+      state.announce="THE ARCHITECT DESTROYED";
+      state.announceClock=2.0;
+      setStatus("ARCHITECT DEFEATED — ARC CANNON EARNED");
+      burst(b.x,b.y,"#ff9fff",45,1.55);
+      tone(125,.46,"sawtooth",.085,52);
+    } else {
+      b.phase=Math.min(3,ARCHITECT_HP-b.hp+1);
+      b.age=0; // Restore a brief closed-core interval after each hit.
+      b.reverseClock=b.phase===2?2.2:b.phase===3?1.5:b.reverseClock;
+      state.announce="ARCHITECT ARMOR FRACTURED // PHASE "+b.phase;
+      state.announceClock=1.8;
+      setStatus("ARCHITECT CORE HIT — "+b.hp+" REMAIN");
+    }
+    return true;
+  }
   function fireRailgun(angle,dx,dy) {
     // A true rail blast, not one slightly thicker ordinary projectile.
     // Instant straight-line damage crosses every arena wall. Robots and
@@ -516,6 +573,13 @@
       b.hp-=RAILGUN_DAMAGE;
       if(b.hp<=0)scrap(k,false);
       else burst(b.x,b.y,"#ffda72",8,.55);
+    }
+    const architect=state.boss;
+    if(architect?.type==="architect" && state.bossState==="active") {
+      const rx=architect.x-CX,ry=architect.y-CY;
+      if(rx*dx+ry*dy>=24 && rx*dx+ry*dy<=range &&
+          Math.abs(rx*dy-ry*dx)<=RAILGUN_RADIUS+13)
+        hitArchitect(architect);
     }
     // The old Penetrator could shoot down hostile bolts. Retain that advantage.
     state.shots=state.shots.filter(s=>{
@@ -732,9 +796,23 @@
             hit=true;break;
           }
           const boss=state.boss;
+          if(boss?.type==="architect" && state.bossState==="active") {
+            const d=Math.hypot(s.x-boss.x,s.y-boss.y);
+            // Plate shutters block ordinary shots while closed. An exposed
+            // reactor admits only the central bullseye (not the limbs).
+            const open=architectCoreOpen(boss);
+            if(d<(open?14:38)+s.size) {
+              if(open && d<14+s.size) hitArchitect(boss);
+              else {
+                burst(s.x,s.y,"#ce8dff",3,.22);
+                tone(210,.045,"triangle",.015,95);
+              }
+              hit=true;break;
+            }
+          }
           // When cyan, the outer armor opens a clear path to the reactor.
           // Otherwise the closed plate stops shots at the outer 35px radius.
-          if (boss && state.bossState==="active" &&
+          if (boss?.type!=="architect" && boss && state.bossState==="active" &&
               Math.hypot(s.x-boss.x,s.y-boss.y)<
                 (wardenCoreOpen(boss)?11:47)+s.size) {
             const core=Math.hypot(s.x-boss.x,s.y-boss.y)<11+s.size;
@@ -872,6 +950,99 @@
       } else b.fireClock=.28;
     }
   }
+  function fireArchitect(b) {
+    const count=b.phase===1?2:b.phase===2?3:4;
+    if(state.shots.filter(s=>!s.friendly).length+count>62)return;
+    const aim=Math.atan2(CY-b.y,CX-b.x);
+    const speed=180+b.phase*21;
+    for(let i=0;i<count;i++){
+      const a=aim+(i-(count-1)/2)*.18;
+      state.shots.push({x:b.x+Math.cos(a)*42,y:b.y+Math.sin(a)*42,
+        vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,
+        life:2.6,friendly:false,size:3.5,color:"#c47bff"});
+    }
+    tone(260+b.phase*45,.12,"sawtooth",.035,75);
+  }
+  function updateArchitect(dt) {
+    if(state.wave!==8)return;
+    if(state.bossState==="warning") {
+      state.bossWarning-=dt;
+      if(state.bossWarning<=0) {
+        state.bossState="entering";
+        state.architectRingSpins=state.rings.map(r=>r.spin);
+        state.rings.forEach(r=>{r.reversePending=false;r.warning=0;});
+        state.boss={type:"architect",phase:1,hp:ARCHITECT_HP,
+          x:CX,y:CY-R-45,angle:-Math.PI/2,age:0,guard:0,
+          entry:1.45,fireClock:1.7,reverseClock:5.5,reverseWarning:0,
+          reverseTime:0};
+        state.announce="THE ARCHITECT // ARENA OVERRIDE";
+        state.announceClock=2.2;
+        setStatus("BOSS INBOUND — THE ARCHITECT");
+        tone(96,.65,"sawtooth",.06,235);
+      }
+      return;
+    }
+    const b=state.boss;
+    if(!b || b.type!=="architect")return;
+    if(state.bossState==="entering") {
+      b.entry=Math.max(0,b.entry-dt);
+      const radius=R+45-(R+45-171)*(1-b.entry/1.45);
+      b.x=CX+Math.cos(b.angle)*radius;
+      b.y=CY+Math.sin(b.angle)*radius;
+      if(b.entry<=0) {
+        state.bossState="active";
+        b.age=0;
+        state.announce="THE ARCHITECT // TARGET VIOLET CORE";
+        state.announceClock=2.3;
+        setStatus("ARCHITECT ENGAGED — CORE EXPOSES PERIODICALLY");
+      }
+      return;
+    }
+    if(state.bossState!=="active")return;
+    b.age+=dt;b.guard=Math.max(0,b.guard-dt);
+    b.angle+=(.24+(b.phase-1)*.12)*dt;
+    const radius=170+8*Math.sin(b.age*.7);
+    b.x=CX+Math.cos(b.angle)*radius;
+    b.y=CY+Math.sin(b.angle)*radius;
+    // Unlike the Warden, this boss operates the real wall state. A warning
+    // comes before each timed reversal. All speeds revert upon victory.
+    if(b.reverseTime>0) {
+      b.reverseTime=Math.max(0,b.reverseTime-dt);
+      if(!b.reverseTime) {
+        state.rings.forEach((r,i)=>r.spin=state.architectRingSpins[i]);
+        b.reverseClock=b.phase===3?3.2:5.0;
+        state.announce="WALL CONTROL RESTORED";
+        state.announceClock=1;
+      }
+    } else if(b.phase>=2 && b.reverseWarning>0) {
+      b.reverseWarning=Math.max(0,b.reverseWarning-dt);
+      state.rings.forEach(r=>r.warning=b.reverseWarning);
+      if(!b.reverseWarning) {
+        state.rings.forEach(r=>{r.spin*=-1;r.reversePending=false;r.warning=0;});
+        b.reverseTime=b.phase===3?2.7:2.2;
+        state.announce="RING REVERSAL // THE ARCHITECT";
+        state.announceClock=1.6;
+        tone(140,.28,"sawtooth",.045,310);
+      }
+    } else if(b.phase>=2) {
+      b.reverseClock-=dt;
+      if(b.reverseClock<=0) {
+        b.reverseWarning=.95;
+        state.rings.forEach(r=>{r.reversePending=true;r.warning=.95;});
+        state.announce="WARNING // RINGS REVERSING";
+        state.announceClock=1.1;
+        setStatus("ARCHITECT OVERRIDE — RING REVERSAL IMMINENT");
+        tone(410,.22,"triangle",.037,230);
+      }
+    }
+    b.fireClock-=dt;
+    if(b.fireClock<=0) {
+      if(clearShotPath(b.x,b.y)) {
+        fireArchitect(b);
+        b.fireClock=b.phase===1?2.15:b.phase===2?1.85:1.42;
+      } else b.fireClock=.25;
+    }
+  }
   function updateShieldCapsule(dt) {
     if (state.wave!==4) return;
     // Once 90% of robots have been eliminated, exactly one capsule flies by.
@@ -910,18 +1081,21 @@
       }
     }
     if (!state.toSpawn && !state.bots.length) {
-      if(state.wave===4 && !state.bossDefeated) {
-        // Wave 4 cannot graduate until the capsule pass and Warden defeat.
-        if(!state.shieldCapsuleSeen || state.shieldCapsule)return;
+      if((state.wave===4 || state.wave===8) && !state.bossDefeated) {
+        if(state.wave===4 && (!state.shieldCapsuleSeen || state.shieldCapsule))
+          return;
+        // Boss waves cannot graduate until the corresponding boss dies.
         if(state.bossState==="none") {
           state.bossState="warning";
-          state.bossWarning=2.35;
+          state.bossWarning=state.wave===8?2.7:2.35;
           state.shots=state.shots.filter(s=>s.friendly);
-          state.announce="WARNING: SECTOR NOT CLEARED";
-          state.announceClock=2.35;
+          state.announce=state.wave===8?
+            "WARNING: ARENA CONTROL COMPROMISED":
+            "WARNING: SECTOR NOT CLEARED";
+          state.announceClock=state.bossWarning;
           state.flash=.14;
           tone(185,.28,"sawtooth",.055,120);
-          setStatus("WARNING: SECTOR NOT CLEARED");
+          setStatus(state.announce);
         }
         return;
       }
@@ -943,6 +1117,7 @@
         state.shieldCapsule=null;state.shieldCapsuleSeen=false;
         state.boss=null;state.bossState="none";
         state.bossWarning=0;state.bossDefeated=false;
+        state.architectRingSpins=null;
         // Changing sectors changes real walls as well as the decorative field.
         // Preserve their angular orientation so the handoff feels continuous.
         state.rings=makeRings(state.wave,state.rings);
@@ -1049,6 +1224,7 @@
     if (state.phase==="playing") {
       updateShieldCapsule(dt);
       updateWarden(dt);
+      updateArchitect(dt);
       updateShots(dt);
     }
     updateBlasts(dt);
