@@ -2,7 +2,7 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.23 — Boss Fury**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.24 — Sector Identity**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
 
@@ -64,6 +64,15 @@ For an online version, enable GitHub Pages in **Settings → Pages → Build and
 - Clearing Wave 4 still deploys a second barrel 180° behind the first, using the same matching cannon artwork. The existing muzzle flash and reactor shimmer are retained without per-frame asset allocations.
 - All collision geometry, projectile origins, player lives, shields and recharge rules, turret rotation speed, bot AI, damage, rewards and scoring remain **unchanged**. The old canvas turret renders automatically if the sprite cannot load.
 - One graphic file loaded once, with no extra assets inside the frame loop, to keep Chromebook rendering light.
+
+## Sector Identity — v0.3.24
+
+- **Five redesigned level identities**, each readable without checking the wave number. Wave 3 **Prism** has seven enormous violet crystal spires, fractured triangular interiors and floating splinters; Wave 5 **Vector** looks like a green circuit board with square modules, orthogonal buses and moving data packets; Wave 6 **Phantom** is icy, fractured industrial gearing, severed conductors and sporadic electrical arcs; Wave 7 **Kaleidoscope** features counter-rotating hinged diamond mirrors and square reflection frames; Wave 9+ **Cosmos** is deliberately sparse deep-black space, dimensional fractures and four rotating tesseracts.
+- **Distinct solid wall appearances:** The existing real collision walls adopt matching crystal points, circuit junctions, cracked cold-metal seams, mirrored facets or stars, respectively. All accents sit on the same moving physical wall arcs, so their radius, segment count, spin, blockable lanes and actual hitboxes are unchanged.
+- **No generic wallpaper repetition.** The uniform square background grid is limited to the classic, Radar, Reactor and Pulse stages; Vector has its own sparser circuit grid. The shared decorative ring echoes remain only on Wave 8, whose look was already distinctive. The four-dimensional tesseracts now appear **only on Cosmos (Wave 9 onward)** rather than leaking into Waves 5–8.
+- **Wave titles now match level identities:** RADAR SWEEP, PRISM FRACTURE, REACTOR FURNACE, VECTOR GRID, PHANTOM WORKS, KALEIDOSCOPE, PULSE CHAMBER and COSMOS BREACH. First Contact remains the classic opening.
+- **Wave 2 Radar and Wave 8 Pulse** retain their established art and physical wall layouts. No new assets, Web requests, libraries, controls, enemy logic, boss timing, weapons, scores or upgrades. All five new environments use small bounded batches of ordinary canvas paths; wave numbers after 9 keep fixed maximum visual complexity for Chromebook performance.
+- Test Waves **3, 5, 6, 7 and 9** to compare the new identities directly. Automated render smoke tests exercised Waves 1–10 in all three arena modes, both sprite and canvas fallbacks, and real wall collisions. Real-device visual/performance testing remains necessary.
 
 ## Boss Fury — v0.3.23
 
@@ -174,7 +183,7 @@ Select **TEST WAVE** in the status bar (default Wave 4; any integer from 1 throu
 - **MORPH:** walls change shape and radius, opening and closing lanes.
 - **MELTDOWN:** both transformations accelerate together.
 - Independent rings occasionally reverse direction, with a short amber warning. Corridors also contract and expand in later waves.
-- **Sector Spectacle:** Wave 1 starts in classic navy; Wave 2 switches to a bold cyan RADAR sweep; Wave 3 unveils a violet PRISM lattice; Wave 4 turns into an amber REACTOR; Wave 5 becomes an emerald VECTOR tunnel; Wave 6 forms icy PHANTOM gears and faint ghost rings; Wave 7 reveals a purple KALEIDOSCOPE; Wave 8 pulses with golden energy waves; Wave 9+ enters the magenta COSMOS field. The wallpaper remains decorative, but the walls themselves now have distinctive per-wave layouts and physically matching hitboxes.
+- **Sector Spectacle (original v0.3.10 visuals):** Originally these sectors shared more concentric-ring wallpaper. The v0.3.24 Sector Identity overhaul above supersedes the old Prism lattice, Vector tunnel, Phantom ghost-ring, Kaleidoscope and Cosmos appearances. Each stage still has a distinct wall layout and correctly matching physics.
 - Visual intensity starts meaningfully at Wave 2 instead of near-invisible: exponentially increasing detail through Wave 9, then capped draw counts for Chromebook performance. Waves beyond 9 continue shifting hue/rhythm without piling on geometry. Each cleared sector gets a radiant victory transition and a themed incoming-wave reveal. As of v0.3.10, the real wall layouts and their collision footprints also change by wave; projectiles, robot AI, and equipment keep their existing mechanics.
 - Normal player shots and enemy shots collide with the first wall they hit; the automatic Railgun ray ignores the wall geometry and reaches the arena perimeter.
 - Turret lasers can intercept hostile projectiles in flight. Regular shots and enemy shots both vanish in a cyan-white spark; the Railgun destroys hostile shots along its beam without losing power. Aiming is still manual; interceptions award no bonus points.
@@ -201,7 +210,7 @@ The circular arena is now centered within the space between the top and bottom H
 ## Playtest notes / deferred improvements
 
 - **Mouse/touchpad aiming — deferred:** Current absolute pointer aiming requires keeping the cursor correctly positioned relative to the turret, and aiming becomes awkward at canvas edges. Consider an optional browser Pointer Lock mode (relative mouse/touchpad motion rotates turret continuously through 360°, adjustable sensitivity), while retaining existing direct-pointer aiming. **Do not change controls until explicitly approved.**
-- **Hypercube Engine — v0.3.3:** 4D-projected tesseracts join the decorative scenery at Wave 5; their wireframe vertices rotate through the XW, YZ and ZW planes and project to 2D. One tesseract at Wave 5 grows to two at Wave 6, three at Wave 7 and four at Wave 8+, capped thereafter. Contrasting edges identify connections in the fourth dimension. All tesseracts are clipped away from the central turret and never participate in collision checks.
+- **Hypercube Engine — original v0.3.3 behavior (superseded by v0.3.24):** Four-dimensional tesseracts once appeared beginning in Wave 5 and accumulated through Wave 8. They now occur **exclusively in Cosmos, Wave 9 onward** (four maximum), with the same XW/YZ/ZW projection, central-turret clipping and purely decorative non-collision behavior.
 - **Rendering optimization — v0.3.3:** Removes costly per-robot and per-projectile shadow blur, removes blurred particle impact and shockwave strokes, reduces two moving-wall echo paths to one, batches the arena grid into one path, and caches radial gradients per sector/mode. Preserves crisp laser cores and solid robot silhouettes. Wave 4/5 performance still needs real-device validation. The shield and upgraded projectiles were introduced in v0.3.9; further cannons remain unimplemented.
 - **Signal Clarity — v0.3.2:** Reduced arena wallpaper opacity, softened perimeter/wall halos, lowered translucent ghost-ring and wall-trail strength, and restrained the damage flash. Kept the unique geometric composition and colors for each wave. HUD instruments now have opaque dark rails, sharp Oxanium readouts, pale high-contrast numbers and dividers, and zero text bloom. Wave announcements and sector-clear rewards use crisp text on compact dark plates placed above the turret instead of glowing over its center. Wall warning colors, collisions, AI, combat and controls are unchanged. Preserve this contrast and center space when adding future turret defenses and weapons.
 - **Visual reward pass — implemented in v0.3.1:** Earlier v0.3.0 visuals were too faint in Waves 2–3. New signature palettes and geometry start at Wave 2, with a sector-clear celebration and wave-introduction effect. Field art is behind the combat layer, and the center of the decorative field stays clear for the player turret.
