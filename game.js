@@ -168,7 +168,7 @@
       waveElapsed:0, waveTotal:0, shieldCapsule:null, shieldCapsuleSeen:false,
       boss:null, bossState:"none", bossWarning:0, bossDefeated:false, clearBossShots:false,
       miniBoss:null, miniBossState:"none", miniBossSeen:false,
-      miniBossWarning:0, clearMiniShots:false,
+      miniBossWarning:0, clearMiniShots:false, miniRewardPending:null,
       architectRingSpins:null,
       aim:6, aimTarget:null, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
@@ -705,7 +705,19 @@
       }
       return;
     }
-    // No drops in introductions, on empty cleared waves, or when a boss
+    // A won mini-boss's reward has priority over ordinary random arrivals.
+    // Spawn it even if all remaining small robots have been eliminated.
+    if(state.miniRewardPending){
+      const reward=state.miniRewardPending;
+      state.miniRewardPending=null;
+      state.supplyDrone={x:reward.x,y:reward.y,
+        vx:(reward.x<CX?1:-1)*SUPPLY_SPEED,kind:"random"};
+      state.announce="MINI-BOSS SUPPLY RELEASED // SHOOT TO CLAIM";
+      state.announceClock=1.9;
+      tone(780,.13,"triangle",.032,1100);
+      return;
+    }
+    // No random drops in introductions, on empty cleared waves, or when a boss
     // is announcing/entering. A live boss may still draw a lucky supply.
     const combat=state.toSpawn>0 || state.bots.length>0 ||
       state.bossState==="active" || state.miniBossState==="active";
@@ -1243,6 +1255,10 @@
       if(!state.supplyDrone){
         state.supplyDrone={x:b.x,y:b.y,
           vx:(b.x<CX?1:-1)*SUPPLY_SPEED,kind:"random"};
+      } else {
+        // An existing supply pass must not erase the mini-boss's prize.
+        // Queue one extra pass, then let the current drone finish naturally.
+        state.miniRewardPending={x:b.x,y:b.y};
       }
       state.dropClock=rnd(18,29);
     }else if(miniEnraged(b) && !b.enragedOnce){
@@ -1604,7 +1620,8 @@
     if (!state.toSpawn && !state.bots.length) {
       // A mini-boss may arrive halfway through the wave. Clearing the
       // small robots cannot skip its encounter or trigger graduation.
-      if(miniType && state.miniBossState!=="defeated")return;
+      if(miniType && (state.miniBossState!=="defeated" ||
+          state.miniRewardPending))return;
       if((state.wave===4 || state.wave===8) && !state.bossDefeated) {
         if(state.wave===4 && (!state.shieldCapsuleSeen || state.shieldCapsule))
           return;
@@ -1644,7 +1661,7 @@
         state.bossWarning=0;state.bossDefeated=false;
         state.miniBoss=null;state.miniBossState="none";
         state.miniBossWarning=0;state.miniBossSeen=false;
-        state.clearMiniShots=false;
+        state.clearMiniShots=false;state.miniRewardPending=null;
         state.architectRingSpins=null;
         // Changing sectors changes real walls as well as the decorative field.
         // Preserve their angular orientation so the handoff feels continuous.
