@@ -332,3 +332,119 @@ body{
   .overlay.is-intro.has-intro-art{padding:4px}
   .overlay.is-intro.has-intro-art #start-btn{left:20%;width:60%}
 }
+
+/* MOBILE TWO-THUMB CONTROLS v0.3.27
+   All layout changes are limited to touch-primary devices; desktop and
+   Chromebook keyboard/mouse layouts stay exactly as they were. */
+.aim-wheel,.mobile-aim-label{display:none}
+@media (hover:none) and (pointer:coarse) {
+  .desktop-aim-label,.aim-pad{display:none}
+  .mobile-aim-label{display:block}
+  .controls{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:9px;margin:11px 4px 7px;align-items:center
+  }
+  .pad-wrap,.fire-wrap{justify-self:center;text-align:center}
+  .controls-label{
+    font-family:"Oxanium",ui-monospace,monospace;
+    color:#b7d6dd;letter-spacing:.14em;margin-bottom:7px
+  }
+  .aim-wheel{
+    display:block;position:relative;isolation:isolate;
+    width:clamp(122px,34vw,168px);aspect-ratio:1;
+    border-radius:50%;border:4px solid #4b9baf;
+    background:radial-gradient(circle at 50% 50%,#172b3c 0 19%,#091723 20% 45%,#0a111f 46% 100%);
+    box-shadow:0 0 0 4px #0c0f1d,0 0 20px #28b8ce59,inset 0 0 19px #1bd8dd33;
+    cursor:crosshair;touch-action:none;user-select:none;
+    -webkit-user-select:none;-webkit-tap-highlight-color:transparent
+  }
+  .aim-wheel:before{
+    content:"";position:absolute;inset:8px;border-radius:50%;
+    border:1px dashed #6ee6ed77;pointer-events:none
+  }
+  .aim-wheel-orbit{
+    position:absolute;inset:20%;border:1px solid #54dfe94b;
+    border-radius:50%;pointer-events:none
+  }
+  .aim-wheel-needle{
+    position:absolute;left:50%;top:calc(50% - 3px);width:39%;height:6px;
+    transform-origin:0 50%;transform:rotate(-90deg);
+    border-radius:5px;background:linear-gradient(90deg,#4ee0e9,#ffffff);
+    box-shadow:0 0 9px #66e9ff;
+    pointer-events:none
+  }
+  .aim-wheel-needle:after{
+    content:"";position:absolute;right:-5px;top:-5px;width:14px;height:14px;
+    border-radius:50%;background:#ffffff;border:2px solid #20bdce;
+    box-shadow:0 0 11px #60e9ff
+  }
+  .aim-wheel-center{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    display:grid;place-items:center;width:28%;aspect-ratio:1;
+    border:2px solid #6ddce3;border-radius:50%;
+    background:#101a2b;color:#eefff9;font-size:22px;
+    pointer-events:none
+  }
+  .aim-wheel.aiming{
+    border-color:#e9ffff;
+    box-shadow:0 0 0 4px #0c0f1d,0 0 25px #29ebff93,inset 0 0 21px #25d5ff6b
+  }
+  .fire-btn{
+    width:clamp(125px,35vw,172px);height:auto;aspect-ratio:1;
+    border-width:6px;
+    -webkit-tap-highlight-color:transparent
+  }
+  .fire-btn.firing{filter:brightness(1.3)}
+  .instructions{grid-column:1/-1}
+  .screen:after{opacity:.22}
+}
+/* Landscape: the two thumbs live outside the canvas. The entire arcade
+   remains visible without scrolling or rotating the canvas itself. */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape) {
+  .shell{width:100%;max-width:none;padding:3px 5px 6px}
+  .masthead{display:none}
+  .cabinet{
+    width:min(calc(100vw - 236px),calc((100dvh - 49px)*1.3333333));
+    max-width:960px;margin-inline:auto
+  }
+  .controls{display:block;margin:0}
+  .pad-wrap,.fire-wrap{
+    position:fixed;top:50%;transform:translateY(-50%);
+    z-index:5;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    width:110px;max-width:calc((100vw - 250px)/2);
+  }
+  .pad-wrap{left:max(3px,env(safe-area-inset-left))}
+  .fire-wrap{right:max(3px,env(safe-area-inset-right))}
+  .controls-label{margin-bottom:6px;font-size:9px;white-space:nowrap}
+  .aim-wheel{
+    width:min(30dvh,118px);min-width:76px;border-width:3px
+  }
+  .fire-btn{
+    width:min(31dvh,123px);min-width:77px;border-width:4px;
+    font-size:clamp(16px,5dvh,23px)
+  }
+  .fire-btn span{font-size:10px}
+  .instructions{display:none}
+  .status-line{
+    display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;
+    gap:3px;min-height:35px;padding:3px 5px
+  }
+  .status-line>span{display:none}
+  .status-line .actions{
+    width:100%;display:flex;flex-wrap:nowrap;justify-content:center;gap:5px
+  }
+  .test-launch{gap:4px;padding:1px 3px}
+  .test-launch label{font-size:8px;white-space:nowrap}
+  .test-launch input{font-size:12px;width:41px;padding:2px}
+  .actions .test-launch button{font-size:9px;padding:4px 5px}
+  .actions>button{font-size:9px;padding:5px 7px}
+  footer{display:none}
+}
+/* Small landscape phone screens: protect the arena's full 4:3 footprint. */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:370px) {
+  .cabinet{width:min(calc(100vw - 208px),calc((100dvh - 43px)*1.3333333))}
+  .pad-wrap,.fire-wrap{width:97px}
+  .aim-wheel{width:min(29dvh,100px);min-width:70px}
+  .fire-btn{width:min(30dvh,105px);min-width:70px}
+}
