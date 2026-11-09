@@ -74,6 +74,18 @@
   const STASIS_SCALE = .36;
   const EXTRA_LIFE_INTERVAL = 15000, MAX_LIVES = 5;
   const HULL_REPAIR_FULL_BONUS = 250;
+  const MINI_SENTINEL_HP = 6, MINI_BREAKER_HP = 10;
+  // Mini-bosses appear on waves 3, 7, 11, 15... between the major boss waves.
+  // Their presence requires victory before the next graduation.
+  function miniTypeForWave(wave) {
+    if(wave<3 || (wave-3)%4!==0)return null;
+    return Math.floor((wave-3)/4)%2===0?"sentinel":"breaker";
+  }
+  function miniMaxHp(type,wave) {
+    const tier=Math.max(0,Math.floor((wave-(type==="sentinel"?3:7))/8));
+    return Math.min(type==="sentinel"?20:28,
+      (type==="sentinel"?MINI_SENTINEL_HP:MINI_BREAKER_HP)+tier*2);
+  }
   // Sector names match what players actually see, not unrelated generic
   // combat labels. Wave 10+ can retain the expanding endless-run title pool.
   const WAVE_NAMES = ["FIRST CONTACT", "RADAR SWEEP", "PRISM FRACTURE",
@@ -155,6 +167,8 @@
       powerClock:0,lastPowerup:null,guardianClock:0,guardianAngle:0,
       waveElapsed:0, waveTotal:0, shieldCapsule:null, shieldCapsuleSeen:false,
       boss:null, bossState:"none", bossWarning:0, bossDefeated:false, clearBossShots:false,
+      miniBoss:null, miniBossState:"none", miniBossSeen:false,
+      miniBossWarning:0, clearMiniShots:false,
       architectRingSpins:null,
       aim:6, aimTarget:null, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
@@ -412,9 +426,12 @@
     const heavy = type==="heavy";
     const factors = {scout:1, flank:1.12, gunner:.85, heavy:.72, rush:1.42};
     const bot = {
-      x:CX+Math.cos(a)*r, y:CY+Math.sin(a)*r, size:heavy?8.6:7.2,
+      x:CX+Math.cos(a)*r, y:CY+Math.sin(a)*r, size:heavy&&state.wave>=5?10.5:heavy?8.6:7.2,
       type, speed:(rnd(24,33) + Math.min(35,state.wave*2.1))*factors[type],
-      hue:ROLE_COLORS[type], hp:heavy?2:1, armored:heavy,
+      hue:ROLE_COLORS[type],
+      hp:heavy?(state.wave<5?2:Math.min(7,5+Math.floor(Math.max(0,state.wave-5)/5))):1,
+      maxHp:heavy?(state.wave<5?2:Math.min(7,5+Math.floor(Math.max(0,state.wave-5)/5))):1,
+      armored:heavy,
       shotClock: type==="gunner"?rnd(1.1,2.3):rnd(1.9,3.9),
       wobble:rnd(0,TAU), direction:Math.random()<.5?-1:1,
       panic:0, panicAngle:0, age:0
@@ -691,7 +708,7 @@
     // No drops in introductions, on empty cleared waves, or when a boss
     // is announcing/entering. A live boss may still draw a lucky supply.
     const combat=state.toSpawn>0 || state.bots.length>0 ||
-      state.bossState==="active";
+      state.bossState==="active" || state.miniBossState==="active";
     if(!combat || state.waveClock>0 ||
         state.bossState==="warning" || state.bossState==="entering")return;
     state.dropClock-=dt;
@@ -755,6 +772,14 @@
       if(b.hp<=0)scrap(k,false);
       else burst(b.x,b.y,"#ffda72",8,.55);
     }
+    const mini=state.miniBoss;
+    if(mini && state.miniBossState==="active"){
+      const rx=mini.x-CX,ry=mini.y-CY,along=rx*dx+ry*dy;
+      const radius=mini.type==="sentinel"?21:28;
+      if(along>=24 && along<=range+radius &&
+          Math.abs(rx*dy-ry*dx)<=radius+RAILGUN_RADIUS)
+        hitMiniBoss(RAILGUN_DAMAGE);
+    }
     const architect=state.boss;
     if(architect?.type==="architect" && state.bossState==="active") {
       const rx=architect.x-CX,ry=architect.y-CY;
@@ -815,14 +840,22 @@
           nearest=d;target=candidate;
         }
       }
+      const mini=state.miniBoss;
+      if(mini && state.miniBossState==="active" && !used.has(mini)){
+        const d=Math.hypot(mini.x-source.x,mini.y-source.y);
+        if(d<nearest && d>2 && arcPathClear(source.x,source.y,mini.x,mini.y)){
+          nearest=d;target=mini;
+        }
+      }
       if(!target)break;
       used.add(target);
       state.arcLinks.push({x1:source.x,y1:source.y,x2:target.x,y2:target.y,life:.20});
       if(state.arcLinks.length>12)state.arcLinks.shift();
-      target.hp--;
+      if(target===mini)hitMiniBoss(1);
+      else target.hp--;
       burst(target.x,target.y,"#a9faff",4,.30);
       tone(770+hop*180,.085,"triangle",.026,1200+hop*50);
-      if(target.hp<=0){
+      if(target!==mini && target.hp<=0){
         const index=state.bots.indexOf(target);
         if(index>=0)scrap(index,false,"chain");
       }
@@ -861,12 +894,18 @@
     else tone(740,.055,"square",.033,420);
   }
   function fireBot(bot) {
-    if (state.shots.filter(s=>!s.friendly).length>65) return;
-    const aim = Math.atan2(CY-bot.y,CX-bot.x) + rnd(-.08,.08);
-    const speed = 150 + Math.min(100,state.wave*9);
-    state.shots.push({x:bot.x+Math.cos(aim)*11,y:bot.y+Math.sin(aim)*11,
-      vx:Math.cos(aim)*speed,vy:Math.sin(aim)*speed,life:2.6,
-      friendly:false,size:3.2,color:"#ff7a4b"});
+    const raging=bot.armored && bot.maxHp>=5 && bot.hp<=bot.maxHp/2;
+    const count=raging?3:1;
+    if (state.shots.filter(s=>!s.friendly).length+count>65)return;
+    const aim=Math.atan2(CY-bot.y,CX-bot.x)+rnd(-.08,.08);
+    const speed=150+Math.min(100,state.wave*9)+(raging?15:0);
+    for(let i=0;i<count;i++){
+      const angle=aim+(i-(count-1)/2)*.19;
+      state.shots.push({x:bot.x+Math.cos(angle)*12,y:bot.y+Math.sin(angle)*12,
+        vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:2.6,
+        friendly:false,size:3.2,color:raging?"#ff5d7d":"#ff7a4b"});
+    }
+    if(raging)tone(280,.12,"sawtooth",.025,115);
   }
   function clearShotPath(x,y) {
     const angle = polar(x,y), d=dist(x,y);
@@ -886,7 +925,8 @@
       const preferred = b.type==="gunner"?153:b.type==="flank"?108:
         b.type==="rush"?69:83;
       let heading=a+Math.PI;
-      let speed=b.speed*botDt;
+      const raging=b.armored && b.maxHp>=5 && b.hp<=b.maxHp/2;
+      let speed=b.speed*botDt*(raging?1.4:1);
       let nearest=null,distanceToRing=Infinity;
       for (const ring of state.rings) {
         const delta=d-ringShape(ring).radius;
@@ -935,10 +975,11 @@
       if (d<30) {burst(b.x,b.y,"#ff4baf",12);state.bots.splice(i,1);playerHit("contact");continue;}
       b.shotClock-=botDt;
       const fireRange=b.type==="gunner"?190:b.type==="flank"?138:
-        b.type==="rush"?94:125;
+        b.type==="rush"?94:raging?166:125;
       if (b.shotClock<=0 && d<fireRange && clearShotPath(b.x,b.y)) {
         fireBot(b);
-        b.shotClock=(b.type==="gunner"?rnd(1.5,2.6):rnd(2.8,4.6))/
+        b.shotClock=(raging?rnd(1.2,1.9):
+          b.type==="gunner"?rnd(1.5,2.6):rnd(2.8,4.6))/
           (1+Math.min(.35,state.wave*.025));
       } else if (b.shotClock<=0) b.shotClock=rnd(.25,.7);
     }
@@ -1099,6 +1140,17 @@
             }
             hit=true;break;
           }
+          const mini=state.miniBoss;
+          if(mini && state.miniBossState==="active"){
+            const d=Math.hypot(s.x-mini.x,s.y-mini.y);
+            const radius=mini.type==="sentinel"?21:28;
+            if(d<radius+s.size){
+              const accurate=d<12+s.size;
+              hitMiniBoss(s.damage||1,accurate);
+              if(s.arc)arcChain({x:mini.x,y:mini.y});
+              hit=true;break;
+            }
+          }
           for (let k=state.bots.length-1;k>=0;k--) {
             const b=state.bots[k];
             if (Math.hypot(s.x-b.x,s.y-b.y)<b.size+4) {
@@ -1129,6 +1181,171 @@
     if (state.clearBossShots) {
       state.shots=state.shots.filter(s=>s.friendly);
       state.clearBossShots=false;
+    }
+    if(state.clearMiniShots){
+      state.shots=state.shots.filter(s=>!s.mini);
+      state.clearMiniShots=false;
+    }
+  }
+  function beginMiniBoss() {
+    const type=miniTypeForWave(state.wave);
+    if(!type || state.miniBossSeen)return;
+    state.miniBossSeen=true;
+    state.miniBossState="warning";
+    state.miniBossWarning=1.4;
+    state.announce=(type==="sentinel"?"SENTINEL":"BREAKER")+
+      " // HEAVY CONTACT INCOMING";
+    state.announceClock=1.8;
+    setStatus("MINI-BOSS WARNING — "+type.toUpperCase());
+    tone(155,.34,"sawtooth",.045,90);
+    tone(470,.21,"triangle",.032,210,.14);
+  }
+  function miniEnraged(b) {
+    return b.hp<=b.maxHp/2;
+  }
+  function hitMiniBoss(damage=1,precise=false) {
+    const b=state.miniBoss;
+    if(!b || state.miniBossState!=="active")return false;
+    if(b.guard>0)return true; // Armor briefly flashes; no multi-hit overlap.
+    const critical=b.type==="breaker" && miniEnraged(b) && precise;
+    b.hp-=damage+(critical?1:0);
+    b.guard=.13;
+    burst(b.x,b.y,critical?"#fff3b6":"#ffba8a",8,.45);
+    state.shake=Math.max(state.shake,critical?5:3);
+    tone(240,.08,"triangle",.029,110);
+    if(b.hp<=0){
+      const points=(b.type==="sentinel"?850:1350)+
+        Math.max(0,Math.floor((state.wave-3)/4))*150;
+      state.score+=points;
+      if(!state.testMode && state.score>state.high){
+        state.high=state.score;storeHigh();
+      }
+      state.miniBoss=null;
+      state.miniBossState="defeated";
+      state.clearMiniShots=true;
+      state.announce=b.type.toUpperCase()+" DESTROYED // +"+points;
+      state.announceClock=2.4;
+      setStatus("MINI-BOSS DOWN — "+points+" BONUS / SUPPLY RELEASED");
+      burst(b.x,b.y,b.type==="sentinel"?"#fb667e":"#ffc07c",40,1.45);
+      burst(b.x,b.y,"#f4ffff",20,.82);
+      state.shake=Math.max(state.shake,8);
+      tone(125,.38,"sawtooth",.068,47);
+      tone(690,.24,"triangle",.04,130,.15);
+      // A guaranteed shoot-to-collect supply drone at the wreck site.
+      // Reuse an already active supply instead of deleting the player's prize.
+      if(!state.supplyDrone){
+        state.supplyDrone={x:b.x,y:b.y,
+          vx:(b.x<CX?1:-1)*SUPPLY_SPEED,kind:"random"};
+      }
+      state.dropClock=rnd(18,29);
+    }else if(miniEnraged(b) && !b.enragedOnce){
+      b.enragedOnce=true;
+      state.announce=b.type.toUpperCase()+" // ARMOR BREACHED";
+      state.announceClock=1.7;
+      setStatus("MINI-BOSS ARMOR FRACTURED — WATCH ITS ATTACKS");
+      tone(340,.21,"sawtooth",.042,550);
+    }
+    return true;
+  }
+  function fireMiniBoss(b) {
+    const count=b.type==="sentinel"?3:miniEnraged(b)?6:4;
+    if(state.shots.filter(s=>!s.friendly).length+count>65)return false;
+    const aim=Math.atan2(CY-b.y,CX-b.x);
+    const speed=(b.type==="sentinel"?190:215)+
+      Math.min(90,Math.max(0,state.wave-3)*5);
+    for(let k=0;k<count;k++){
+      // Sentinel fans a three-way spread; the Breaker's twin batteries
+      // fire paired columns, tightening into a 6-bolt enraged salvo.
+      const offset=b.type==="sentinel"?(k-1)*.20:
+        (k-(count-1)/2)*.095;
+      const angle=aim+offset;
+      const muzzle=b.type==="breaker"?25:19;
+      state.shots.push({x:b.x+Math.cos(angle)*muzzle,
+        y:b.y+Math.sin(angle)*muzzle,
+        vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,
+        life:2.7,friendly:false,size:3.5,mini:true,
+        color:b.type==="sentinel"?"#ff647e":"#ffb26d"});
+    }
+    tone(b.type==="sentinel"?260:180,.17,"sawtooth",.048,86);
+    return true;
+  }
+  function updateMiniBoss(dt) {
+    if(state.miniBossState==="warning"){
+      state.miniBossWarning=Math.max(0,state.miniBossWarning-dt);
+      if(state.miniBossWarning<=0){
+        const type=miniTypeForWave(state.wave);
+        if(!type)return;
+        const angle=type==="sentinel"?-2.15:-.87;
+        const radius=type==="sentinel"?151:211;
+        const hp=miniMaxHp(type,state.wave);
+        state.miniBoss={type,hp,maxHp:hp,age:0,guard:0,
+          angle,radius,baseRadius:radius,
+          x:CX+Math.cos(angle)*radius,y:CY+Math.sin(angle)*radius,
+          orbitDir:1,fireClock:1.35,fireWarning:0,
+          chargeClock:4.1,chargeWarning:0,chargeTime:0,
+          enragedOnce:false};
+        state.miniBossState="active";
+        state.announce=type.toUpperCase()+" // TARGET THE ARMORED HUNTER";
+        state.announceClock=2.1;
+        setStatus(type.toUpperCase()+" ENGAGED — "+hp+" ARMOR");
+      }
+      return;
+    }
+    const b=state.miniBoss;
+    if(!b || state.miniBossState!=="active")return;
+    b.age+=dt;b.guard=Math.max(0,b.guard-dt);
+    const angry=miniEnraged(b);
+    if(b.type==="breaker"){
+      if(b.chargeWarning>0){
+        b.chargeWarning=Math.max(0,b.chargeWarning-dt);
+        if(!b.chargeWarning){
+          b.chargeTime=.82;
+          tone(135,.24,"sawtooth",.043,280);
+        }
+      }else if(b.chargeTime>0){
+        b.chargeTime=Math.max(0,b.chargeTime-dt);
+        if(!b.chargeTime)b.chargeClock=angry?3.1:4.7;
+      }else{
+        b.chargeClock-=dt;
+        if(b.chargeClock<=0){
+          b.chargeWarning=.8;
+          state.announce="BREAKER // CHARGE INCOMING";
+          state.announceClock=.95;
+          tone(400,.20,"triangle",.035,160);
+        }
+      }
+      const target=b.chargeTime>0?137:b.baseRadius;
+      b.radius+=clamp(target-b.radius,-160*dt,160*dt);
+    }else{
+      b.radius=b.baseRadius+10*Math.sin(b.age*.74);
+    }
+    const speed=(b.type==="sentinel"?.65:.40)*
+      (angry?1.43:1)*Math.min(1.6,1+Math.max(0,state.wave-7)*.018);
+    b.angle+=b.orbitDir*speed*dt;
+    // Sentinel changes lanes and direction during the fight, rather than
+    // hovering at one position. All shifts stay continuous.
+    if(b.type==="sentinel" && angry && Math.floor((b.age-dt)/3.8)!==
+        Math.floor(b.age/3.8)){
+      b.orbitDir*=-1;
+      b.radius=b.baseRadius+10*Math.sin(b.age*.74);
+    }
+    b.x=CX+Math.cos(b.angle)*b.radius;
+    b.y=CY+Math.sin(b.angle)*b.radius;
+    if(b.fireWarning>0){
+      b.fireWarning=Math.max(0,b.fireWarning-dt);
+      if(!b.fireWarning){
+        if(clearShotPath(b.x,b.y) && fireMiniBoss(b)){
+          b.fireClock=b.type==="sentinel"?(angry?1.45:2.15):
+            (angry?1.2:1.85);
+        }else b.fireClock=.32; // Reposition at a clear shooting lane.
+      }
+    }else{
+      b.fireClock-=dt;
+      if(b.fireClock<=0){
+        b.fireWarning=b.type==="sentinel"?.58:.72;
+        setStatus(b.type.toUpperCase()+" — WEAPONS CHARGING");
+        tone(b.type==="sentinel"?640:480,.11,"triangle",.025,210);
+      }
     }
   }
   function wardenCoreOpen(boss) {
@@ -1373,7 +1590,14 @@
         state.spawnClock=Math.max(.16,rnd(.31,.52)-state.wave*.008);
       }
     }
+    const miniType=miniTypeForWave(state.wave);
+    if(miniType && !state.miniBossSeen && state.waveTotal>0 &&
+       state.waveTotal-(state.toSpawn+state.bots.length)>=
+       Math.ceil(state.waveTotal*.5))beginMiniBoss();
     if (!state.toSpawn && !state.bots.length) {
+      // A mini-boss may arrive halfway through the wave. Clearing the
+      // small robots cannot skip its encounter or trigger graduation.
+      if(miniType && state.miniBossState!=="defeated")return;
       if((state.wave===4 || state.wave===8) && !state.bossDefeated) {
         if(state.wave===4 && (!state.shieldCapsuleSeen || state.shieldCapsule))
           return;
@@ -1411,6 +1635,9 @@
         state.supplyDrone=null; // A missed pass does not cross graduation.
         state.boss=null;state.bossState="none";
         state.bossWarning=0;state.bossDefeated=false;
+        state.miniBoss=null;state.miniBossState="none";
+        state.miniBossWarning=0;state.miniBossSeen=false;
+        state.clearMiniShots=false;
         state.architectRingSpins=null;
         // Changing sectors changes real walls as well as the decorative field.
         // Preserve their angular orientation so the handoff feels continuous.
@@ -1533,6 +1760,7 @@
     updateWave(dt);
     updateSupplyDrone(dt);
     updateBots(dt);
+    updateMiniBoss(dt);
     updateGuardians(dt);
     if (state.phase==="playing") {
       updateShieldCapsule(dt);
