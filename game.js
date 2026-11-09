@@ -36,6 +36,13 @@
   const pauseButton = document.getElementById("pause-btn");
   const soundButton = document.getElementById("sound-btn");
   const fireButton = document.getElementById("fire-btn");
+  // The new analog wheel is a touch-only input surface. Keep the desktop
+  // pointer, keyboard and eight-direction pad exactly as before.
+  const touchAimWheel = document.getElementById("aim-wheel");
+  const touchAimNeedle = document.getElementById("aim-wheel-needle");
+  const touchPrimary = typeof window.matchMedia === "function" &&
+    window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+  let touchWheelPointer=null;
   const statusMessage = document.getElementById("status-message");
   const testWaveInput = document.getElementById("test-wave");
   const testStartButton = document.getElementById("test-start-btn");
@@ -263,6 +270,8 @@
     state.announceClock = 2.2;
     state.revealClock = testMode ? 1.45 : 0;
     pointerFiring = buttonFiring = false;
+    touchWheelPointer=null;
+    if(touchAimWheel)touchAimWheel.classList.remove("aiming");
     fireButton.classList.remove("firing");
     // User's START click unlocks browser audio; the chirp confirms it is active.
     primeAudio(true);
@@ -277,6 +286,8 @@
       state.phase = "paused";
       state.aimVelocity = 0;
       pointerFiring = buttonFiring = false;
+      touchWheelPointer=null;
+      if(touchAimWheel)touchAimWheel.classList.remove("aiming");
       fireButton.classList.remove("firing");
       showOverlay("PAUSED", "The robots are on their best behavior. For now.", "RESUME", "SYSTEM HOLD");
       pauseButton.textContent = "RESUME";
@@ -3080,6 +3091,16 @@
   function syncAimPad() {
     const closest = Math.round(state.aim) % 8;
     for(const button of padButtons) button.classList.toggle("active",Number(button.dataset.dir)===closest);
+    if(touchPrimary && touchAimNeedle && touchAimWheel){
+      // Indicator follows the ACTUAL capped turret angle, not a target that
+      // could otherwise appear to snap there instantly.
+      const degrees=((state.aim*45)%360+360)%360;
+      touchAimNeedle.style.transform="rotate("+degrees+"deg)";
+      touchAimWheel.setAttribute("aria-valuenow",String(Math.round(degrees)));
+      touchAimWheel.setAttribute("aria-valuetext",
+        ["east","southeast","south","southwest","west","northwest","north","northeast"]
+          [Math.round(state.aim)%8]);
+    }
   }
   function setAimTarget(x,y) {
     if (Math.hypot(x-CX,y-CY)<18) return;
@@ -3148,7 +3169,12 @@
     keyAim();
   });
   window.addEventListener("keyup",event=>{keys.delete(event.key);keyAim();});
-  window.addEventListener("blur",()=>{keys.clear();pointerFiring=buttonFiring=false;fireButton.classList.remove("firing");if(state.phase==="playing")pause();});
+  window.addEventListener("blur",()=>{
+    keys.clear();pointerFiring=buttonFiring=false;touchWheelPointer=null;
+    if(touchAimWheel)touchAimWheel.classList.remove("aiming");
+    fireButton.classList.remove("firing");
+    if(state.phase==="playing")pause();
+  });
   document.addEventListener("visibilitychange",()=>{if(document.hidden && state.phase==="playing")pause();});
   canvas.addEventListener("pointermove",event=>{
     if(event.pointerType==="mouse"||pointerFiring||event.buttons) {
@@ -3171,6 +3197,46 @@
       event.preventDefault();setQuickAimTarget(Number(button.dataset.dir));
     });
     button.addEventListener("click",()=>setQuickAimTarget(Number(button.dataset.dir)));
+  }
+  if(touchPrimary && touchAimWheel){
+    function steerFromWheel(event){
+      const box=touchAimWheel.getBoundingClientRect();
+      const dx=event.clientX-box.left-box.width/2;
+      const dy=event.clientY-box.top-box.height/2;
+      if(Math.hypot(dx,dy)<12)return; // Small dead zone for thumb comfort.
+      setAimTarget(CX+dx,CY+dy);
+    }
+    function finishWheel(event){
+      if(event.pointerId!==touchWheelPointer)return;
+      touchWheelPointer=null;
+      touchAimWheel.classList.remove("aiming");
+    }
+    touchAimWheel.addEventListener("pointerdown",event=>{
+      if(state.phase!=="playing" || touchWheelPointer!==null)return;
+      event.preventDefault();
+      touchWheelPointer=event.pointerId;
+      touchAimWheel.classList.add("aiming");
+      try{touchAimWheel.setPointerCapture(event.pointerId);}catch{}
+      steerFromWheel(event);
+    });
+    touchAimWheel.addEventListener("pointermove",event=>{
+      if(event.pointerId!==touchWheelPointer)return;
+      event.preventDefault();
+      steerFromWheel(event);
+    });
+    touchAimWheel.addEventListener("pointerup",finishWheel);
+    touchAimWheel.addEventListener("pointercancel",finishWheel);
+    touchAimWheel.addEventListener("lostpointercapture",finishWheel);
+    // Accessible coarse directional changes for a keyboard connected to
+    // a phone: slider arrows don't interfere with global game arrow keys.
+    touchAimWheel.addEventListener("keydown",event=>{
+      if(event.key!=="ArrowLeft" && event.key!=="ArrowRight" &&
+         event.key!=="ArrowUp" && event.key!=="ArrowDown")return;
+      event.preventDefault();event.stopPropagation();
+      const direction=(event.key==="ArrowLeft"||event.key==="ArrowUp")?-1:1;
+      const a=state.aim*Math.PI/4+direction*Math.PI/8;
+      setAimTarget(CX+Math.cos(a)*100,CY+Math.sin(a)*100);
+    });
   }
   fireButton.addEventListener("pointerdown",event=>{
     event.preventDefault();
