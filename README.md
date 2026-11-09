@@ -2,9 +2,18 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.26 — Repairs, Overcharge & Extra Lives**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.27 — Mobile Two-Thumb Controls**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## Mobile Two-Thumb Controls — v0.3.27
+
+- **Phone / touch-primary devices only:** The former small eight-direction quick-aim button pad becomes a large **360-degree drag-to-aim wheel**. Its illuminated needle tracks the turret's actual rotation, and aiming retains the original capped turn speed and acceleration.
+- **Hold FIRE independently with the other thumb.** The wheel and FIRE use separate captured pointer IDs, so dragging one cannot steal the other. The wheel does **not** fire automatically; as before, dragging directly on the arena also aims and fires if preferred. A dead zone at the wheel center avoids accidental aim changes when a thumb settles.
+- **Portrait phones:** The larger aim wheel and FIRE button sit directly under the arena, side by side. **Landscape phones:** The 4:3 combat screen fits the viewport with thumb controls docked outside it on the left and right; pause, sound and test-wave controls remain available in a compact strip beneath the screen. The game field is never rotated or cropped.
+- **Touch-only performance:** Cosmetic particle bursts are reduced to 70%, with a 280-particle cap (desktop remains 450). Scanline overlay contrast is also reduced on touch devices for clearer targeting. No scoring, enemy AI, hitboxes, boss behavior, gunfire timing, movement mechanics, power-ups, progression or rewards were changed.
+- **Desktop/Chromebook mouse and keyboard controls are unchanged.** The touch wheel is hidden and does not register listeners on fine-pointer devices. Desktop retains its original eight-direction quick-aim buttons and complete visual particle budget.
+- Automated interaction tests covered two independent touch pointers, direct-fire continuity, wheel dead zone, focus/keyboard slider, separate mobile and desktop effects, and versioned assets. Physical phone/landscape playtesting remains necessary.
 
 ## Play
 
