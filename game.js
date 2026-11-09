@@ -747,6 +747,13 @@
         if(d>=nearest || !arcPathClear(x,y,bot.x,bot.y))continue;
         nearest=d;target=bot;
       }
+      const mini=state.miniBoss;
+      if(mini && state.miniBossState==="active"){
+        const d=Math.hypot(mini.x-x,mini.y-y);
+        if(d<nearest && arcPathClear(x,y,mini.x,mini.y)){
+          nearest=d;target=mini;
+        }
+      }
       if(!target)continue;
       const aim=Math.atan2(target.y-y,target.x-x);
       state.shots.push({x,y,vx:Math.cos(aim)*395,vy:Math.sin(aim)*395,
@@ -2345,13 +2352,136 @@
       ctx.shadowBlur=0;
       ctx.fillStyle="#0b0d22";ctx.fillRect(-3,-3,6,3);
       ctx.fillStyle=b.armored?"#fff":"#ff684f";ctx.fillRect(-2,-2,4,1.5);
-      if (b.armored) {ctx.strokeStyle="#fff";ctx.lineWidth=1;ctx.strokeRect(-6,-6,12,12);}
+      if (b.armored) {
+        const bruiser=b.maxHp>=5;
+        const raging=bruiser && b.hp<=b.maxHp/2;
+        // An ordinary heavy remains compact in Wave 4. Later-wave Bruisers
+        // have massive shoulders, visible cracking, and a tiny armor gauge.
+        ctx.fillStyle=raging?"#ff6681":"#c6c0f7";
+        ctx.strokeStyle=raging?"#ffa3b7":"#e3daff";ctx.lineWidth=1.4;
+        ctx.strokeRect(-8,-8,16,16);
+        if(bruiser){
+          ctx.fillRect(-12,-7,5,12);ctx.fillRect(7,-7,5,12);
+          ctx.fillStyle="#0d1327";ctx.fillRect(-10,-13,20,3);
+          ctx.fillStyle=raging?"#ff5f7e":"#b3eafa";
+          ctx.fillRect(-10,-13,20*Math.max(0,b.hp)/b.maxHp,3);
+          if(b.hp<b.maxHp) {
+            ctx.strokeStyle=raging?"#fff1aa":"#fdc4f5";
+            ctx.lineWidth=1.5;ctx.beginPath();
+            ctx.moveTo(-6,-5);ctx.lineTo(-1,0);
+            ctx.lineTo(-4,5);ctx.lineTo(4,8);ctx.stroke();
+          }
+          if(raging && Math.sin(state.elapsed*14+b.wobble)>0) {
+            ctx.fillStyle="#ffe2a4";ctx.fillRect(-3,-2,6,3);
+          }
+        }
+      }
       if (b.panic>0) {
         ctx.strokeStyle="#ffeaa2";ctx.lineWidth=1.2;
         ctx.beginPath();ctx.arc(0,0,10.5,0,Math.PI*.55);ctx.stroke();
       }
       ctx.restore();
     }
+  }
+  function drawMiniBoss() {
+    if(state.miniBossState==="warning"){
+      // A large perimeter beacon telegraphs the mid-wave intrusion.
+      if(Math.floor(state.elapsed*5)%2===0){
+        ctx.save();ctx.strokeStyle="#ff9d6d";ctx.lineWidth=3.2;
+        ctx.setLineDash([14,10]);ctx.beginPath();
+        ctx.arc(CX,CY,R+14,0,TAU);ctx.stroke();
+        ctx.setLineDash([]);ctx.restore();
+      }
+      return;
+    }
+    const b=state.miniBoss;
+    if(!b || state.miniBossState!=="active")return;
+    const breaker=b.type==="breaker",angry=miniEnraged(b);
+    const color=breaker?"#ffb16a":"#ff6486";
+    const core=breaker?(angry?"#fff3a1":"#ff995f"):
+      (angry?"#fff1b2":"#ffcad7");
+    const aim=Math.atan2(CY-b.y,CX-b.x);
+    // Attack warnings can be read from a small phone: a bright aiming line
+    // and charging halo appear well before each spread or cannon barrage.
+    if(b.fireWarning>0 || b.chargeWarning>0){
+      ctx.save();ctx.globalAlpha=.60+.25*Math.sin(state.elapsed*18);
+      ctx.strokeStyle=b.chargeWarning>0?"#fff0a4":"#ff7083";
+      ctx.lineWidth=b.chargeWarning>0?3:2.2;
+      ctx.setLineDash([8,7]);
+      ctx.beginPath();ctx.moveTo(b.x,b.y);
+      ctx.lineTo(b.x+Math.cos(aim)*Math.min(124,b.radius-30),
+        b.y+Math.sin(aim)*Math.min(124,b.radius-30));
+      ctx.stroke();ctx.setLineDash([]);ctx.restore();
+    }
+    ctx.save();ctx.translate(b.x,b.y);
+    ctx.rotate(aim);
+    if(b.guard>0){
+      ctx.strokeStyle="#fff7d4";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,breaker?35:28,0,TAU);ctx.stroke();
+    }
+    if(b.fireWarning>0 || b.chargeWarning>0){
+      ctx.strokeStyle=b.chargeWarning>0?"#ffe69b":"#ff788c";
+      ctx.lineWidth=3;ctx.beginPath();
+      ctx.arc(0,0,breaker?40:31,
+        -Math.PI/2,-Math.PI/2+TAU*(b.fireWarning>0?
+          (1-b.fireWarning/(breaker?.72:.58)):(1-b.chargeWarning/.8)));
+      ctx.stroke();
+    }
+    if(breaker){
+      // Heavy twin-cannon platform. Four chunky limbs, impact plating,
+      // and an unmistakable exposed gold reactor after armor is breached.
+      ctx.fillStyle="#161e2b";ctx.strokeStyle="#ffb46d";ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(0,-28);ctx.lineTo(28,-21);
+      ctx.lineTo(30,20);ctx.lineTo(0,29);
+      ctx.lineTo(-30,20);ctx.lineTo(-28,-21);
+      ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle="#66677a";
+      ctx.fillRect(-35,-25,12,17);ctx.fillRect(-35,8,12,17);
+      ctx.fillRect(23,-25,12,17);ctx.fillRect(23,8,12,17);
+      ctx.fillStyle=angry?"#ff6d73":"#e7c39a";
+      ctx.fillRect(11,-19,25,9);ctx.fillRect(11,10,25,9);
+      ctx.fillStyle="#18121b";ctx.fillRect(26,-16,13,3);ctx.fillRect(26,13,13,3);
+      ctx.strokeStyle=angry?"#fff2b4":"#ffb16a";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,angry?13:10,0,TAU);ctx.stroke();
+      ctx.fillStyle=core;ctx.beginPath();
+      ctx.arc(0,0,angry?9:7,0,TAU);ctx.fill();
+      if(angry){
+        ctx.strokeStyle="#fff1ce";ctx.lineWidth=2;ctx.beginPath();
+        ctx.moveTo(-24,-12);ctx.lineTo(-10,-4);ctx.lineTo(-21,13);
+        ctx.moveTo(18,-17);ctx.lineTo(10,-8);ctx.stroke();
+      }
+    } else {
+      // Fast six-point mechanical hunter, red visor and separate saw-tooth
+      // fins. The eyes and armor cracks visibly shift as HP falls.
+      ctx.fillStyle="#1c1426";ctx.strokeStyle="#ff658a";ctx.lineWidth=3;
+      ctx.beginPath();
+      for(let i=0;i<8;i++){
+        const a=i*TAU/8, radius=i%2?18:24;
+        if(!i)ctx.moveTo(Math.cos(a)*radius,Math.sin(a)*radius);
+        else ctx.lineTo(Math.cos(a)*radius,Math.sin(a)*radius);
+      }
+      ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle="#ae3157";
+      ctx.fillRect(-16,-11,12,6);ctx.fillRect(-16,5,12,6);
+      ctx.fillStyle=core;ctx.fillRect(1,-7,15,14);
+      ctx.fillStyle="#ff254c";ctx.fillRect(7,-3,10,6);
+      if(angry){
+        ctx.strokeStyle="#ffd49b";ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(-16,-13);ctx.lineTo(-2,-3);
+        ctx.lineTo(-12,12);ctx.stroke();
+      }
+    }
+    ctx.restore();
+    // Fixed horizontal HP bar stays legible while the boss orbits.
+    const width=breaker?82:70;
+    ctx.save();
+    ctx.fillStyle="#06101ded";ctx.fillRect(b.x-width/2,b.y-(breaker?53:43),width,7);
+    ctx.strokeStyle=color;ctx.lineWidth=1.2;
+    ctx.strokeRect(b.x-width/2,b.y-(breaker?53:43),width,7);
+    ctx.fillStyle=angry?"#ffe5a1":color;
+    ctx.fillRect(b.x-width/2+2,b.y-(breaker?51:41),
+      (width-4)*Math.max(0,b.hp)/b.maxHp,3);
+    ctx.restore();
   }
   function drawArchitect() {
     if(state.wave!==8 || !state.boss || state.boss.type!=="architect" ||
@@ -3154,6 +3284,14 @@
         W-26,706,14,wardenCoreOpen(state.boss)?"#8ffaff":"#ffae8c","right");
     else if((state.wave===4 || state.wave===8) && state.bossDefeated)
       label(state.wave===8?"ARCHITECT DOWN":"WARDEN DOWN",W-26,706,15,"#88ffdf","right");
+    else if(state.miniBossState==="warning")
+      label("MINI-BOSS INBOUND",W-26,706,14,"#ff9d7f","right");
+    else if(state.miniBossState==="active" && state.miniBoss){
+      const b=state.miniBoss;
+      label(b.type.toUpperCase()+" "+Math.max(0,b.hp)+"/"+b.maxHp+
+        "  BOTS "+(state.bots.length+state.toSpawn),
+        W-26,706,12,b.type==="breaker"?"#ffc187":"#ff9abc","right");
+    }
     else label("ROBOTS: "+String(state.bots.length+state.toSpawn).padStart(2,"0"),
       W-26,706,17,"#f8d89b","right");
     if(state.powerup){
@@ -3297,7 +3435,7 @@
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
     const visual=visualEvolution();
     drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
-    drawShockwaves();drawBots();drawSupplyDrone();drawShieldCapsule();drawWarden();drawArchitect();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();drawPowerEffects();
+    drawShockwaves();drawBots();drawMiniBoss();drawSupplyDrone();drawShieldCapsule();drawWarden();drawArchitect();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();drawPowerEffects();
     // The perimeter alarm flashes during the warning and the boss entry.
     if((state.wave===4 || state.wave===8) &&
         (state.bossState==="warning" || state.bossState==="entering") &&
