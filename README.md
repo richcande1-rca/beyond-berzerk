@@ -2,9 +2,18 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.27 — Mobile Two-Thumb Controls**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.28 — Mini-Bosses & Bruisers**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## Mini-Bosses & Bruisers — v0.3.28
+
+- **The Sentinel (Wave 3):** A six-hit armored hunter enters with a clear red warning after **half the swarm has been eliminated**. It sweeps around the arena, fires clearly telegraphed **three-shot fans**, and accelerates/reverses direction after its armor cracks. The remaining robots continue attacking while it is alive.
+- **The Breaker (Wave 7):** A ten-hit twin-cannon siege machine appears at the same halfway threshold. It telegraphs **four-shot bursts**, escalating to **six-shot volleys** after its armor breaks, and warns before a short inward charge. At half health its bright gold reactor is exposed: hitting the central core deals **one additional damage**, rewarding deliberate aim.
+- **Recurring threats:** The Sentinel returns at Waves **11, 19, 27, ...** and the Breaker at Waves **15, 23, 31, ...**, with **two additional HP** on each return (bounded for endless runs). Wave 4 Warden and Wave 8 Architect remain the distinct, full-size bosses.
+- **Mandatory encounter:** Mini-bosses enter **mid-wave** rather than after all robots are gone, and no graduation can begin until the mini-boss is destroyed. Each win grants **850+ points (Sentinel)** or **1,350+ points (Breaker)**, growing in later waves, and a **guaranteed gold shoot-to-collect supply drone**. If a normal supply is already in flight, the mini-boss reward is queued without deleting the existing one.
+- **Bruiser heavy robots:** Starting Wave **5**, heavy robots now have **5 HP** rather than 2. Their armor rises to **6 HP at Wave 10** and **7 HP at Wave 15 onward**. Larger armored sprites show an HP gauge and cracking plates. Once below half health, a Bruiser speeds up, gains firing range, and launches rapid three-shot spreads. Wave 4's original two-hit heavy robots are preserved to keep its Heavy Laser qualification fair.
+- **Readable on phones:** Distinct vector silhouettes, bright attack telegraphs, clear boss HP bars and bottom-HUD status. No new controls, downloaded sprite assets or dependencies. All original turret weapons, drops, arena layouts, mobile input, major bosses and score-life milestones are preserved.
 
 ## Mobile Two-Thumb Controls — v0.3.27
 
