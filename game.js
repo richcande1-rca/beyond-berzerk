@@ -424,12 +424,16 @@
     return true;
   }
   function burst(x, y, color, amount=12, force=1) {
-    for (let i=0;i<amount;i++) {
+    // Touch devices render fewer cosmetic particles. Collision, explosions,
+    // scoring, damage and wall physics remain identical on every platform.
+    const visibleAmount=touchPrimary?Math.max(1,Math.ceil(amount*.7)):amount;
+    for (let i=0;i<visibleAmount;i++) {
       const a=rnd(0,TAU), speed=rnd(35,180)*force;
       state.particles.push({x,y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,
         life:rnd(.22,.65),max:.65,color,size:rnd(1.1,3.4)});
     }
-    if (state.particles.length>450) state.particles.splice(0,state.particles.length-450);
+    const cap=touchPrimary?280:450;
+    if (state.particles.length>cap) state.particles.splice(0,state.particles.length-cap);
   }
   function queueBlast(x,y,color,depth=0) {
     if (state.blasts.length >= 24 || depth > 3) return;
