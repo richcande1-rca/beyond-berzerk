@@ -81,6 +81,7 @@
   const MINI_SENTINEL_HP = 6, MINI_BREAKER_HP = 10;
   const LEVIATHAN_POD_HP=4, LEVIATHAN_CORE_HP=6;
   const LEVIATHAN_REINFORCEMENT_CAP=4, LEVIATHAN_REINFORCEMENT_TOTAL=12;
+  const LEVIATHAN_DEATH_SECONDS=2.4;
   // Pod positions are also the independent aimable hitboxes. Source sprite
   // is top-down, with forward pointing toward canvas -Y.
   const LEVIATHAN_PODS=[
@@ -180,6 +181,7 @@
       powerClock:0,lastPowerup:null,guardianClock:0,guardianAngle:0,
       waveElapsed:0, waveTotal:0, shieldCapsule:null, shieldCapsuleSeen:false,
       boss:null, bossState:"none", bossWarning:0, bossDefeated:false, clearBossShots:false,
+      leviathanDeath:null,
       miniBoss:null, miniBossState:"none", miniBossSeen:false,
       miniBossWarning:0, clearMiniShots:false, miniRewardPending:null,
       architectRingSpins:null,
@@ -1646,6 +1648,9 @@
     if(!state.testMode && state.score>state.high){
       state.high=state.score;storeHigh();
     }
+    // Keep a separate, visible wreck after the boss is removed from combat.
+    // This is cosmetic; all targeting, rewards and encounter logic stay intact.
+    state.leviathanDeath={x:b.x,y:b.y,rotation:leviathanRotation(b),age:0,stage:0};
     state.boss=null;state.bossState="defeated";state.bossDefeated=true;
     state.clearBossShots=true;
     // Reinforcement robots cease functioning when their command core dies.
@@ -1657,16 +1662,43 @@
     state.announce="THE LEVIATHAN DESTROYED // +4000";
     state.announceClock=3.1;
     setStatus("LEVIATHAN DEFEATED — COMMAND SYSTEMS COLLAPSE");
-    state.shake=15;state.flash=.45;
-    for(let i=0;i<6;i++){
-      const a=i*TAU/6;
-      burst(b.x+Math.cos(a)*rnd(8,72),
-        b.y+Math.sin(a)*rnd(8,72),
-        i%2?"#ffb34e":"#ff4e78",24,1.6);
+    state.shake=12;state.flash=.35;
+    for(let i=0;i<3;i++){
+      const a=i*TAU/3;
+      burst(b.x+Math.cos(a)*40,b.y+Math.sin(a)*30,
+        i%2?"#ffb34e":"#ff4e78",18,1.15);
     }
     tone(91,.62,"sawtooth",.09,36);
     tone(175,.49,"triangle",.05,64,.17);
     tone(530,.42,"triangle",.045,160,.36);
+  }
+  function updateLeviathanDeath(dt) {
+    const d=state.leviathanDeath;
+    if(!d)return;
+    d.age+=dt;
+    // Stagger the reactor explosions rather than spending the entire effect
+    // on the same animation frame. The final core blast is the largest.
+    const stages=[
+      {at:.35,dx:-52,dy:-27,color:"#ffb44a",count:20},
+      {at:.75,dx:55,dy:22,color:"#ff567e",count:20},
+      {at:1.20,dx:0,dy:0,color:"#fff2b4",count:42},
+      {at:1.65,dx:-8,dy:15,color:"#ff8054",count:21}
+    ];
+    while(d.stage<stages.length && d.age>=stages[d.stage].at){
+      const step=stages[d.stage];
+      const finale=d.stage===2;
+      burst(d.x+step.dx,d.y+step.dy,step.color,step.count,
+        finale?2:1.35);
+      if(finale){
+        state.flash=Math.max(state.flash,.75);
+        state.shake=Math.max(state.shake,15);
+        state.shockwaves.push({x:d.x,y:d.y,color:"#ffb46b",
+          life:1,maxLife:1,radius:210});
+        tone(75,.7,"sawtooth",.08,32);
+      }else tone(160-d.stage*30,.20,"sawtooth",.035,65);
+      d.stage++;
+    }
+    if(d.age>=LEVIATHAN_DEATH_SECONDS)state.leviathanDeath=null;
   }
   function damageLeviathanPod(index,damage=1) {
     const b=state.boss;
@@ -1960,6 +1992,9 @@
         }
         return;
       }
+      // Let the Leviathan's death play out before the graduation plaque can
+      // cover the wreck. The ordinary two-second ceremony is unchanged.
+      if(state.leviathanDeath)return;
       if (state.waveClock===0) {
         // Begin a single, two-second graduation for every cleared wave.
         // Decorative only: no changes to rings, hitboxes or combat timing.
@@ -1979,6 +2014,7 @@
         state.supplyDrone=null; // A missed pass does not cross graduation.
         state.boss=null;state.bossState="none";
         state.bossWarning=0;state.bossDefeated=false;
+        state.leviathanDeath=null;
         state.miniBoss=null;state.miniBossState="none";
         state.miniBossWarning=0;state.miniBossSeen=false;
         state.clearMiniShots=false;state.miniRewardPending=null;
@@ -2111,6 +2147,7 @@
       updateWarden(dt);
       updateArchitect(dt);
       updateLeviathan(dt);
+      updateLeviathanDeath(dt);
       updateShots(dt);
     }
     updateBlasts(dt);
@@ -3056,6 +3093,46 @@
       ctx.restore();
     }
   }
+  function drawLeviathanDeath() {
+    const d=state.leviathanDeath;
+    if(!d)return;
+    const t=d.age, split=clamp((t-.38)/1.25,0,1);
+    const fade=clamp((2.25-t)/.88,0,1);
+    ctx.save();ctx.translate(d.x,d.y);ctx.rotate(d.rotation);
+    // The real damaged sprite remains visible and breaks into four pieces.
+    // Four clipped draws, no new image downloads or expensive filters.
+    if(leviathanArt && leviathanArt.complete &&
+       leviathanArt.naturalWidth===640 && leviathanArt.naturalHeight===96){
+      ctx.globalAlpha=fade;
+      for(let i=0;i<4;i++){
+        const col=i%2,row=(i/2)|0;
+        const sx=col?1:-1,sy=row?1:-1;
+        ctx.save();
+        ctx.translate(sx*split*80,sy*split*67);
+        ctx.rotate(sx*sy*split*.48);
+        ctx.drawImage(leviathanArt,512+col*64,row*48,64,48,
+          -107+col*107,-80+row*80,107,80);
+        ctx.restore();
+      }
+    }else{
+      ctx.globalAlpha=fade;
+      ctx.strokeStyle="#ffb46b";ctx.lineWidth=5;
+      ctx.strokeRect(-83-split*29,-58-split*20,
+        166+split*58,116+split*40);
+    }
+    // The central reactor builds to a distinctly visible delayed detonation.
+    const corePulse=clamp((t-.75)/.55,0,1);
+    const ringFade=clamp((LEVIATHAN_DEATH_SECONDS-t)/.9,0,1);
+    ctx.globalAlpha=ringFade;
+    ctx.strokeStyle="#ff7a55";ctx.lineWidth=5*(1-corePulse)+2;
+    ctx.beginPath();ctx.arc(0,0,18+corePulse*135,0,TAU);ctx.stroke();
+    ctx.strokeStyle="#fff1ad";ctx.lineWidth=2.2;
+    ctx.beginPath();ctx.arc(0,0,12+corePulse*110,0,TAU);ctx.stroke();
+    ctx.globalAlpha=ringFade*(.62+.38*Math.sin(t*15)**2);
+    ctx.fillStyle=t>=1.2?"#fff5d5":"#ff8769";
+    ctx.beginPath();ctx.arc(0,0,10+corePulse*24,0,TAU);ctx.fill();
+    ctx.restore();
+  }
   function drawWarden() {
     if(state.wave!==4 || !state.boss ||
         (state.bossState!=="active" && state.bossState!=="entering"))return;
@@ -3881,7 +3958,7 @@
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
     const visual=visualEvolution();
     drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
-    drawShockwaves();drawBots();drawMiniBoss();drawSupplyDrone();drawShieldCapsule();drawWarden();drawArchitect();drawLeviathan();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();drawPowerEffects();
+    drawShockwaves();drawBots();drawMiniBoss();drawSupplyDrone();drawShieldCapsule();drawWarden();drawArchitect();drawLeviathan();drawLeviathanDeath();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();drawPowerEffects();
     // The perimeter alarm flashes during the warning and the boss entry.
     if((state.wave===4 || state.wave===8 || state.wave===12) &&
         (state.bossState==="warning" || state.bossState==="entering") &&
