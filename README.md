@@ -2,9 +2,16 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.30 — Leviathan Destruction Fix**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.31 — Leviathan Counterattack**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## Leviathan Counterattack — v0.3.31
+
+- **Movement:** The Wave 12 boss has faster, variable-radius orbiting, brief direction-change feints, faster bursts of speed, and frequent lunging/reversing charges in its final phase. It can no longer be beaten by parking the aim on one angle.
+- **Artillery:** All three weapon pods fire aimed three-shot volleys much more often. After two pods fall, surviving pods switch to five-shot fans; after the reactor opens, the core launches five-shot bombardments, becoming rapid seven-shot salvos in its final phase. Two emergency hull cannons fire throughout, including after the pods are destroyed.
+- **Escalation:** The counterattack begins around the 60% armor mark and the furious final phase begins below 25% of total starting armor. Pod armor is **5 hits each** and the reactor **8 hits** for a longer, more demanding contest; its accurate weak-point rules and railgun one-target limit remain. Fire is wall-blocked, shootable by the player, and capped at 65 hostile shots.
+- **Unchanged:** Boss rewards, reinforcement caps, controls, earlier waves, wall mechanics, Stasis rules, and the full **2.4-second destruction sequence** followed by graduation. This is a tuning release and needs a real Wave 12 test play for balance.
 
 ## Leviathan death sequence fix — v0.3.30
 
@@ -15,9 +22,9 @@ You command a stationary 360-degree rotating turret while tiny robots swarm thro
 
 - **Actual game sprite asset:** `assets/leviathan-atlas.avif`, a compact transparent **five-frame, 640 × 96 sprite atlas** adapted from custom cyberpunk pixel-art concept imagery. Frames show intact armor, successive destroyed-weapon configurations, the exposed reactor, and the final enraged chassis. The game uses the real decoded AVIF frames with fixed source rectangles, plus an inexpensive canvas fallback if the image has not loaded. No added runtime libraries.
 - **Wave 12 full boss:** The Leviathan enters only after the normal Wave 12 robots are cleared, following a three-second warning and approach. It is a third **main boss** alongside the Wave 4 Warden and Wave 8 Architect; defeating it is required to graduate into Wave 13.
-- **Three separately targetable weapon pods:** The port, dorsal and starboard pods each have **4 HP**, their own hit circles, short collision protection, charge warnings and independent firing timers. The flank batteries fire spread volleys; the dorsal battery launches fast focused shots. A pod's destruction changes the actual displayed sprite and reveals more of the damaged shell.
-- **Reactor phase:** Destroy all three pods to expose a periodically opening red reactor. It needs **six successful core hits**, one per reactor hit regardless of Heavy Laser / Railgun damage. The Railgun can destroy a pod or reach the core through walls, but it can hit **only one Leviathan target per blast**. Armor and reactor phases cannot be skipped by raw weapon DPS.
-- **Final assault:** At three remaining reactor HP, the chassis displays the fifth, enraged sprite, reverses its orbit, warns before inward charges, and fires accelerated seven-shot barrages between core openings. Its warning rings, targeting cues and remaining health are drawn clearly on small phones.
+- **Three separately targetable weapon pods:** The port, dorsal and starboard pods each have **5 HP**, their own hit circles, short collision protection, charge warnings and independent firing timers. The flank batteries fire spread volleys; the dorsal battery launches fast focused shots. A pod's destruction changes the actual displayed sprite and reveals more of the damaged shell.
+- **Reactor phase:** Destroy all three pods to expose a periodically opening red reactor. It needs **eight successful core hits**, one per reactor hit regardless of Heavy Laser / Railgun damage. The Railgun can destroy a pod or reach the core through walls, but it can hit **only one Leviathan target per blast**. Armor and reactor phases cannot be skipped by raw weapon DPS.
+- **Final assault:** At five remaining reactor HP, the chassis displays the fifth, enraged sprite, reverses its orbit, warns before inward charges, and fires accelerated seven-shot barrages between core openings. Its warning rings, targeting cues and remaining health are drawn clearly on small phones.
 - **Bounded robot reinforcements:** The boss periodically manufactures ordinary robots with a strict cap of **4 alive at a time** and **12 total per encounter**. Those reinforcements share the game's collision, scoring, damage and slowdown rules. Surviving reinforcements shut down when the command core is destroyed. No permanent enemy spawns or performance-heavy effects.
 - **Reward:** The Leviathan's defeat triggers a multi-stage particle destruction sequence (expanded into a clearly visible 2.4-second finale in v0.3.30), frees Wave 13, and adds **4,000 points** (eligible for regular score-based extra lives). The existing turret upgrades, ammo, supplies, mini-bosses, mobile controls, full-boss behavior and high-score rules remain unchanged.
 

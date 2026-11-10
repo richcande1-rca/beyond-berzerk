@@ -79,7 +79,7 @@
   const EXTRA_LIFE_INTERVAL = 15000, MAX_LIVES = 5;
   const HULL_REPAIR_FULL_BONUS = 250;
   const MINI_SENTINEL_HP = 6, MINI_BREAKER_HP = 10;
-  const LEVIATHAN_POD_HP=4, LEVIATHAN_CORE_HP=6;
+  const LEVIATHAN_POD_HP=5, LEVIATHAN_CORE_HP=8;
   const LEVIATHAN_REINFORCEMENT_CAP=4, LEVIATHAN_REINFORCEMENT_TOTAL=12;
   const LEVIATHAN_DEATH_SECONDS=2.4;
   // Pod positions are also the independent aimable hitboxes. Source sprite
@@ -1633,6 +1633,12 @@
     return {x:b.x+p.x*Math.cos(rot)-p.y*Math.sin(rot),
       y:b.y+p.x*Math.sin(rot)+p.y*Math.cos(rot)};
   }
+  function leviathanThreatTier(b) {
+    // A genuine mid-fight escalation after two pods (~60% total armor).
+    // The final tier begins below 25% of the original combined armor.
+    return b.phase==="fury"?2:
+      b.phase!=="pods" || b.pods.filter(p=>p.hp<=0).length>=2?1:0;
+  }
   function leviathanCoreOpen(b) {
     if(state.wave!==12 || state.bossState!=="active" ||
        !b || b.type!=="leviathan" || b.pods.some(p=>p.hp>0))return false;
@@ -1719,9 +1725,14 @@
       state.announceClock=1.75;
       if(destroyed===3){
         b.phase="core";b.coreFireClock=1.0;b.coreWarning=0;
-        state.announce="LEVIATHAN REACTOR EXPOSED // 6 HITS";
+        state.announce="LEVIATHAN REACTOR EXPOSED // "+LEVIATHAN_CORE_HP+" HITS";
         state.announceClock=2.4;
         setStatus("PODS ELIMINATED — SHOOT THE OPEN RED REACTOR");
+      } else if(destroyed===2){
+        b.barrageClock=Math.min(b.barrageClock,.35);
+        state.announce="LEVIATHAN // COUNTERATTACK SYSTEMS ONLINE";
+        state.announceClock=1.9;
+        setStatus("WARNING — LEVIATHAN FIREPOWER INCREASING");
       } else {
         setStatus("WEAPON POD DESTROYED — "+(3-destroyed)+" REMAIN");
       }
@@ -1739,17 +1750,19 @@
     tone(470+(LEVIATHAN_CORE_HP-b.coreHp)*70,.20,"sawtooth",.065,1100);
     if(b.coreHp<=0){
       destroyLeviathan();
-    }else if(b.coreHp<=3 && b.phase!=="fury"){
+    }else if(b.coreHp<=5 && b.phase!=="fury"){
       b.phase="fury";b.stage=4;b.age=0;
-      b.chargeClock=2.2;b.chargeWarning=0;b.chargeTime=0;
-      b.coreFireClock=.6;b.coreWarning=0;
+      b.chargeClock=1.65;b.chargeWarning=0;b.chargeTime=0;
+      b.coreFireClock=.4;b.coreWarning=0;
+      b.barrageClock=.25;b.laneClock=.2;b.surgeTime=1.0;
+      b.jukeWarning=0;
       state.announce="LEVIATHAN // FINAL ASSAULT";
       state.announceClock=2.2;
       setStatus("REACTOR CRITICAL — LEVIATHAN ENRAGED");
     }else{
       state.announce="REACTOR HIT // "+b.coreHp+" REMAIN";
       state.announceClock=1.25;
-      setStatus("LEVIATHAN CORE — "+b.coreHp+"/6");
+      setStatus("LEVIATHAN CORE — "+b.coreHp+"/"+LEVIATHAN_CORE_HP);
     }
     return true;
   }
@@ -1775,10 +1788,11 @@
     }
     return false;
   }
-  function fireLeviathanVolley(x,y,count,speed,color,spread) {
+  function fireLeviathanVolley(x,y,count,speed,color,spread,aimOffset=0) {
+    // Hard cap keeps simultaneous cannon batteries inexpensive on Chromebooks.
     const active=state.shots.reduce((n,s)=>n+(!s.friendly?1:0),0);
     if(active+count>65)return false;
-    const direction=Math.atan2(CY-y,CX-x);
+    const direction=Math.atan2(CY-y,CX-x)+aimOffset;
     for(let i=0;i<count;i++){
       const a=direction+(i-(count-1)/2)*spread;
       state.shots.push({x:x+Math.cos(a)*21,y:y+Math.sin(a)*21,
@@ -1789,6 +1803,23 @@
     tone(count>=5?155:245,.14,"sawtooth",.032,90);
     return true;
   }
+  function fireLeviathanHullGuns(b,tier) {
+    // Emergency hull batteries remain operational even after the big pods
+    // have been destroyed. Two offset muzzles fire crossing aimed fans.
+    const rot=leviathanRotation(b),c=Math.cos(rot),s=Math.sin(rot);
+    let fired=false;
+    for(const side of [-1,1]){
+      const dx=side*38,dy=-8;
+      const x=b.x+dx*c-dy*s,y=b.y+dx*s+dy*c;
+      if(!clearShotPath(x,y))continue;
+      fired=fireLeviathanVolley(x,y,tier===2?5:3,
+        tier===2?302:tier===1?270:238,
+        tier===2?"#ff527d":"#ffbd7b",tier===2?.15:.19,
+        side*(tier===2?.035:0))||fired;
+    }
+    if(fired)b.hullPulse=.22;
+    return fired;
+  }
   function updateLeviathan(dt) {
     if(state.wave!==12)return;
     if(state.bossState==="warning"){
@@ -1796,15 +1827,17 @@
       if(state.bossWarning<=0){
         const pods=LEVIATHAN_PODS.map((p,i)=>({
           hp:LEVIATHAN_POD_HP,maxHp:LEVIATHAN_POD_HP,
-          guard:0,clock:1.5+i*.48,warning:0
+          guard:0,clock:1.05+i*.26,warning:0
         }));
         state.boss={type:"leviathan",x:CX,y:CY-R-50,
           angle:-Math.PI/2,radius:R+50,entry:1.6,
           age:0,stage:0,phase:"pods",pods,coreHp:LEVIATHAN_CORE_HP,
-          coreGuard:0,coreFireClock:1.65,coreWarning:0,
+          coreGuard:0,coreFireClock:1.0,coreWarning:0,
           reinforceClock:4.1,reinforcements:0,
           chargeClock:2.6,chargeWarning:0,chargeTime:0,
-          orbitDir:1};
+          orbitDir:1,laneTarget:160,laneClock:2.6,
+          jukeClock:2.8,jukeWarning:0,surgeTime:0,
+          barrageClock:1.0,hullPulse:0,threatTier:0};
         state.bossState="entering";
         state.announce="THE LEVIATHAN APPROACHES";
         state.announceClock=2.4;
@@ -1829,29 +1862,59 @@
       return;
     }
     if(state.bossState!=="active")return;
-    // The Leviathan's boss movement/timers, like the other major bosses,
-    // are immune to Stasis. Only its ordinary robot reinforcements slow.
+    // Only Wave 12 changes. Boss timers remain immune to Stasis; spawned
+    // ordinary reinforcements still obey the normal slowdown rules.
     b.age+=dt;
     b.coreGuard=Math.max(0,b.coreGuard-dt);
+    b.hullPulse=Math.max(0,b.hullPulse-dt);
     for(const p of b.pods)p.guard=Math.max(0,p.guard-dt);
-    const furious=b.phase==="fury";
-    const baseSpeed=furious?.72:b.phase==="core"?.47:.30;
-    b.angle+=b.orbitDir*baseSpeed*dt;
-    if(furious){
+    const tier=leviathanThreatTier(b),furious=tier===2;
+    if(tier>b.threatTier){
+      b.threatTier=tier;
+      b.barrageClock=Math.min(b.barrageClock,.4);
+      b.laneClock=Math.min(b.laneClock,.3);
+      b.surgeTime=Math.max(b.surgeTime,.8);
+    }
+    b.surgeTime=Math.max(0,b.surgeTime-dt);
+
+    // Predatory orbit: lane changes force new aim, feints reverse direction,
+    // and short acceleration bursts punish parking the reticle in one spot.
+    b.laneClock-=dt;
+    if(b.laneClock<=0){
+      b.laneTarget=b.laneTarget<150?172:furious?120:132;
+      b.laneClock=furious?1.65:tier===1?2.25:3.0;
+    }
+    if(!furious){
+      if(b.jukeWarning>0){
+        b.jukeWarning=Math.max(0,b.jukeWarning-dt);
+        if(!b.jukeWarning){
+          b.orbitDir*=-1;
+          b.surgeTime=1.1;
+          b.jukeClock=tier===1?rnd(1.8,2.6):rnd(2.9,4.2);
+        }
+      }else{
+        b.jukeClock-=dt;
+        if(b.jukeClock<=0){
+          b.jukeWarning=.32; // Visible brief feint before reversing.
+          tone(420,.11,"triangle",.027,210);
+        }
+      }
+    }else{
       if(b.chargeWarning>0){
         b.chargeWarning=Math.max(0,b.chargeWarning-dt);
         if(!b.chargeWarning){
-          b.chargeTime=.95;
+          b.chargeTime=1.05;
           b.orbitDir*=-1;
+          b.surgeTime=1.5;
           tone(100,.3,"sawtooth",.052,250);
         }
       }else if(b.chargeTime>0){
         b.chargeTime=Math.max(0,b.chargeTime-dt);
-        if(!b.chargeTime)b.chargeClock=2.4;
+        if(!b.chargeTime)b.chargeClock=2.15;
       }else{
         b.chargeClock-=dt;
         if(b.chargeClock<=0){
-          b.chargeWarning=.85;
+          b.chargeWarning=.68;
           state.announce="LEVIATHAN // RAMMING RUN";
           state.announceClock=1.1;
           setStatus("DANGER — LEVIATHAN CHARGE WARNING");
@@ -1859,11 +1922,19 @@
         }
       }
     }
-    const desired=furious && b.chargeTime>0?108:160;
-    b.radius+=clamp(desired-b.radius,-170*dt,170*dt);
-    const oscillation=8*Math.sin(b.age*1.1);
+    const baseSpeed=furious?1.22:tier===1?.86:.57;
+    const warningScale=b.jukeWarning>0?.72:1;
+    b.angle+=b.orbitDir*baseSpeed*(b.surgeTime>0?1.48:1)*
+      warningScale*dt;
+    const desired=furious && b.chargeTime>0?108:b.laneTarget;
+    const radialSpeed=furious?100:tier===1?68:42;
+    b.radius+=clamp(desired-b.radius,-radialSpeed*dt,radialSpeed*dt);
+    const oscillation=5*Math.sin(b.age*1.4);
     b.x=CX+Math.cos(b.angle)*(b.radius+oscillation);
     b.y=CY+Math.sin(b.angle)*(b.radius+oscillation);
+
+    // Every surviving weapon pod now fires frequently. At stage two the
+    // batteries switch to wider five-shot attacks, not just more hit points.
     if(b.phase==="pods"){
       for(let i=0;i<3;i++){
         const p=b.pods[i];if(p.hp<=0)continue;
@@ -1871,18 +1942,19 @@
         if(p.warning>0){
           p.warning=Math.max(0,p.warning-dt);
           if(!p.warning){
-            const shots=i===1?1:3;
+            const shots=tier>=1?5:3;
             if(clearShotPath(origin.x,origin.y) &&
                 fireLeviathanVolley(origin.x,origin.y,shots,
-                  i===1?280:214,i===1?"#fff09d":"#ff8e78",
-                  i===1?0:.21)){
-              p.clock=i===1?2.95:3.65;
-            }else p.clock=.65;
+                  tier>=1?285:i===1?282:248,
+                  i===1?"#fff09d":"#ff8e78",
+                  tier>=1?.15:i===1?.11:.20)){
+              p.clock=tier>=1?1.35:i===1?1.7:1.95;
+            }else p.clock=.38;
           }
         }else{
           p.clock-=dt;
           if(p.clock<=0){
-            p.warning=i===1?.72:.58;
+            p.warning=tier>=1?.30:.38;
             tone(480+i*80,.10,"triangle",.022,270);
           }
         }
@@ -1892,22 +1964,30 @@
         b.coreWarning=Math.max(0,b.coreWarning-dt);
         if(!b.coreWarning){
           if(clearShotPath(b.x,b.y) &&
-            fireLeviathanVolley(b.x,b.y,furious?7:4,
-              furious?271:222,furious?"#ff5179":"#ff956c",
-              furious?.17:.13)){
-            b.coreFireClock=furious?1.25:2.30;
-          }else b.coreFireClock=.32;
+            fireLeviathanVolley(b.x,b.y,furious?7:5,
+              furious?315:274,furious?"#ff5179":"#ff956c",
+              furious?.15:.14)){
+            b.coreFireClock=furious?.78:1.25;
+          }else b.coreFireClock=.25;
         }
       }else{
         b.coreFireClock-=dt;
         if(b.coreFireClock<=0){
-          b.coreWarning=furious?.60:.8;
+          b.coreWarning=furious?.26:.40;
           tone(furious?710:510,.12,"triangle",.032,200);
         }
       }
     }
-    // Bounded swarm reinforcements: do not add to waveTotal/toSpawn.
-    // A failed spawn retries without bypassing the hard live/total caps.
+    // Additional twin emergency batteries continue throughout the fight,
+    // including after all three destructible pods are gone.
+    b.barrageClock-=dt;
+    if(b.barrageClock<=0){
+      if(fireLeviathanHullGuns(b,tier))
+        b.barrageClock=furious?.92:tier===1?1.50:2.55;
+      else b.barrageClock=.28;
+    }
+    // Reinforcements remain strictly limited in count and do not inflate
+    // waveTotal or toSpawn. No new effects or physics loops per projectile.
     if(b.reinforcements<LEVIATHAN_REINFORCEMENT_TOTAL){
       b.reinforceClock-=dt;
       if(b.reinforceClock<=0){
@@ -1920,7 +2000,7 @@
               minion.leviathanReinforcement=true;
               b.reinforcements++;
               burst(minion.x,minion.y,"#f16e83",7,.35);
-              b.reinforceClock=furious?2.5:3.6;
+              b.reinforceClock=furious?2.5:tier===1?3.0:3.6;
             }
           }else b.reinforceClock=.65;
         }else b.reinforceClock=.7;
@@ -3079,8 +3159,18 @@
       }
       ctx.restore();
     }
+    if(b.hullPulse>0){
+      // Tiny muzzle flashes reveal the independent emergency hull guns.
+      ctx.save();
+      ctx.globalAlpha=Math.min(1,b.hullPulse/.22);
+      ctx.fillStyle="#ffe7a5";
+      for(const side of [-1,1]){
+        ctx.beginPath();ctx.arc(side*38,-8,9,0,TAU);ctx.fill();
+      }
+      ctx.restore();
+    }
     ctx.restore();
-    // Large horizontal reactor HP meter for the final six-hit struggle.
+    // Large horizontal reactor HP meter for the final reactor struggle.
     if(!visible){
       const width=130,y=b.y-93;
       ctx.save();ctx.fillStyle="#07101def";
