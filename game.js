@@ -2956,6 +2956,102 @@
     }
     ctx.restore();
   }
+  function drawLeviathan() {
+    if(state.wave!==12 || !state.boss ||
+       state.boss.type!=="leviathan" ||
+       (state.bossState!=="active" && state.bossState!=="entering"))return;
+    const b=state.boss,rot=leviathanRotation(b);
+    const destroyed=b.pods.filter(p=>p.hp<=0).length;
+    const frame=b.phase==="fury"?4:destroyed;
+    const visible=b.pods.some(p=>p.hp>0);
+    const open=leviathanCoreOpen(b);
+    // Targeting warnings appear in world coordinates and are deliberately
+    // legible on a scaled-down phone screen; no expensive canvas shadows.
+    for(let i=0;i<3;i++){
+      const p=b.pods[i];if(p.hp<=0 || p.warning<=0)continue;
+      const at=leviathanPodPosition(b,i);
+      ctx.save();
+      ctx.globalAlpha=.5+.22*Math.sin(state.elapsed*22);
+      ctx.strokeStyle=i===1?"#ffdf7c":"#ff8f76";ctx.lineWidth=2.3;
+      ctx.setLineDash([8,5]);ctx.beginPath();
+      ctx.moveTo(at.x,at.y);
+      ctx.lineTo(at.x+(CX-at.x)*.61,at.y+(CY-at.y)*.61);
+      ctx.stroke();ctx.setLineDash([]);
+      ctx.beginPath();ctx.arc(at.x,at.y,21,0,TAU);ctx.stroke();
+      ctx.restore();
+    }
+    if(b.coreWarning>0 || b.chargeWarning>0){
+      ctx.save();ctx.globalAlpha=.58+.24*Math.sin(state.elapsed*20);
+      ctx.strokeStyle=b.chargeWarning>0?"#ff464c":"#ffc870";
+      ctx.lineWidth=b.chargeWarning>0?3.7:2.4;
+      ctx.setLineDash([11,7]);ctx.beginPath();
+      ctx.arc(b.x,b.y,b.chargeWarning>0?112:43,0,TAU);
+      ctx.stroke();ctx.setLineDash([]);ctx.restore();
+    }
+    ctx.save();ctx.translate(b.x,b.y);ctx.rotate(rot);
+    if(leviathanArt && leviathanArt.complete &&
+       leviathanArt.naturalWidth===640 && leviathanArt.naturalHeight===96){
+      // This is the *real asset*: five transparent frames in one AVIF,
+      // showing damage progression, missing pods and the enraged shell.
+      ctx.drawImage(leviathanArt,frame*128,0,128,96,
+        -107,-79,214,160);
+    }else{
+      // Offline/loading fallback only. The published build uses the sprite.
+      ctx.fillStyle="#15182b";ctx.strokeStyle="#b87d89";ctx.lineWidth=4;
+      ctx.beginPath();
+      ctx.moveTo(0,-55);ctx.lineTo(45,-31);ctx.lineTo(75,10);
+      ctx.lineTo(40,51);ctx.lineTo(-40,51);ctx.lineTo(-75,10);
+      ctx.lineTo(-45,-31);ctx.closePath();ctx.fill();ctx.stroke();
+      for(let i=0;i<3;i++){
+        if(b.pods[i].hp<=0)continue;
+        const at=LEVIATHAN_PODS[i];
+        ctx.fillStyle="#403454";ctx.strokeStyle="#ffad74";ctx.lineWidth=3;
+        ctx.beginPath();ctx.arc(at.x,at.y,19,0,TAU);ctx.fill();ctx.stroke();
+        ctx.fillStyle="#fff0a0";ctx.fillRect(at.x-5,at.y-3,10,6);
+      }
+      ctx.fillStyle="#ff523d";ctx.beginPath();ctx.arc(0,0,12,0,TAU);ctx.fill();
+    }
+    // Real hitboxes remain small and explicit even with the larger art.
+    // Each pod displays remaining independent armor, not cosmetic points.
+    for(let i=0;i<3;i++){
+      const pod=b.pods[i],pos=LEVIATHAN_PODS[i];
+      if(pod.hp<=0)continue;
+      if(pod.guard>0){
+        ctx.strokeStyle="#fff6cb";ctx.lineWidth=2.5;
+        ctx.beginPath();ctx.arc(pos.x,pos.y,22,0,TAU);ctx.stroke();
+      }
+      ctx.fillStyle="#080d1ccf";ctx.fillRect(pos.x-17,pos.y-28,34,5);
+      ctx.fillStyle=i===1?"#ffd28d":"#ff8f76";
+      ctx.fillRect(pos.x-16,pos.y-27,
+        32*pod.hp/pod.maxHp,3);
+    }
+    if(!visible){
+      ctx.save();
+      const pulse=.65+.30*Math.sin(state.elapsed*10);
+      ctx.globalAlpha=pulse;
+      ctx.strokeStyle=open?"#fff5af":"#ff715a";
+      ctx.lineWidth=open?3.4:2;
+      ctx.beginPath();ctx.arc(0,0,open?24:19,0,TAU);ctx.stroke();
+      if(open){
+        ctx.fillStyle="#fff2aa";ctx.beginPath();
+        ctx.arc(0,0,8,0,TAU);ctx.fill();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+    // Large horizontal reactor HP meter for the final six-hit struggle.
+    if(!visible){
+      const width=130,y=b.y-93;
+      ctx.save();ctx.fillStyle="#07101def";
+      ctx.fillRect(b.x-width/2,y,width,9);
+      ctx.strokeStyle=b.phase==="fury"?"#ff6d86":"#ffb06a";
+      ctx.lineWidth=1.2;ctx.strokeRect(b.x-width/2,y,width,9);
+      ctx.fillStyle=b.phase==="fury"?"#ff5975":"#fff0b0";
+      ctx.fillRect(b.x-width/2+2,y+2,
+        (width-4)*Math.max(0,b.coreHp)/LEVIATHAN_CORE_HP,5);
+      ctx.restore();
+    }
+  }
   function drawWarden() {
     if(state.wave!==4 || !state.boss ||
         (state.bossState!=="active" && state.bossState!=="entering"))return;
@@ -3604,10 +3700,18 @@
         561,51,11,"#9cf6ff");
     else if(state.heavyLaser)
       label("HEAVY LASER",380,705,13,"#dbadff");
-    if((state.wave===4 || state.wave===8) &&
+    if((state.wave===4 || state.wave===8 || state.wave===12) &&
         (state.bossState==="warning" || state.bossState==="entering"))
-      label(state.wave===8?"ARCHITECT INBOUND":"WARDEN INBOUND",
+      label(state.wave===12?"LEVIATHAN INBOUND":
+        state.wave===8?"ARCHITECT INBOUND":"WARDEN INBOUND",
         W-26,706,15,"#ff7b67","right");
+    else if(state.boss?.type==="leviathan"){
+      const b=state.boss, remaining=b.pods.filter(p=>p.hp>0).length;
+      label(remaining?"LEVIATHAN PODS "+remaining+"/3":
+          "LEVIATHAN CORE "+b.coreHp+"/"+LEVIATHAN_CORE_HP+
+          (leviathanCoreOpen(b)?" OPEN":" SEALED"),
+        W-26,706,13,remaining?"#ffa980":b.phase==="fury"?"#ff627f":"#fff0a2","right");
+    }
     else if(state.boss?.type==="architect")
       label("ARCHITECT "+state.boss.hp+"/"+ARCHITECT_HP+
         (architectCoreOpen(state.boss)?" CORE OPEN":" SEALED"),
@@ -3616,8 +3720,11 @@
       label("WARDEN "+state.boss.hp+"/"+WARDEN_HP+
         (wardenCoreOpen(state.boss)?" CORE OPEN":" ARMORED"),
         W-26,706,14,wardenCoreOpen(state.boss)?"#8ffaff":"#ffae8c","right");
-    else if((state.wave===4 || state.wave===8) && state.bossDefeated)
-      label(state.wave===8?"ARCHITECT DOWN":"WARDEN DOWN",W-26,706,15,"#88ffdf","right");
+    else if((state.wave===4 || state.wave===8 || state.wave===12) &&
+        state.bossDefeated)
+      label(state.wave===12?"LEVIATHAN DOWN":
+        state.wave===8?"ARCHITECT DOWN":"WARDEN DOWN",
+        W-26,706,15,"#88ffdf","right");
     else if(state.miniBossState==="warning")
       label("MINI-BOSS INBOUND",W-26,706,14,"#ff9d7f","right");
     else if(state.miniBossState==="active" && state.miniBoss){
@@ -3745,6 +3852,7 @@
           "TWIN CANNONS // LASER "+state.wave4DirectKills+"/"+HEAVY_KILLS_REQUIRED+" DIRECT KILLS":
         state.wave===6?"REWARD UNLOCKED // RAILGUN":
         state.wave===8?"REWARD UNLOCKED // ARC CANNON":
+        state.wave===12?"VICTORY // LEVIATHAN COMMAND SILENCED":
         "NEXT CLASS // WAVE "+String(state.wave+1).padStart(2,"0");
       ctx.fillText(reward,0,y+(artReady?128:169));
     } else {
@@ -3769,9 +3877,9 @@
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
     const visual=visualEvolution();
     drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
-    drawShockwaves();drawBots();drawMiniBoss();drawSupplyDrone();drawShieldCapsule();drawWarden();drawArchitect();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();drawPowerEffects();
+    drawShockwaves();drawBots();drawMiniBoss();drawSupplyDrone();drawShieldCapsule();drawWarden();drawArchitect();drawLeviathan();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();drawPowerEffects();
     // The perimeter alarm flashes during the warning and the boss entry.
-    if((state.wave===4 || state.wave===8) &&
+    if((state.wave===4 || state.wave===8 || state.wave===12) &&
         (state.bossState==="warning" || state.bossState==="entering") &&
         Math.floor(state.elapsed*5)%2===0) {
       ctx.strokeStyle="#ff465a";ctx.lineWidth=3;
