@@ -342,7 +342,10 @@
   }
 
   function modeName() { return MODES[state.modeIndex]; }
-  function waveName() { return WAVE_NAMES[(state.wave-1)%WAVE_NAMES.length]; }
+  function waveName() {
+    return state.wave===12?"LEVIATHAN STRONGHOLD":
+      WAVE_NAMES[(state.wave-1)%WAVE_NAMES.length];
+  }
   function ringShape(ring) {
     const power = modeName() === "SPIN" ? .12 : modeName() === "MORPH" ? 1 : 1.15;
     const surge = state.wave >= 3 ? .5+.5*Math.sin(state.elapsed*.65 + ring.phase) : 0;
@@ -1794,7 +1797,6 @@
       return;
     }
     if(state.bossState!=="active")return;
-    const scale=state.powerup==="stasis"?STASIS_SCALE:1;
     // The Leviathan's boss movement/timers, like the other major bosses,
     // are immune to Stasis. Only its ordinary robot reinforcements slow.
     b.age+=dt;
