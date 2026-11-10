@@ -19,6 +19,10 @@
   // Decoded once; the original animated canvas spider remains fallback.
   const architectArt = typeof Image === "function" ? new Image() : null;
   if (architectArt) architectArt.src = "./assets/architect-atlas.webp?v=0.3.22";
+  // Five real transparent 128x96 game sprites: intact Leviathan, progressively
+  // dismantled weapon pods, exposed reactor, and enraged final phase.
+  const leviathanArt = typeof Image === "function" ? new Image() : null;
+  if (leviathanArt) leviathanArt.src = "./assets/leviathan-atlas.avif?v=0.3.29";
   const overlay = document.getElementById("overlay");
   const introArt = document.getElementById("intro-art");
   // Keep the original, accessible opening panel if the artwork is unavailable.
@@ -75,6 +79,15 @@
   const EXTRA_LIFE_INTERVAL = 15000, MAX_LIVES = 5;
   const HULL_REPAIR_FULL_BONUS = 250;
   const MINI_SENTINEL_HP = 6, MINI_BREAKER_HP = 10;
+  const LEVIATHAN_POD_HP=4, LEVIATHAN_CORE_HP=6;
+  const LEVIATHAN_REINFORCEMENT_CAP=4, LEVIATHAN_REINFORCEMENT_TOTAL=12;
+  // Pod positions are also the independent aimable hitboxes. Source sprite
+  // is top-down, with forward pointing toward canvas -Y.
+  const LEVIATHAN_PODS=[
+    {x:-58,y:-7,name:"PORT",color:"#ff9e62"},
+    {x:0,y:-31,name:"DORSAL",color:"#ffca72"},
+    {x:58,y:-7,name:"STARBOARD",color:"#ff9e62"}
+  ];
   // Mini-bosses appear on waves 3, 7, 11, 15... between the major boss waves.
   // Their presence requires victory before the next graduation.
   function miniTypeForWave(wave) {
@@ -799,6 +812,28 @@
           Math.abs(rx*dy-ry*dx)<=radius+RAILGUN_RADIUS)
         hitMiniBoss(RAILGUN_DAMAGE);
     }
+    const leviathan=state.boss;
+    if(leviathan?.type==="leviathan" && state.bossState==="active"){
+      // A rail shot may hit exactly one pod (or one core opening). It cannot
+      // destroy the entire boss even if the beam crosses multiple parts.
+      let target=null,nearest=Infinity;
+      for(let i=0;i<3;i++){
+        if(leviathan.pods[i].hp<=0)continue;
+        const at=leviathanPodPosition(leviathan,i);
+        const rx=at.x-CX,ry=at.y-CY,along=rx*dx+ry*dy;
+        if(along>=24 && along<=range+21 &&
+          Math.abs(rx*dy-ry*dx)<RAILGUN_RADIUS+15 &&
+          along<nearest){target=i;nearest=along;}
+      }
+      if(target!==null)damageLeviathanPod(target,RAILGUN_DAMAGE);
+      else if(leviathan.pods.every(p=>p.hp<=0) &&
+          leviathanCoreOpen(leviathan)){
+        const rx=leviathan.x-CX,ry=leviathan.y-CY;
+        if(rx*dx+ry*dy>=24 && rx*dx+ry*dy<=range+20 &&
+            Math.abs(rx*dy-ry*dx)<RAILGUN_RADIUS+18)
+          damageLeviathanCore();
+      }
+    }
     const architect=state.boss;
     if(architect?.type==="architect" && state.bossState==="active") {
       const rx=architect.x-CX,ry=architect.y-CY;
@@ -1158,6 +1193,12 @@
               tone(165,.045,"triangle",.012,130);
             }
             hit=true;break;
+          }
+          const leviathan=state.boss;
+          if(leviathan?.type==="leviathan" && state.bossState==="active"){
+            if(leviathanTargetShot(leviathan,s.x,s.y,s.damage||1)){
+              hit=true;break;
+            }
           }
           const mini=state.miniBoss;
           if(mini && state.miniBossState==="active"){
@@ -1576,6 +1617,280 @@
       } else b.fireClock=.25;
     }
   }
+  function leviathanRotation(b) {
+    // Sprite points upward at zero rotation; nose follows inward travel.
+    return Math.atan2(CY-b.y,CX-b.x)+Math.PI/2;
+  }
+  function leviathanPodPosition(b,index) {
+    const p=LEVIATHAN_PODS[index],rot=leviathanRotation(b);
+    return {x:b.x+p.x*Math.cos(rot)-p.y*Math.sin(rot),
+      y:b.y+p.x*Math.sin(rot)+p.y*Math.cos(rot)};
+  }
+  function leviathanCoreOpen(b) {
+    if(state.wave!==12 || state.bossState!=="active" ||
+       !b || b.type!=="leviathan" || b.pods.some(p=>p.hp>0))return false;
+    const cycle=b.phase==="fury"?2.9:3.4;
+    const t=b.age%cycle;
+    return t>=(b.phase==="fury"?.74:1.08) &&
+      t<=(b.phase==="fury"?2.23:2.60);
+  }
+  function destroyLeviathan() {
+    const b=state.boss;
+    if(!b || b.type!=="leviathan")return;
+    state.score+=4000;
+    if(!state.testMode && state.score>state.high){
+      state.high=state.score;storeHigh();
+    }
+    state.boss=null;state.bossState="defeated";state.bossDefeated=true;
+    state.clearBossShots=true;
+    // Reinforcement robots cease functioning when their command core dies.
+    for(let k=state.bots.length-1;k>=0;k--){
+      if(!state.bots[k].leviathanReinforcement)continue;
+      burst(state.bots[k].x,state.bots[k].y,"#ffbb83",10,.5);
+      state.bots.splice(k,1);
+    }
+    state.announce="THE LEVIATHAN DESTROYED // +4000";
+    state.announceClock=3.1;
+    setStatus("LEVIATHAN DEFEATED — COMMAND SYSTEMS COLLAPSE");
+    state.shake=15;state.flash=.45;
+    for(let i=0;i<6;i++){
+      const a=i*TAU/6;
+      burst(b.x+Math.cos(a)*rnd(8,72),
+        b.y+Math.sin(a)*rnd(8,72),
+        i%2?"#ffb34e":"#ff4e78",24,1.6);
+    }
+    tone(91,.62,"sawtooth",.09,36);
+    tone(175,.49,"triangle",.05,64,.17);
+    tone(530,.42,"triangle",.045,160,.36);
+  }
+  function damageLeviathanPod(index,damage=1) {
+    const b=state.boss;
+    if(!b || b.type!=="leviathan" || state.bossState!=="active")return false;
+    const p=b.pods[index];
+    if(!p || p.hp<=0)return false;
+    if(p.guard>0)return true;
+    p.hp=Math.max(0,p.hp-damage);p.guard=.15;
+    const where=leviathanPodPosition(b,index);
+    burst(where.x,where.y,p.hp?"#ffe1ab":"#ff865a",p.hp?9:22,p.hp?.55:1.15);
+    state.shake=Math.max(state.shake,p.hp?3:7);
+    tone(p.hp?360:120,.18,"sawtooth",.055,p.hp?155:53);
+    if(p.hp===0){
+      const destroyed=b.pods.filter(p=>p.hp<=0).length;
+      b.stage=destroyed;
+      b.age=0; // Reset core vulnerability timing on armor removal.
+      state.announce="LEVIATHAN // POD "+index+" DISABLED";
+      state.announceClock=1.75;
+      if(destroyed===3){
+        b.phase="core";b.coreFireClock=1.0;b.coreWarning=0;
+        state.announce="LEVIATHAN REACTOR EXPOSED // 6 HITS";
+        state.announceClock=2.4;
+        setStatus("PODS ELIMINATED — SHOOT THE OPEN RED REACTOR");
+      } else {
+        setStatus("WEAPON POD DESTROYED — "+(3-destroyed)+" REMAIN");
+      }
+    }
+    return true;
+  }
+  function damageLeviathanCore() {
+    const b=state.boss;
+    if(!leviathanCoreOpen(b) || b.coreGuard>0)return false;
+    // Each successful, accurately placed hit counts as ONE reactor hit.
+    // Powerful weapons help break the pods, but cannot skip the boss phases.
+    b.coreHp--;b.coreGuard=.45;
+    burst(b.x,b.y,"#fff3a8",23,.95);
+    state.shake=Math.max(state.shake,8);
+    tone(470+(LEVIATHAN_CORE_HP-b.coreHp)*70,.20,"sawtooth",.065,1100);
+    if(b.coreHp<=0){
+      destroyLeviathan();
+    }else if(b.coreHp<=3 && b.phase!=="fury"){
+      b.phase="fury";b.stage=4;b.age=0;
+      b.chargeClock=2.2;b.chargeWarning=0;b.chargeTime=0;
+      b.coreFireClock=.6;b.coreWarning=0;
+      state.announce="LEVIATHAN // FINAL ASSAULT";
+      state.announceClock=2.2;
+      setStatus("REACTOR CRITICAL — LEVIATHAN ENRAGED");
+    }else{
+      state.announce="REACTOR HIT // "+b.coreHp+" REMAIN";
+      state.announceClock=1.25;
+      setStatus("LEVIATHAN CORE — "+b.coreHp+"/6");
+    }
+    return true;
+  }
+  function leviathanTargetShot(b,x,y,damage=1,beam=false) {
+    // Normal shots collide with a localized pod or the reactor, not
+    // the full visual silhouette. Railgun uses the same actual hitboxes.
+    if(!b || b.type!=="leviathan" || state.bossState!=="active")
+      return false;
+    for(let i=0;i<3;i++){
+      const pod=b.pods[i];if(pod.hp<=0)continue;
+      const at=leviathanPodPosition(b,i);
+      if(Math.hypot(x-at.x,y-at.y)<(beam?20:17)){
+        damageLeviathanPod(i,damage);return true;
+      }
+    }
+    if(Math.hypot(x-b.x,y-b.y)<(beam?22:18)){
+      if(b.pods.some(p=>p.hp>0)){
+        burst(x,y,"#ff9569",3,.20);return true;
+      }
+      if(leviathanCoreOpen(b))damageLeviathanCore();
+      else burst(x,y,"#ff9767",3,.22);
+      return true;
+    }
+    return false;
+  }
+  function fireLeviathanVolley(x,y,count,speed,color,spread) {
+    const active=state.shots.reduce((n,s)=>n+(!s.friendly?1:0),0);
+    if(active+count>65)return false;
+    const direction=Math.atan2(CY-y,CX-x);
+    for(let i=0;i<count;i++){
+      const a=direction+(i-(count-1)/2)*spread;
+      state.shots.push({x:x+Math.cos(a)*21,y:y+Math.sin(a)*21,
+        vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,
+        life:2.65,friendly:false,size:3.5,
+        color,leviathan:true});
+    }
+    tone(count>=5?155:245,.14,"sawtooth",.032,90);
+    return true;
+  }
+  function updateLeviathan(dt) {
+    if(state.wave!==12)return;
+    if(state.bossState==="warning"){
+      state.bossWarning-=dt;
+      if(state.bossWarning<=0){
+        const pods=LEVIATHAN_PODS.map((p,i)=>({
+          hp:LEVIATHAN_POD_HP,maxHp:LEVIATHAN_POD_HP,
+          guard:0,clock:1.5+i*.48,warning:0
+        }));
+        state.boss={type:"leviathan",x:CX,y:CY-R-50,
+          angle:-Math.PI/2,radius:R+50,entry:1.6,
+          age:0,stage:0,phase:"pods",pods,coreHp:LEVIATHAN_CORE_HP,
+          coreGuard:0,coreFireClock:1.65,coreWarning:0,
+          reinforceClock:4.1,reinforcements:0,
+          chargeClock:2.6,chargeWarning:0,chargeTime:0,
+          orbitDir:1};
+        state.bossState="entering";
+        state.announce="THE LEVIATHAN APPROACHES";
+        state.announceClock=2.4;
+        setStatus("WAVE 12 — STRATEGIC WAR PLATFORM INBOUND");
+        tone(78,.75,"sawtooth",.075,190);
+      }
+      return;
+    }
+    const b=state.boss;
+    if(!b || b.type!=="leviathan")return;
+    if(state.bossState==="entering"){
+      b.entry=Math.max(0,b.entry-dt);
+      b.radius=R+50-(R+50-160)*(1-b.entry/1.6);
+      b.x=CX+Math.cos(b.angle)*b.radius;
+      b.y=CY+Math.sin(b.angle)*b.radius;
+      if(!b.entry){
+        b.age=0;state.bossState="active";
+        state.announce="LEVIATHAN // DESTROY THREE WEAPON PODS";
+        state.announceClock=3;
+        setStatus("BOSS ENGAGED — TARGET WEAPON PODS");
+      }
+      return;
+    }
+    if(state.bossState!=="active")return;
+    const scale=state.powerup==="stasis"?STASIS_SCALE:1;
+    // The Leviathan's boss movement/timers, like the other major bosses,
+    // are immune to Stasis. Only its ordinary robot reinforcements slow.
+    b.age+=dt;
+    b.coreGuard=Math.max(0,b.coreGuard-dt);
+    for(const p of b.pods)p.guard=Math.max(0,p.guard-dt);
+    const furious=b.phase==="fury";
+    const baseSpeed=furious?.72:b.phase==="core"?.47:.30;
+    b.angle+=b.orbitDir*baseSpeed*dt;
+    if(furious){
+      if(b.chargeWarning>0){
+        b.chargeWarning=Math.max(0,b.chargeWarning-dt);
+        if(!b.chargeWarning){
+          b.chargeTime=.95;
+          b.orbitDir*=-1;
+          tone(100,.3,"sawtooth",.052,250);
+        }
+      }else if(b.chargeTime>0){
+        b.chargeTime=Math.max(0,b.chargeTime-dt);
+        if(!b.chargeTime)b.chargeClock=2.4;
+      }else{
+        b.chargeClock-=dt;
+        if(b.chargeClock<=0){
+          b.chargeWarning=.85;
+          state.announce="LEVIATHAN // RAMMING RUN";
+          state.announceClock=1.1;
+          setStatus("DANGER — LEVIATHAN CHARGE WARNING");
+          tone(390,.24,"triangle",.035,110);
+        }
+      }
+    }
+    const desired=furious && b.chargeTime>0?108:160;
+    b.radius+=clamp(desired-b.radius,-170*dt,170*dt);
+    const oscillation=8*Math.sin(b.age*1.1);
+    b.x=CX+Math.cos(b.angle)*(b.radius+oscillation);
+    b.y=CY+Math.sin(b.angle)*(b.radius+oscillation);
+    if(b.phase==="pods"){
+      for(let i=0;i<3;i++){
+        const p=b.pods[i];if(p.hp<=0)continue;
+        const origin=leviathanPodPosition(b,i);
+        if(p.warning>0){
+          p.warning=Math.max(0,p.warning-dt);
+          if(!p.warning){
+            const shots=i===1?1:3;
+            if(clearShotPath(origin.x,origin.y) &&
+                fireLeviathanVolley(origin.x,origin.y,shots,
+                  i===1?280:214,i===1?"#fff09d":"#ff8e78",
+                  i===1?0:.21)){
+              p.clock=i===1?2.95:3.65;
+            }else p.clock=.65;
+          }
+        }else{
+          p.clock-=dt;
+          if(p.clock<=0){
+            p.warning=i===1?.72:.58;
+            tone(480+i*80,.10,"triangle",.022,270);
+          }
+        }
+      }
+    }else{
+      if(b.coreWarning>0){
+        b.coreWarning=Math.max(0,b.coreWarning-dt);
+        if(!b.coreWarning){
+          if(clearShotPath(b.x,b.y) &&
+            fireLeviathanVolley(b.x,b.y,furious?7:4,
+              furious?271:222,furious?"#ff5179":"#ff956c",
+              furious?.17:.13)){
+            b.coreFireClock=furious?1.25:2.30;
+          }else b.coreFireClock=.32;
+        }
+      }else{
+        b.coreFireClock-=dt;
+        if(b.coreFireClock<=0){
+          b.coreWarning=furious?.60:.8;
+          tone(furious?710:510,.12,"triangle",.032,200);
+        }
+      }
+    }
+    // Bounded swarm reinforcements: do not add to waveTotal/toSpawn.
+    // A failed spawn retries without bypassing the hard live/total caps.
+    if(b.reinforcements<LEVIATHAN_REINFORCEMENT_TOTAL){
+      b.reinforceClock-=dt;
+      if(b.reinforceClock<=0){
+        const active=state.bots.filter(x=>x.leviathanReinforcement).length;
+        if(active<LEVIATHAN_REINFORCEMENT_CAP){
+          const before=state.bots.length;
+          if(spawnBot()){
+            const minion=state.bots[state.bots.length-1];
+            if(minion && state.bots.length>before){
+              minion.leviathanReinforcement=true;
+              b.reinforcements++;
+              burst(minion.x,minion.y,"#f16e83",7,.35);
+              b.reinforceClock=furious?2.5:3.6;
+            }
+          }else b.reinforceClock=.65;
+        }else b.reinforceClock=.7;
+      }
+    }
+  }
   function updateShieldCapsule(dt) {
     if (state.wave!==4) return;
     // Once 90% of robots have been eliminated, exactly one capsule flies by.
@@ -1622,16 +1937,17 @@
       // small robots cannot skip its encounter or trigger graduation.
       if(miniType && (state.miniBossState!=="defeated" ||
           state.miniRewardPending))return;
-      if((state.wave===4 || state.wave===8) && !state.bossDefeated) {
+      if((state.wave===4 || state.wave===8 || state.wave===12) &&
+          !state.bossDefeated) {
         if(state.wave===4 && (!state.shieldCapsuleSeen || state.shieldCapsule))
           return;
         // Boss waves cannot graduate until the corresponding boss dies.
         if(state.bossState==="none") {
           state.bossState="warning";
-          state.bossWarning=state.wave===8?2.7:2.35;
+          state.bossWarning=state.wave===12?3.0:state.wave===8?2.7:2.35;
           state.shots=state.shots.filter(s=>s.friendly);
-          state.announce=state.wave===8?
-            "WARNING: ARENA CONTROL COMPROMISED":
+          state.announce=state.wave===12?"WARNING: STRATEGIC THREAT APPROACHING":
+            state.wave===8?"WARNING: ARENA CONTROL COMPROMISED":
             "WARNING: SECTOR NOT CLEARED";
           state.announceClock=state.bossWarning;
           state.flash=.14;
@@ -1790,6 +2106,7 @@
       updateShieldCapsule(dt);
       updateWarden(dt);
       updateArchitect(dt);
+      updateLeviathan(dt);
       updateShots(dt);
     }
     updateBlasts(dt);
