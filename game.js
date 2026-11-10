@@ -1156,7 +1156,9 @@
           }
           // When cyan, the outer armor opens a clear path to the reactor.
           // Otherwise the closed plate stops shots at the outer 35px radius.
-          if (boss?.type!=="architect" && boss && state.bossState==="active" &&
+          // Only the Warden uses this historical hitbox. The Architect
+          // and Leviathan have their own dedicated hit tests above.
+          if (boss && !boss.type && state.bossState==="active" &&
               Math.hypot(s.x-boss.x,s.y-boss.y)<
                 (wardenCoreOpen(boss)?11:47)+s.size) {
             const core=Math.hypot(s.x-boss.x,s.y-boss.y)<11+s.size;
