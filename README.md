@@ -2,9 +2,14 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.29 — The Leviathan (Wave 12)**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.30 — Leviathan Destruction Fix**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## Leviathan death sequence fix — v0.3.30
+
+- **Visible boss finale:** The destroyed Leviathan's actual damaged sprite breaks apart over 2.4 seconds, with staggered pod detonations, a delayed reactor blast and a widening shockwave. Wave 12's graduation ceremony begins only after the animation finishes, so the clear plaque cannot cover the explosion.
+- **Visual-only fix:** Enemy targeting and defeat timing, points, score lives, boss mechanics, turret abilities, collision, and the existing two-second graduation duration are unchanged. Four small sprite fragments and bounded particles keep the effect lightweight on phones and Chromebooks.
 
 ## The Leviathan — Wave 12 main boss (v0.3.29)
 
@@ -14,7 +19,7 @@ You command a stationary 360-degree rotating turret while tiny robots swarm thro
 - **Reactor phase:** Destroy all three pods to expose a periodically opening red reactor. It needs **six successful core hits**, one per reactor hit regardless of Heavy Laser / Railgun damage. The Railgun can destroy a pod or reach the core through walls, but it can hit **only one Leviathan target per blast**. Armor and reactor phases cannot be skipped by raw weapon DPS.
 - **Final assault:** At three remaining reactor HP, the chassis displays the fifth, enraged sprite, reverses its orbit, warns before inward charges, and fires accelerated seven-shot barrages between core openings. Its warning rings, targeting cues and remaining health are drawn clearly on small phones.
 - **Bounded robot reinforcements:** The boss periodically manufactures ordinary robots with a strict cap of **4 alive at a time** and **12 total per encounter**. Those reinforcements share the game's collision, scoring, damage and slowdown rules. Surviving reinforcements shut down when the command core is destroyed. No permanent enemy spawns or performance-heavy effects.
-- **Reward:** The Leviathan's defeat triggers a multi-stage particle destruction sequence, frees Wave 13, and adds **4,000 points** (eligible for regular score-based extra lives). The existing turret upgrades, ammo, supplies, mini-bosses, mobile controls, full-boss behavior and high-score rules remain unchanged.
+- **Reward:** The Leviathan's defeat triggers a multi-stage particle destruction sequence (expanded into a clearly visible 2.4-second finale in v0.3.30), frees Wave 13, and adds **4,000 points** (eligible for regular score-based extra lives). The existing turret upgrades, ammo, supplies, mini-bosses, mobile controls, full-boss behavior and high-score rules remain unchanged.
 
 ## Mini-Bosses & Bruisers — v0.3.28
 
