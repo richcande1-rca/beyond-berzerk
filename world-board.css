@@ -34,3 +34,9 @@
 .bb-world-empty{padding:22px 10px;text-align:center;color:#91b0bf;font-size:12px}
 .bb-world-footer{display:flex;gap:8px;justify-content:space-between;align-items:center;padding-top:15px;font-size:10px;color:#8fa1a9;letter-spacing:.04em}
 @media(max-width:570px){.bb-world{padding:6px}.bb-world-panel{padding:12px 8px;max-height:96dvh}.bb-world-columns,.bb-world-row{grid-template-columns:minmax(55px,1.4fr) minmax(62px,1.35fr) 38px 42px minmax(58px,1fr);gap:3px;padding-inline:3px;font-size:9px}.bb-world-row strong{font-size:10px}.bb-world-victory{font-size:8px}.bb-world-columns{font-size:8px;letter-spacing:0}.bb-world-footer{font-size:9px}}
+/* Keep all existing status controls accessible on portrait phones. */
+@media (max-width:570px) {
+  .status-line {min-height:0;padding-block:6px}
+  .status-line .actions {flex-wrap:wrap;justify-content:center;row-gap:6px}
+  #bb-world-open {white-space:nowrap}
+}

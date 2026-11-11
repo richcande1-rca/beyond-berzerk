@@ -15,17 +15,17 @@ This repository contains the complete **game client** and a separate **Cloudflar
 
 From the **worker/** folder:
 
-- Create a dedicated D1 database: \`npx wrangler d1 create beyond_berzerk_board\`
-- Copy the returned database ID into \`wrangler.toml\` (never commit Cloudflare tokens).
-- Initialize the remote D1: \`npx wrangler d1 execute beyond_berzerk_board --remote --file=./schema.sql\`
-- Deploy the Worker: \`npx wrangler deploy\`
+- Create a dedicated D1 database: `npx wrangler d1 create beyond_berzerk_board`
+- Copy the returned database ID into `wrangler.toml` (never commit Cloudflare tokens).
+- Initialize the remote D1: `npx wrangler d1 execute beyond_berzerk_board --remote --file=./schema.sql`
+- Deploy the Worker: `npx wrangler deploy`
 
 ## API contract
 
-- GET \`/api/board\`: Top 10 ordered by descending **score**, then highest **wave**, then **robots destroyed**.
-- POST \`/api/board\`: JSON \`{"initials":"RICH","score":42000,"wave":12,"robots":320,"leviathan":false,"build":"0.3.34","ruleset":"survival-v1","mode":"normal"}\`.
+- GET `/api/board`: Top 10 ordered by descending **score**, then highest **wave**, then **robots destroyed**.
+- POST `/api/board`: JSON `{"initials":"RICH","score":42000,"wave":12,"robots":320,"leviathan":false,"build":"0.3.34","ruleset":"survival-v1","mode":"normal"}`.
 - Only records that currently qualify for Top 10 are inserted; old low-ranked records are deleted. Duplicate score submissions within five minutes are ignored.
 - **Test mode never emits the normal-game completion event**, so test runs cannot submit via the supplied frontend. A public static browser game cannot cryptographically prove that a run was not modified; scores are community-honor-based.
 - The **existing local personal best remains unchanged**. Initials are saved locally only for convenience. No separate offline scoreboard and no fake success confirmation during network errors.
-- Allowed browser origin: \`https://richcande1-rca.github.io\` plus local development.
+- Allowed browser origin: `https://richcande1-rca.github.io` plus local development.
 - 10 rows maximum, no logins, no player tracking, no interaction with other Cloudflare databases.

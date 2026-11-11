@@ -202,13 +202,16 @@
       renderRun();
     } catch (error) {
       online = false;
-      setStatus("SCORE NOT SAVED // " + (error.message || "Try again"), true);
+      // A failed POST is never considered saved. Reconnect through REFRESH
+      // before offering a new submission against current Top 10 standings.
+      form.hidden = true;
+      setStatus("SCORE NOT SAVED // " + (error.message || "Try again") +
+        " // PRESS REFRESH TO RETRY", true);
       render();
     } finally {
       busy = false;
       submitBtn.disabled = false;
       if (online) renderRun();
-      else if (pendingRun) form.hidden = false; // Keep a manual retry visible.
     }
   }
   function open() {
