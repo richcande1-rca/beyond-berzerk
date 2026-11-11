@@ -2,9 +2,15 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.32 — Sharper Leviathan Sprite**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.33 — Leviathan Sprite Upgrade**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## Leviathan replacement sprite integration — v0.3.33
+
+- The five-frame **high-detail WebP sprite sheet** `assets/leviathan-atlas-v2.webp` contains individually rendered armor damage and reactor stages. The frames are 240 × 180 source pixels and display at the existing 180 × 135 screen size, with nearest-neighbor sampling. Transparent background, no new runtime effects.
+- **Asset publication note:** This code is prepared to load the replacement sheet; it continues using the original `assets/leviathan-atlas.avif` whenever the new WebP hasn't been uploaded to the GitHub repository. The new sheet therefore must be placed in `assets/` before the artwork becomes visible online.
+- Existing AI, firing, hitboxes, pod and reactor health, HUD overlays, sound, and the 2.4-second explosion timing are unchanged.
 
 ## Leviathan sprite clarity — v0.3.32
 

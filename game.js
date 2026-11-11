@@ -19,10 +19,24 @@
   // Decoded once; the original animated canvas spider remains fallback.
   const architectArt = typeof Image === "function" ? new Image() : null;
   if (architectArt) architectArt.src = "./assets/architect-atlas.webp?v=0.3.22";
-  // Five real transparent 128x96 game sprites: intact Leviathan, progressively
-  // dismantled weapon pods, exposed reactor, and enraged final phase.
+  // Replacement five-frame high-detail lossless WebP sheet (240x180 each).
+  // Retain the original AVIF as a backwards-compatible fallback until the
+  // replacement asset is published alongside this game code.
   const leviathanArt = typeof Image === "function" ? new Image() : null;
-  if (leviathanArt) leviathanArt.src = "./assets/leviathan-atlas.avif?v=0.3.29";
+  if (leviathanArt) leviathanArt.src = "./assets/leviathan-atlas-v2.webp?v=0.3.33";
+  const leviathanLegacyArt = typeof Image === "function" ? new Image() : null;
+  if (leviathanLegacyArt)
+    leviathanLegacyArt.src = "./assets/leviathan-atlas.avif?v=0.3.29";
+  function leviathanSheet() {
+    if (leviathanArt?.complete &&
+        leviathanArt.naturalWidth===1200 && leviathanArt.naturalHeight===180)
+      return {image:leviathanArt,frameWidth:240,frameHeight:180};
+    if (leviathanLegacyArt?.complete &&
+        leviathanLegacyArt.naturalWidth===640 &&
+        leviathanLegacyArt.naturalHeight===96)
+      return {image:leviathanLegacyArt,frameWidth:128,frameHeight:96};
+    return null;
+  }
   const overlay = document.getElementById("overlay");
   const introArt = document.getElementById("intro-art");
   // Keep the original, accessible opening panel if the artwork is unavailable.
@@ -3112,14 +3126,13 @@
       ctx.stroke();ctx.setLineDash([]);ctx.restore();
     }
     ctx.save();ctx.translate(b.x,b.y);ctx.rotate(rot);
-    if(leviathanArt && leviathanArt.complete &&
-       leviathanArt.naturalWidth===640 && leviathanArt.naturalHeight===96){
-      // This is the *real asset*: five transparent frames in one AVIF,
-      // showing damage progression, missing pods and the enraged shell.
-      // Keep the five-frame pixel art crisp even on high-DPI displays.
-      // Only this sprite uses nearest-neighbor sampling, not the entire HUD.
+    const sprite=leviathanSheet();
+    if(sprite){
+      // Five high-detail damage frames; legacy sprite only when WebP is
+      // missing or still loading. No combat targeting changes.
       ctx.imageSmoothingEnabled=false;
-      ctx.drawImage(leviathanArt,frame*128,0,128,96,
+      ctx.drawImage(sprite.image,frame*sprite.frameWidth,0,
+        sprite.frameWidth,sprite.frameHeight,
         -LEVIATHAN_SPRITE_W/2,-LEVIATHAN_SPRITE_H/2,
         LEVIATHAN_SPRITE_W,LEVIATHAN_SPRITE_H);
     }else{
@@ -3197,12 +3210,14 @@
     ctx.save();ctx.translate(d.x,d.y);ctx.rotate(d.rotation);
     // The real damaged sprite remains visible and breaks into four pieces.
     // Four clipped draws, no new image downloads or expensive filters.
-    if(leviathanArt && leviathanArt.complete &&
-       leviathanArt.naturalWidth===640 && leviathanArt.naturalHeight===96){
+    const sprite=leviathanSheet();
+    if(sprite){
       ctx.globalAlpha=fade;
-      // Match the resized live ship when it breaks apart; no sudden growth
-      // or blurry interpolation during the 2.4-second death animation.
+      // Each of the four wreck fragments uses quadrants of the final sprite,
+      // matching the visible full-size boss without growth or blurred scaling.
       const halfW=LEVIATHAN_SPRITE_W/2,halfH=LEVIATHAN_SPRITE_H/2;
+      const srcHalfW=sprite.frameWidth/2,srcHalfH=sprite.frameHeight/2;
+      const lastFrameX=4*sprite.frameWidth;
       for(let i=0;i<4;i++){
         const col=i%2,row=(i/2)|0;
         const sx=col?1:-1,sy=row?1:-1;
@@ -3210,7 +3225,8 @@
         ctx.translate(sx*split*80,sy*split*67);
         ctx.rotate(sx*sy*split*.48);
         ctx.imageSmoothingEnabled=false;
-        ctx.drawImage(leviathanArt,512+col*64,row*48,64,48,
+        ctx.drawImage(sprite.image,lastFrameX+col*srcHalfW,
+          row*srcHalfH,srcHalfW,srcHalfH,
           -halfW+col*halfW,-halfH+row*halfH,halfW,halfH);
         ctx.restore();
       }
