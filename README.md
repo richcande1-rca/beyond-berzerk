@@ -2,9 +2,15 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.31 — Leviathan Counterattack**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.32 — Sharper Leviathan Sprite**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## Leviathan sprite clarity — v0.3.32
+
+- **Sharper, less oversized Leviathan:** Wave 12's visible ship is now 180 × 135 game pixels instead of 214 × 160 (roughly 16% smaller). Nearest-neighbor rendering prevents the AVIF sprite from being softened by canvas scaling.
+- **Consistent death animation:** The four separate sprite fragments match the new live-boss size and also render sharply; the existing 2.4-second explosion sequence, shockwaves, and graduation timing are preserved.
+- **Visual only:** The boss's orbit, position, weapons, firing pattern, collision, pod/core hitboxes, HP, targeting cues, rewards, and all other waves are untouched. Keeping the sprite centered on its true coordinates avoids confusing shots that appear to land off-target.
 
 ## Leviathan Counterattack — v0.3.31
 

@@ -82,6 +82,8 @@
   const LEVIATHAN_POD_HP=5, LEVIATHAN_CORE_HP=8;
   const LEVIATHAN_REINFORCEMENT_CAP=4, LEVIATHAN_REINFORCEMENT_TOTAL=12;
   const LEVIATHAN_DEATH_SECONDS=2.4;
+  // Display-only size: the real pod/core hitboxes and boss motion stay fixed.
+  const LEVIATHAN_SPRITE_W=180, LEVIATHAN_SPRITE_H=135;
   // Pod positions are also the independent aimable hitboxes. Source sprite
   // is top-down, with forward pointing toward canvas -Y.
   const LEVIATHAN_PODS=[
@@ -3114,8 +3116,12 @@
        leviathanArt.naturalWidth===640 && leviathanArt.naturalHeight===96){
       // This is the *real asset*: five transparent frames in one AVIF,
       // showing damage progression, missing pods and the enraged shell.
+      // Keep the five-frame pixel art crisp even on high-DPI displays.
+      // Only this sprite uses nearest-neighbor sampling, not the entire HUD.
+      ctx.imageSmoothingEnabled=false;
       ctx.drawImage(leviathanArt,frame*128,0,128,96,
-        -107,-79,214,160);
+        -LEVIATHAN_SPRITE_W/2,-LEVIATHAN_SPRITE_H/2,
+        LEVIATHAN_SPRITE_W,LEVIATHAN_SPRITE_H);
     }else{
       // Offline/loading fallback only. The published build uses the sprite.
       ctx.fillStyle="#15182b";ctx.strokeStyle="#b87d89";ctx.lineWidth=4;
@@ -3194,14 +3200,18 @@
     if(leviathanArt && leviathanArt.complete &&
        leviathanArt.naturalWidth===640 && leviathanArt.naturalHeight===96){
       ctx.globalAlpha=fade;
+      // Match the resized live ship when it breaks apart; no sudden growth
+      // or blurry interpolation during the 2.4-second death animation.
+      const halfW=LEVIATHAN_SPRITE_W/2,halfH=LEVIATHAN_SPRITE_H/2;
       for(let i=0;i<4;i++){
         const col=i%2,row=(i/2)|0;
         const sx=col?1:-1,sy=row?1:-1;
         ctx.save();
         ctx.translate(sx*split*80,sy*split*67);
         ctx.rotate(sx*sy*split*.48);
+        ctx.imageSmoothingEnabled=false;
         ctx.drawImage(leviathanArt,512+col*64,row*48,64,48,
-          -107+col*107,-80+row*80,107,80);
+          -halfW+col*halfW,-halfH+row*halfH,halfW,halfH);
         ctx.restore();
       }
     }else{
