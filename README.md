@@ -2,9 +2,19 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.35 — Miniboss Armor & Fury**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.36 — Evil Otto Returns**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## EVIL OTTO — v0.3.36
+
+- A dedicated, polished **48×48 transparent yellow smile SVG sprite**, pixel-crisp, loads only once from `assets/evil-otto.svg`; an in-game canvas fallback preserves play if the image fails to load.
+- **Rare, random visitor** starting after Wave 1: first arrival roughly 28–44 seconds in; subsequent visits every 57–86 seconds (in active non-boss play). A test-wave jump starts the first timer at 7–12 seconds for testing. Otto is **never** a leaderboard score bonus and carries no kill points or HP.
+- **Bounces in from the perimeter**, approaches the stationary turret with a little side-to-side drifting hop, and **passes through moving walls**. He appears for only 10.8 seconds, then vanishes.
+- **Indestructible, but repel-able:** turret bullets and Railgun beams knock him 100–145px away and temporarily prevent repeated overlapping hits. Normal bullets still respect walls before touching him. A short synthesized arcade *boing* marks his hops.
+- **Contact costs one rechargeable shield charge** when available. If unprotected, he costs one life directly, not the player's hull bars. One contact ends the Otto visit, and existing post-life invulnerability applies.
+- **Does not interfere with main boss encounters or their warnings / ceremony** (Warden, Architect, Leviathan); can nonetheless surprise a player during miniboss fights. Otherwise no gameplay system or scoring rules changed.
+- Normal/TEST-run leaderboard separation remains intact; Cloudflare and other boss code unchanged. Keep Otto's sounds short and the graphics as a single inexpensive image draw per frame.
 
 ## Miniboss combat upgrade — v0.3.35
 

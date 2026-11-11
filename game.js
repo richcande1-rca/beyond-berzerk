@@ -37,6 +37,10 @@
       return {image:leviathanLegacyArt,frameWidth:128,frameHeight:96};
     return null;
   }
+  // Dedicated first-class sprite: crisp 48px transparent yellow grin.
+  // The canvas smile below is only a fallback if SVG assets are unavailable.
+  const ottoArt=typeof Image==="function"?new Image():null;
+  if(ottoArt)ottoArt.src="./assets/evil-otto.svg?v=0.3.36";
   const overlay = document.getElementById("overlay");
   const introArt = document.getElementById("intro-art");
   // Keep the original, accessible opening panel if the artwork is unavailable.
@@ -92,6 +96,9 @@
   const STASIS_SCALE = .36;
   const EXTRA_LIFE_INTERVAL = 15000, MAX_LIVES = 5;
   const HULL_REPAIR_FULL_BONUS = 250;
+  const OTTO_RADIUS=23, OTTO_SPEED=56, OTTO_LIFETIME=10.8;
+  // Rare, unpredictable nuisance. Not part of the boss schedule or score.
+  const OTTO_FIRST_ARRIVAL=[28,44], OTTO_RETURN=[57,86];
   const MINI_SENTINEL_HP = 8, MINI_BREAKER_HP = 14;
   const MINI_SENTINEL_GAP_HALF=1.04, MINI_BREAKER_FRONT_HALF=.98;
   const LEVIATHAN_POD_HP=5, LEVIATHAN_CORE_HP=8;
@@ -201,6 +208,7 @@
       leviathanDeath:null, leviathanVictories:0,
       miniBoss:null, miniBossState:"none", miniBossSeen:false,
       miniBossWarning:0, clearMiniShots:false, miniRewardPending:null,
+      otto:null,ottoClock:rnd(...OTTO_FIRST_ARRIVAL),ottoVisits:0,
       architectRingSpins:null,
       aim:6, aimTarget:null, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
@@ -310,6 +318,8 @@
     state.penetrator = state.wave >= 7;
     state.arcCannon = state.wave >= 9;
     state.testStartWave = state.wave;
+    // Test jump can summon Otto without playing through several waves.
+    if(testMode && state.wave>=2)state.ottoClock=rnd(7,12);
     state.toSpawn = state.wave===1 ? 15 : Math.min(120,10+state.wave*5);
     state.waveTotal=state.toSpawn;
     state.announce = (testMode ? "TEST // " : "") +
@@ -562,9 +572,23 @@
     }
   }
   function playerHit(kind="shot") {
-    // Shots damage the hull; robot contact bypasses hull durability entirely.
-    // Shot grace applies to projectiles only, not robot collisions.
+    // Otto is contact-like: shield removes ONE charge; without a charge he
+    // takes one life, never whittles the hull down via a normal projectile.
     if (state.invuln>0 || state.phase!=="playing") return;
+    const ottoImpact=kind==="otto";
+    if(ottoImpact && state.shieldUnlocked && state.shieldCharges>0){
+      state.shieldCharges--;
+      state.shieldRegen=0;
+      flashShield(state.shieldCharges,.55);
+      state.shotGrace=SHOT_GRACE_SECONDS;
+      state.flash=.13;state.shake=Math.max(state.shake,6);
+      burst(CX,CY,"#fff13a",18,.6);
+      tone(500,.17,"square",.055,140);
+      setStatus("OTTO STOLE A SHIELD CHARGE — "+state.shieldCharges+
+        "/"+SHIELD_MAX);
+      return;
+    }
+    if(ottoImpact)kind="contact";
     if (kind==="shot") {
       if (state.shotGrace>0) return;
       if (state.shieldUnlocked && state.shieldCharges>0) {
@@ -604,8 +628,8 @@
     state.clearNearbyEnemyShots=true;
     tone(260,.35,"sawtooth",.09,52);
     if (state.lives<=0) gameOver();
-    else setStatus((kind==="contact"?"ROBOT CONTACT":"HULL BREACH")+
-      " — "+state.lives+" LIVES");
+    else setStatus((ottoImpact?"EVIL OTTO":kind==="contact"?
+      "ROBOT CONTACT":"HULL BREACH")+" — "+state.lives+" LIVES");
   }
   function architectCoreOpen(b) {
     if(state.wave!==8 || state.bossState!=="active" ||
@@ -832,6 +856,13 @@
       b.hp-=RAILGUN_DAMAGE;
       if(b.hp<=0)scrap(k,false);
       else burst(b.x,b.y,"#ffda72",8,.55);
+    }
+    const otto=state.otto;
+    if(otto && otto.repelGrace<=0){
+      const rx=otto.x-CX,ry=otto.y-CY,along=rx*dx+ry*dy;
+      if(along>=22 && along<=R+OTTO_RADIUS &&
+          Math.abs(rx*dy-ry*dx)<=OTTO_RADIUS+RAILGUN_RADIUS)
+        repelOtto(3);
     }
     const mini=state.miniBoss;
     if(mini && state.miniBossState==="active"){
@@ -1170,6 +1201,14 @@
             collectSupplyDrone();
             hit=true;break;
           }
+          // This is an indestructible collision, not a scoring kill.
+          // Ordinary shots are still stopped by walls BEFORE this check.
+          const otto=state.otto;
+          if(otto && otto.repelGrace<=0 &&
+              Math.hypot(s.x-otto.x,s.y-otto.y)<OTTO_RADIUS+s.size){
+            repelOtto(s.damage||1);
+            hit=true;break;
+          }
           const boss=state.boss;
           if(boss?.type==="architect" && state.bossState==="active") {
             const d=Math.hypot(s.x-boss.x,s.y-boss.y);
@@ -1281,6 +1320,101 @@
       state.clearMiniShots=false;
     }
   }
+
+  // EVIL OTTO — an homage to the 1980 original, not another HP enemy.
+  // He phases through walls, hops toward the stationary turret and leaves
+  // after a short visit. Hits bounce him away; no amount of fire kills him.
+  function positionOtto(o) {
+    const bob=Math.abs(Math.sin(o.age*10.2))*11;
+    const sideways=Math.sin(o.age*1.65+o.seed)*7;
+    o.x=CX+Math.cos(o.angle)*o.radius-Math.sin(o.angle)*sideways;
+    o.y=CY+Math.sin(o.angle)*o.radius+Math.cos(o.angle)*sideways-bob;
+  }
+  function repelOtto(power=1) {
+    const o=state.otto;
+    if(!o)return false;
+    const kick=100+Math.min(45,power*14);
+    o.radius=Math.min(R+34,Math.max(45,o.radius+kick));
+    o.repelGrace=.22;
+    o.flash=.25;
+    positionOtto(o);
+    burst(o.x,o.y,"#fff64b",10,.45);
+    tone(380,.13,"square",.036,690);
+    setStatus("EVIL OTTO REPELLED // NOT DESTROYED");
+    return true;
+  }
+  function updateOtto(dt) {
+    const noBossEncounter=state.bossState==="none" &&
+      !state.leviathanDeath && state.waveClock===0;
+    // Respect the major boss presentation; Otto doesn't clutter their
+    // entrances or the graduation ceremony.
+    if(!noBossEncounter){
+      state.otto=null;
+      return;
+    }
+    const o=state.otto;
+    if(!o){
+      state.ottoClock-=dt;
+      if(state.wave<2 || state.ottoClock>0)return;
+      state.ottoClock=rnd(...OTTO_RETURN);
+      const angle=rnd(-Math.PI,Math.PI);
+      state.otto={angle,seed:rnd(0,TAU),radius:R+25,age:0,
+        life:OTTO_LIFETIME,repelGrace:0,flash:0,
+        x:CX+Math.cos(angle)*(R+25),y:CY+Math.sin(angle)*(R+25)};
+      state.ottoVisits++;
+      state.announce="EVIL OTTO // UNINVITED";
+      state.announceClock=1.25;
+      setStatus("OTTO INBOUND — YOU CANNOT KILL THAT GRIN");
+      tone(330,.12,"square",.043,540);
+      tone(550,.16,"square",.032,330,.11);
+      return;
+    }
+    o.age+=dt;
+    o.life-=dt;
+    if(o.life<=0){
+      state.otto=null;
+      return;
+    }
+    o.repelGrace=Math.max(0,o.repelGrace-dt);
+    o.flash=Math.max(0,o.flash-dt);
+    o.radius-= (OTTO_SPEED+Math.min(18,state.wave*1.5))*dt;
+    positionOtto(o);
+    // Periodic deliberately obnoxious ORIGINAL boing; no sample files.
+    // Keep soundOn handling in tone(), which respects mute.
+    if(Math.floor((o.age-dt)*3.1)!==Math.floor(o.age*3.1))
+      tone(260,.115,"square",.022,495);
+    if(Math.hypot(o.x-CX,o.y-CY)<=OTTO_RADIUS+15){
+      playerHit("otto");
+      state.otto=null; // Exactly one collision per visit, even if invulnerable.
+    }
+  }
+  function drawOtto() {
+    const o=state.otto;
+    if(!o)return;
+    ctx.save();
+    const fade=Math.min(1,o.life*2,(o.age+.12)*3);
+    ctx.globalAlpha=fade;
+    // Subtle bounce shadow and tiny crisp lemon halo, not an expensive blur.
+    const bounce=Math.abs(Math.sin(o.age*10.2));
+    ctx.fillStyle="rgba(255,220,20,.17)";
+    ctx.beginPath();ctx.ellipse(o.x,o.y+21,18-5*bounce,4,0,0,TAU);ctx.fill();
+    ctx.translate(Math.round(o.x),Math.round(o.y));
+    const size=55+2*bounce+(o.flash>0?3:0);
+    if(ottoArt?.complete && ottoArt.naturalWidth>0){
+      ctx.imageSmoothingEnabled=false;
+      ctx.drawImage(ottoArt,-size/2,-size/2,size,size);
+    }else{
+      // Same bright-yellow face if the sprite file cannot load.
+      ctx.fillStyle="#fff200";ctx.strokeStyle="#ffbc00";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,OTTO_RADIUS,0,TAU);ctx.fill();ctx.stroke();
+      ctx.fillStyle="#121019";
+      ctx.fillRect(-12,-10,6,10);ctx.fillRect(6,-10,6,10);
+      ctx.beginPath();ctx.arc(0,-1,16,.17,Math.PI-.17);
+      ctx.lineWidth=5;ctx.strokeStyle="#121019";ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function beginMiniBoss() {
     const type=miniTypeForWave(state.wave);
     if(!type || state.miniBossSeen)return;
@@ -2192,6 +2326,7 @@
         state.miniBoss=null;state.miniBossState="none";
         state.miniBossWarning=0;state.miniBossSeen=false;
         state.clearMiniShots=false;state.miniRewardPending=null;
+        state.otto=null; // No carried-over visit during graduations.
         state.architectRingSpins=null;
         // Changing sectors changes real walls as well as the decorative field.
         // Preserve their angular orientation so the handoff feels continuous.
@@ -2315,6 +2450,7 @@
     updateSupplyDrone(dt);
     updateBots(dt);
     updateMiniBoss(dt);
+    updateOtto(dt);
     updateGuardians(dt);
     if (state.phase==="playing") {
       updateShieldCapsule(dt);
@@ -4192,7 +4328,7 @@
       ctx.translate(rnd(-state.shake,state.shake),rnd(-state.shake,state.shake));
     const visual=visualEvolution();
     drawBackground(visual);drawEvolutionGhosts(visual);drawRings(visual);
-    drawShockwaves();drawBots();drawMiniBoss();drawSupplyDrone();drawShieldCapsule();drawWarden();drawArchitect();drawLeviathan();drawLeviathanDeath();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();drawPowerEffects();
+    drawShockwaves();drawBots();drawMiniBoss();drawOtto();drawSupplyDrone();drawShieldCapsule();drawWarden();drawArchitect();drawLeviathan();drawLeviathanDeath();drawShots();drawArcLinks();drawRailBlast();drawParticles();drawImpacts();drawTurret();drawPowerEffects();
     // The perimeter alarm flashes during the warning and the boss entry.
     if((state.wave===4 || state.wave===8 || state.wave===12) &&
         (state.bossState==="warning" || state.bossState==="entering") &&

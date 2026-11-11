@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <title>Evil Otto — the yellow grinning arcade nuisance</title>
+  <path fill="#eeb900" d="M16 1h16v3h6v4h5v6h3v20h-3v6h-5v4h-6v3H16v-3h-6v-4H5v-6H2V14h3V8h5V4h6z"/>
+  <path fill="#fff000" d="M16 3h16v3h6v4h4v6h2v16h-2v6h-4v4h-6v3H16v-3h-6v-4H6v-6H4V16h2v-6h4V6h6z"/>
+  <path fill="#fff96a" d="M16 5h15v2h6v3h3v5H9v-5h4V7h3z"/>
+  <path fill="#fff52c" d="M6 15h3v18H6zM10 11h3v25h-3z"/>
+  <path fill="#111015" d="M13 15h6v11h-6zM29 15h6v11h-6z"/>
+  <path fill="#20121e" d="M9 27h4v4h4v4h14v-4h4v-4h4v6h-3v4h-5v3H17v-3h-5v-4H9z"/>
+  <path fill="#ffce00" d="M15 42h18v2H15zM11 38h4v3h-4zM33 38h4v3h-4z"/>
+</svg>
