@@ -2,9 +2,17 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.34 — Worldwide Top 10**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.35 — Miniboss Armor & Fury**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## Miniboss combat upgrade — v0.3.35
+
+- **Sentinel (Waves 3, 11, 19...):** a visibly rotating steel shell blocks shots everywhere except a matching moving 120-degree cyan weak-point gap. At half health, it visibly warns before irregular reversals every 1.65–3.55 seconds and fires a wider *five*-shot fan instead of three shots.
+- **Breaker (Waves 7, 15, 23...):** plated prow deflects frontal attacks; its teal flank/rear ports remain vulnerable as its heavy hull twists independently from its center-aiming guns. The front locks forward while charging; at half health it warns before launching a separate eight-bolt counterattack. Its ram advances much closer to the turret (94px radius) and releases a five- or seven-shot close-range fan if an actual shooting lane is open; bullets can still be intercepted, walls still block normal shots, and stationary-player contact is never unavoidable.
+- Initial HP rises modestly (Sentinel 6→8, Breaker 10→14) and later versions scale by +3 every eight waves, up to 26/34. The intended difficulty is **reading armor and leading shots**, not shooting a huge HP sponge.
+- Normal bullets, Heavy Laser, Arc Cannon chains and automatic Railgun all check the same directional armor; the Railgun penetrates moving walls, **not boss armor**. Brief deflection sparks and readable armor text make missed hits comprehensible.
+- Existing boss schedule, prize drops, score bonuses, real wall interactions, and global leaderboard logic are untouched. Small canvas effects only. Test waves **3** and **7** first, then waves 11 and 15.
 
 ## Cloudflare world leaderboard — v0.3.34
 

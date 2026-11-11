@@ -92,7 +92,8 @@
   const STASIS_SCALE = .36;
   const EXTRA_LIFE_INTERVAL = 15000, MAX_LIVES = 5;
   const HULL_REPAIR_FULL_BONUS = 250;
-  const MINI_SENTINEL_HP = 6, MINI_BREAKER_HP = 10;
+  const MINI_SENTINEL_HP = 8, MINI_BREAKER_HP = 14;
+  const MINI_SENTINEL_GAP_HALF=1.04, MINI_BREAKER_FRONT_HALF=.98;
   const LEVIATHAN_POD_HP=5, LEVIATHAN_CORE_HP=8;
   const LEVIATHAN_REINFORCEMENT_CAP=4, LEVIATHAN_REINFORCEMENT_TOTAL=12;
   const LEVIATHAN_DEATH_SECONDS=2.4;
@@ -113,8 +114,8 @@
   }
   function miniMaxHp(type,wave) {
     const tier=Math.max(0,Math.floor((wave-(type==="sentinel"?3:7))/8));
-    return Math.min(type==="sentinel"?20:28,
-      (type==="sentinel"?MINI_SENTINEL_HP:MINI_BREAKER_HP)+tier*2);
+    return Math.min(type==="sentinel"?26:34,
+      (type==="sentinel"?MINI_SENTINEL_HP:MINI_BREAKER_HP)+tier*3);
   }
   // Sector names match what players actually see, not unrelated generic
   // combat labels. Wave 10+ can retain the expanding endless-run title pool.
@@ -838,7 +839,8 @@
       const radius=mini.type==="sentinel"?21:28;
       if(along>=24 && along<=range+radius &&
           Math.abs(rx*dy-ry*dx)<=radius+RAILGUN_RADIUS)
-        hitMiniBoss(RAILGUN_DAMAGE);
+        // Railgun crosses walls but does not ignore miniboss armor.
+        hitMiniBoss(RAILGUN_DAMAGE,false,Math.atan2(CY-mini.y,CX-mini.x));
     }
     const leviathan=state.boss;
     if(leviathan?.type==="leviathan" && state.bossState==="active"){
@@ -933,7 +935,8 @@
       used.add(target);
       state.arcLinks.push({x1:source.x,y1:source.y,x2:target.x,y2:target.y,life:.20});
       if(state.arcLinks.length>12)state.arcLinks.shift();
-      if(target===mini)hitMiniBoss(1);
+      if(target===mini)
+        hitMiniBoss(1,false,Math.atan2(source.y-mini.y,source.x-mini.x));
       else target.hp--;
       burst(target.x,target.y,"#a9faff",4,.30);
       tone(770+hop*180,.085,"triangle",.026,1200+hop*50);
@@ -1236,8 +1239,9 @@
             const radius=mini.type==="sentinel"?21:28;
             if(d<radius+s.size){
               const accurate=d<12+s.size;
-              hitMiniBoss(s.damage||1,accurate);
-              if(s.arc)arcChain({x:mini.x,y:mini.y});
+              const landed=hitMiniBoss(s.damage||1,accurate,
+                Math.atan2(s.y-mini.y,s.x-mini.x));
+              if(s.arc && landed)arcChain({x:mini.x,y:mini.y});
               hit=true;break;
             }
           }
@@ -1293,10 +1297,38 @@
   function miniEnraged(b) {
     return b.hp<=b.maxHp/2;
   }
-  function hitMiniBoss(damage=1,precise=false) {
+  function miniSentinelGapAngle(b) {
+    // Continuous independent rotation; a bright arc shows the real gap.
+    return .45-b.age*1.35;
+  }
+  function miniBreakerFacing(b) {
+    // The guns track the turret independently of the heavy hull. The
+    // ram locks its plated nose toward the turret while charging.
+    const towardPlayer=Math.atan2(CY-b.y,CX-b.x);
+    if(b.chargeWarning>0 || b.chargeTime>0)return towardPlayer;
+    const swing=miniEnraged(b)?2.32:1.58;
+    return towardPlayer+swing*Math.sin(b.age*.84+.70);
+  }
+  function miniArmorOpen(b,incomingAngle) {
+    if(b.type==="sentinel")
+      return Math.abs(angleDiff(incomingAngle,miniSentinelGapAngle(b)))<=
+        MINI_SENTINEL_GAP_HALF;
+    // Side and rear ports are the weak points, frontal prow is armored.
+    return Math.abs(angleDiff(incomingAngle,miniBreakerFacing(b)))>
+      MINI_BREAKER_FRONT_HALF;
+  }
+  function hitMiniBoss(damage=1,precise=false,incomingAngle=null) {
     const b=state.miniBoss;
     if(!b || state.miniBossState!=="active")return false;
-    if(b.guard>0)return true; // Armor briefly flashes; no multi-hit overlap.
+    if(b.guard>0)return false;
+    const incoming=incomingAngle===null?
+      Math.atan2(CY-b.y,CX-b.x):incomingAngle;
+    if(!miniArmorOpen(b,incoming)){
+      b.guard=.09; // Distinct brief armor clang, not a successful hit.
+      burst(b.x,b.y,b.type==="sentinel"?"#a6d6ff":"#ffdfa3",5,.28);
+      tone(255,.055,"triangle",.025,110);
+      return false;
+    }
     const critical=b.type==="breaker" && miniEnraged(b) && precise;
     b.hp-=damage+(critical?1:0);
     b.guard=.13;
@@ -1321,46 +1353,56 @@
       state.shake=Math.max(state.shake,8);
       tone(125,.38,"sawtooth",.068,47);
       tone(690,.24,"triangle",.04,130,.15);
-      // A guaranteed shoot-to-collect supply drone at the wreck site.
-      // Reuse an already active supply instead of deleting the player's prize.
+      // Keep the guaranteed shoot-to-collect reward and its queue.
       if(!state.supplyDrone){
         state.supplyDrone={x:b.x,y:b.y,
           vx:(b.x<CX?1:-1)*SUPPLY_SPEED,kind:"random"};
-      } else {
-        // An existing supply pass must not erase the mini-boss's prize.
-        // Queue one extra pass, then let the current drone finish naturally.
-        state.miniRewardPending={x:b.x,y:b.y};
-      }
+      }else state.miniRewardPending={x:b.x,y:b.y};
       state.dropClock=rnd(18,29);
     }else if(miniEnraged(b) && !b.enragedOnce){
       b.enragedOnce=true;
       state.announce=b.type.toUpperCase()+" // ARMOR BREACHED";
       state.announceClock=1.7;
-      setStatus("MINI-BOSS ARMOR FRACTURED — WATCH ITS ATTACKS");
+      if(b.type==="breaker"){
+        b.counterPending=true;
+        b.counterClock=.65; // Visible warning before the reprisal.
+        setStatus("BREAKER ARMOR FRACTURED — COUNTER BARRAGE INCOMING");
+      }else{
+        b.turnClock=Math.min(b.turnClock,.45);
+        setStatus("SENTINEL ENRAGED — WATCH FOR REVERSALS");
+      }
       tone(340,.21,"sawtooth",.042,550);
     }
     return true;
   }
-  function fireMiniBoss(b) {
-    const count=b.type==="sentinel"?3:miniEnraged(b)?6:4;
+  function fireMiniBoss(b,attack="normal") {
+    const angry=miniEnraged(b);
+    const count=b.type==="sentinel"?(angry?5:3):
+      attack==="counter"?8:attack==="charge"?(angry?7:5):(angry?6:4);
     if(state.shots.filter(s=>!s.friendly).length+count>65)return false;
     const aim=Math.atan2(CY-b.y,CX-b.x);
     const speed=(b.type==="sentinel"?190:215)+
-      Math.min(90,Math.max(0,state.wave-3)*5);
+      Math.min(90,Math.max(0,state.wave-3)*5)+(attack==="charge"?36:0);
     for(let k=0;k<count;k++){
-      // Sentinel fans a three-way spread; the Breaker's twin batteries
-      // fire paired columns, tightening into a 6-bolt enraged salvo.
-      const offset=b.type==="sentinel"?(k-1)*.20:
-        (k-(count-1)/2)*.095;
+      const offset=b.type==="sentinel"?
+        (k-(count-1)/2)*(angry?.18:.20):
+        (k-(count-1)/2)*(attack==="charge"?.135:
+          attack==="counter"?.115:.095);
       const angle=aim+offset;
       const muzzle=b.type==="breaker"?25:19;
       state.shots.push({x:b.x+Math.cos(angle)*muzzle,
         y:b.y+Math.sin(angle)*muzzle,
         vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,
         life:2.7,friendly:false,size:3.5,mini:true,
-        color:b.type==="sentinel"?"#ff647e":"#ffb26d"});
+        color:attack==="charge"?"#fff0aa":attack==="counter"?"#ff7860":
+          b.type==="sentinel"?"#ff647e":"#ffb26d"});
     }
-    tone(b.type==="sentinel"?260:180,.17,"sawtooth",.048,86);
+    if(attack!=="normal"){
+      b.chargeBurstFlash=.24;
+      burst(b.x,b.y,attack==="charge"?"#ffe7a5":"#ff805f",12,.7);
+      state.shake=Math.max(state.shake,attack==="charge"?6:4);
+      tone(attack==="charge"?110:170,.32,"sawtooth",.066,45);
+    }else tone(b.type==="sentinel"?260:180,.17,"sawtooth",.048,86);
     return true;
   }
   function updateMiniBoss(dt) {
@@ -1377,7 +1419,9 @@
           x:CX+Math.cos(angle)*radius,y:CY+Math.sin(angle)*radius,
           orbitDir:1,fireClock:1.35,fireWarning:0,
           chargeClock:4.1,chargeWarning:0,chargeTime:0,
-          enragedOnce:false};
+          chargeBurstFired:false,chargeBurstFlash:0,
+          counterPending:false,counterClock:0,
+          turnClock:rnd(1.7,3.2),turnWarning:0,enragedOnce:false};
         state.miniBossState="active";
         state.announce=type.toUpperCase()+" // TARGET THE ARMORED HUNTER";
         state.announceClock=2.1;
@@ -1387,13 +1431,16 @@
     }
     const b=state.miniBoss;
     if(!b || state.miniBossState!=="active")return;
-    b.age+=dt;b.guard=Math.max(0,b.guard-dt);
+    b.age+=dt;
+    b.guard=Math.max(0,b.guard-dt);
+    b.chargeBurstFlash=Math.max(0,b.chargeBurstFlash-dt);
     const angry=miniEnraged(b);
     if(b.type==="breaker"){
       if(b.chargeWarning>0){
         b.chargeWarning=Math.max(0,b.chargeWarning-dt);
         if(!b.chargeWarning){
-          b.chargeTime=.82;
+          b.chargeTime=1.05;
+          b.chargeBurstFired=false;
           tone(135,.24,"sawtooth",.043,280);
         }
       }else if(b.chargeTime>0){
@@ -1402,36 +1449,59 @@
       }else{
         b.chargeClock-=dt;
         if(b.chargeClock<=0){
-          b.chargeWarning=.8;
-          state.announce="BREAKER // CHARGE INCOMING";
-          state.announceClock=.95;
+          b.chargeWarning=.95;
+          state.announce="BREAKER // RAM CHARGE INCOMING";
+          state.announceClock=1.1;
           tone(400,.20,"triangle",.035,160);
         }
       }
-      const target=b.chargeTime>0?137:b.baseRadius;
-      b.radius+=clamp(target-b.radius,-160*dt,160*dt);
+      // Real inward charge; the turret does not take unavoidable contact
+      // damage. Instead, a close-range fan fires when the ram reaches 108px.
+      const target=b.chargeTime>0?94:b.baseRadius;
+      const speed=b.chargeTime>0?275:180;
+      b.radius+=clamp(target-b.radius,-speed*dt,speed*dt);
+      if(b.counterPending)b.counterClock-=dt;
     }else{
       b.radius=b.baseRadius+10*Math.sin(b.age*.74);
+      if(angry){
+        if(b.turnWarning>0){
+          b.turnWarning=Math.max(0,b.turnWarning-dt);
+          if(!b.turnWarning){
+            b.orbitDir*=-1;
+            b.turnClock=rnd(1.65,3.55);
+            tone(640,.10,"triangle",.025,290);
+          }
+        }else{
+          b.turnClock-=dt;
+          if(b.turnClock<=0){
+            b.turnWarning=.32;
+            setStatus("SENTINEL // DIRECTION REVERSAL");
+          }
+        }
+      }
     }
     const speed=(b.type==="sentinel"?.65:.40)*
       (angry?1.43:1)*Math.min(1.6,1+Math.max(0,state.wave-7)*.018);
     b.angle+=b.orbitDir*speed*dt;
-    // Sentinel changes lanes and direction during the fight, rather than
-    // hovering at one position. All shifts stay continuous.
-    if(b.type==="sentinel" && angry && Math.floor((b.age-dt)/3.8)!==
-        Math.floor(b.age/3.8)){
-      b.orbitDir*=-1;
-      b.radius=b.baseRadius+10*Math.sin(b.age*.74);
-    }
     b.x=CX+Math.cos(b.angle)*b.radius;
     b.y=CY+Math.sin(b.angle)*b.radius;
+    if(b.type==="breaker"){
+      if(b.chargeTime>0 && b.radius<=108 && !b.chargeBurstFired &&
+        clearShotPath(b.x,b.y) && fireMiniBoss(b,"charge"))
+        b.chargeBurstFired=true;
+      if(b.counterPending && b.counterClock<=0){
+        if(clearShotPath(b.x,b.y) && fireMiniBoss(b,"counter"))
+          b.counterPending=false;
+        else b.counterClock=.20; // Retry only when a real lane is open.
+      }
+    }
     if(b.fireWarning>0){
       b.fireWarning=Math.max(0,b.fireWarning-dt);
       if(!b.fireWarning){
         if(clearShotPath(b.x,b.y) && fireMiniBoss(b)){
           b.fireClock=b.type==="sentinel"?(angry?1.45:2.15):
             (angry?1.2:1.85);
-        }else b.fireClock=.32; // Reposition at a clear shooting lane.
+        }else b.fireClock=.32;
       }
     }else{
       b.fireClock-=dt;
@@ -2882,9 +2952,10 @@
     const aim=Math.atan2(CY-b.y,CX-b.x);
     // Attack warnings can be read from a small phone: a bright aiming line
     // and charging halo appear well before each spread or cannon barrage.
-    if(b.fireWarning>0 || b.chargeWarning>0){
+    if(b.fireWarning>0 || b.chargeWarning>0 || b.counterPending){
       ctx.save();ctx.globalAlpha=.60+.25*Math.sin(state.elapsed*18);
-      ctx.strokeStyle=b.chargeWarning>0?"#fff0a4":"#ff7083";
+      ctx.strokeStyle=b.chargeWarning>0?"#fff0a4":
+        b.counterPending?"#ffb483":"#ff7083";
       ctx.lineWidth=b.chargeWarning>0?3:2.2;
       ctx.setLineDash([8,7]);
       ctx.beginPath();ctx.moveTo(b.x,b.y);
@@ -2893,7 +2964,7 @@
       ctx.stroke();ctx.setLineDash([]);ctx.restore();
     }
     ctx.save();ctx.translate(b.x,b.y);
-    ctx.rotate(aim);
+    ctx.rotate(breaker?miniBreakerFacing(b):aim);
     if(b.guard>0){
       ctx.strokeStyle="#fff7d4";ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(0,0,breaker?35:28,0,TAU);ctx.stroke();
@@ -2929,6 +3000,15 @@
         ctx.moveTo(-24,-12);ctx.lineTo(-10,-4);ctx.lineTo(-21,13);
         ctx.moveTo(18,-17);ctx.lineTo(10,-8);ctx.stroke();
       }
+      // Actual armored prow and visible side/rear weak ports.
+      ctx.fillStyle=b.guard>0?"#fff1aa":"#8d9fa9";
+      ctx.strokeStyle="#313b48";ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(25,-23);ctx.lineTo(40,-17);
+      ctx.lineTo(42,17);ctx.lineTo(25,23);ctx.closePath();
+      ctx.fill();ctx.stroke();
+      ctx.fillStyle=angry?"#ffefb6":"#69f0df";
+      ctx.fillRect(-11,-33,22,5);ctx.fillRect(-11,28,22,5);
+      ctx.fillRect(-35,-11,5,22);
     } else {
       // Fast six-point mechanical hunter, red visor and separate saw-tooth
       // fins. The eyes and armor cracks visibly shift as HP falls.
@@ -2951,6 +3031,29 @@
       }
     }
     ctx.restore();
+    if(!breaker){
+      // Armor and its gap use exactly the same rotation as hit testing.
+      ctx.save();ctx.translate(b.x,b.y);
+      ctx.rotate(miniSentinelGapAngle(b));
+      ctx.strokeStyle=b.guard>0?"#f9ebc5":"#8396aa";
+      ctx.lineWidth=5.5;ctx.beginPath();
+      ctx.arc(0,0,28,MINI_SENTINEL_GAP_HALF,TAU-MINI_SENTINEL_GAP_HALF);
+      ctx.stroke();
+      ctx.strokeStyle=angry?"#ffe6ab":"#9cffe9";
+      ctx.lineWidth=2.5;ctx.beginPath();
+      ctx.arc(0,0,28,-MINI_SENTINEL_GAP_HALF,MINI_SENTINEL_GAP_HALF);
+      ctx.stroke();ctx.restore();
+      if(b.turnWarning>0){
+        ctx.save();ctx.strokeStyle="#fff2a6";ctx.lineWidth=2.5;
+        ctx.beginPath();ctx.arc(b.x,b.y,36,0,TAU);ctx.stroke();ctx.restore();
+      }
+    }else if(b.counterPending || b.chargeBurstFlash>0){
+      ctx.save();ctx.strokeStyle=b.counterPending?"#ff7658":"#fff0a6";
+      ctx.lineWidth=3.5;ctx.beginPath();
+      ctx.arc(b.x,b.y,35+(b.chargeBurstFlash>0?
+        16*(1-b.chargeBurstFlash/.24):0),0,TAU);
+      ctx.stroke();ctx.restore();
+    }
     // Fixed horizontal HP bar stays legible while the boss orbits.
     const width=breaker?82:70;
     ctx.save();
@@ -2960,6 +3063,13 @@
     ctx.fillStyle=angry?"#ffe5a1":color;
     ctx.fillRect(b.x-width/2+2,b.y-(breaker?51:41),
       (width-4)*Math.max(0,b.hp)/b.maxHp,3);
+    const approach=Math.atan2(CY-b.y,CX-b.x);
+    const open=miniArmorOpen(b,approach);
+    ctx.fillStyle=open?"#99ffe6":"#ffca92";
+    ctx.font='700 10px "Oxanium", monospace';
+    ctx.textAlign="center";ctx.textBaseline="alphabetic";
+    ctx.fillText(breaker?(open?"FLANK OPEN":"FRONT PLATED"):
+      (open?"GAP OPEN":"ARMORED"),b.x,b.y-(breaker?59:48));
     ctx.restore();
   }
   function drawArchitect() {
