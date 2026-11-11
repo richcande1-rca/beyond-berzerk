@@ -1,0 +1,10 @@
+name = "beyond-berzerk-board"
+main = "src/index.js"
+compatibility_date = "2026-11-11"
+
+# Dedicated D1 database (not shared with Orbit or Luck Machine).
+# Set this to the actual ID after creating beyond_berzerk_board.
+[[d1_databases]]
+binding = "DB"
+database_name = "beyond_berzerk_board"
+database_id = "REPLACE_WITH_YOUR_BEYOND_BERZERK_D1_ID"

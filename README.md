@@ -2,9 +2,16 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.33 — Leviathan Sprite Upgrade**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.34 — Worldwide Top 10**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## Cloudflare world leaderboard — v0.3.34
+
+- Added a shared **WORLD TOP 10** overlay showing player initials, score, wave reached, robot kills, and a special **LEVIATHAN DESTROYED** indicator.
+- A normal game-over automatically checks whether the run ranks in the Cloudflare D1 Top 10, then offers an initials submission. **Test mode is excluded** from submission. The original personal high score remains unchanged; no local Top 10 was added.
+- Opens from the game controls; pauses and resumes a live game when you inspect the ranking. Leaderboard networking is asynchronous and never runs in the render loop. An unavailable Worker shows an honest **OFFLINE** warning and never pretends that a score was saved.
+- Dedicated worker code and D1 schema are in [worker/](worker/README.md). **Cloudflare dashboard Worker deployment, D1 table initialization and DB binding are still required** before the online board works. Do not overwrite the other games' databases.
 
 ## Leviathan replacement sprite integration — v0.3.33
 

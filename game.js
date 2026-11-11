@@ -197,7 +197,7 @@
       powerClock:0,lastPowerup:null,guardianClock:0,guardianAngle:0,
       waveElapsed:0, waveTotal:0, shieldCapsule:null, shieldCapsuleSeen:false,
       boss:null, bossState:"none", bossWarning:0, bossDefeated:false, clearBossShots:false,
-      leviathanDeath:null,
+      leviathanDeath:null, leviathanVictories:0,
       miniBoss:null, miniBossState:"none", miniBossSeen:false,
       miniBossWarning:0, clearMiniShots:false, miniRewardPending:null,
       architectRingSpins:null,
@@ -292,6 +292,7 @@
   }
 
   function start(wave=1, testMode=false) {
+    window.dispatchEvent(new Event("bb:run-start"));
     state = makeState();
     state.phase = "playing";
     state.testMode = testMode;
@@ -357,6 +358,12 @@
       state.testMode ? "SIMULATION TERMINATED" : "END OF TRANSMISSION");
     pauseButton.textContent = "PAUSE";
     setStatus("GAME OVER — INSERT COURAGE");
+    // A real run alone may qualify for the Cloudflare world board.
+    // Game Over (including test runs) still operates if the board is offline.
+    if (!state.testMode) window.dispatchEvent(new CustomEvent("bb:game-over", {
+      detail: {score:state.score,wave:state.wave,robots:state.destroyed,
+        leviathan:state.leviathanVictories>0}
+    }));
   }
 
   function modeName() { return MODES[state.modeIndex]; }
@@ -1667,6 +1674,7 @@
     const b=state.boss;
     if(!b || b.type!=="leviathan")return;
     state.score+=4000;
+    state.leviathanVictories++;
     if(!state.testMode && state.score>state.high){
       state.high=state.score;storeHigh();
     }
@@ -4134,6 +4142,13 @@
             y:(event.clientY-rect.top)*H/rect.height};
   }
 
+  // The leaderboard can pause a live run without learning combat internals.
+  // Its own module handles network calls outside the animation loop.
+  window.BeyondBerzerkBoardBridge = {
+    phase:()=>state.phase,
+    togglePause:pause
+  };
+
   // Wire normal play first. Older cached HTML may not contain the test-mode
   // controls, but START GAME must remain usable during a Pages deployment.
   startButton.addEventListener("click",()=>state.phase==="paused"?pause():start());
@@ -4156,6 +4171,8 @@
   if (testStartButton) testStartButton.addEventListener("click",launchTest);
 
   window.addEventListener("keydown",event=>{
+    // Prevent fire/restart and pause shortcuts while the online board is open.
+    if (document.getElementById("bb-world-modal")?.hidden === false) return;
     if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," ","Enter"].includes(event.key))
       event.preventDefault();
     if ((event.key==="p"||event.key==="P") && !event.repeat) {pause();return;}

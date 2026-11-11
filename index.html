@@ -10,13 +10,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700;800&amp;family=Teko:wght@500;600;700&amp;display=swap">
   <link rel="stylesheet" href="./styles.css?v=0.3.27">
-  <script src="./game.js?v=0.3.33" defer></script>
+  <link rel="stylesheet" href="./world-board.css?v=0.3.34">
+  <script src="./game.js?v=0.3.34" defer></script>
+  <script src="./world-board.js?v=0.3.34" defer></script>
 </head>
 <body>
   <main class="shell">
     <header class="masthead">
       <div class="brand"><h1 class="cyber-brand"><span class="brand-art" aria-hidden="true"></span><span class="sr-only">BEYOND BERZERK</span></h1></div>
-      <div class="version"><span>V 0.3.33</span></div>
+      <div class="version"><span>V 0.3.34</span></div>
     </header>
 
     <section class="cabinet" aria-label="Beyond Berzerk arcade game">
@@ -40,6 +42,7 @@
       <div class="status-line">
         <span><i class="live-dot"></i><span id="status-message">READY FOR CONTACT</span></span>
         <div class="actions">
+          <button id="bb-world-open" type="button" aria-haspopup="dialog" aria-controls="bb-world-modal" title="View the shared Cloudflare Top 10">WORLD TOP 10</button>
           <div class="test-launch" role="group" aria-label="Level selection test mode">
             <label for="test-wave">TEST WAVE</label>
             <input id="test-wave" type="number" min="1" max="999" value="4" step="1" inputmode="numeric" aria-label="Choose starting wave for an unscored test run">
