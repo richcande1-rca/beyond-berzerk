@@ -2,9 +2,14 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.36 — Evil Otto Returns**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.37 — Game-Over Leaderboard Focus Fix**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## Game-over leaderboard keyboard fix — v0.3.37
+
+- When the world leaderboard opens, keyboard focus goes to the **dialog** (not the Close button), so the held FIRE/SPACE key cannot accidentally dismiss the score-submission screen on game over.
+- Stray Space/Enter events on the dialog itself are prevented; Escape, Tab navigation, deliberate button activation, and initials typing remain available. No leaderboard API, game rules, scores, or enemy behavior changed.
 
 ## EVIL OTTO — v0.3.36
 

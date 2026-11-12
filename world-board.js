@@ -5,7 +5,7 @@
 (() => {
   "use strict";
   const ENDPOINT = "https://beyond-berzerk-board.rich-gothic.workers.dev/api/board";
-  const RULESET = "survival-v1", BUILD = "0.3.34", LIMIT = 10;
+  const RULESET = "survival-v1", BUILD = "0.3.37", LIMIT = 10;
   const button = document.getElementById("bb-world-open");
   if (!button) return;
   const board = document.createElement("section");
@@ -15,6 +15,9 @@
   board.setAttribute("role", "dialog");
   board.setAttribute("aria-modal", "true");
   board.setAttribute("aria-label", "Beyond Berzerk worldwide Top 10");
+  // Programmatically focus the dialog, NOT its Close button: a player
+  // still holding Space when game-over fires must not click Close by accident.
+  board.tabIndex = -1;
   board.innerHTML = [
     '<div class="bb-world-panel">',
       '<header class="bb-world-header">',
@@ -228,7 +231,7 @@
     render();
     renderRun();
     refresh();
-    closeBtn.focus({preventScroll:true});
+    board.focus({preventScroll:true});
   }
   function close(forNewRun=false) {
     if (board.hidden) return;
@@ -250,7 +253,16 @@
     if (event.target === board) close();
   });
   board.addEventListener("keydown", event => {
-    if (event.key === "Escape") { event.preventDefault(); close(); }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+    } else if (event.target === board &&
+        (event.key === " " || event.key === "Enter")) {
+      // Space-fire auto-repeat can continue through game over. It must
+      // neither scroll the page nor activate a dialog control. Buttons
+      // and the initials input keep their normal accessible keyboard use.
+      event.preventDefault();
+    }
     event.stopPropagation(); // Never fire the game or restart while typing initials.
   });
   window.addEventListener("bb:run-start", () => {
