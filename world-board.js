@@ -5,7 +5,7 @@
 (() => {
   "use strict";
   const ENDPOINT = "https://beyond-berzerk-board.rich-gothic.workers.dev/api/board";
-  const RULESET = "survival-v1", BUILD = "0.3.37", LIMIT = 10;
+  const RULESET = "survival-v1", BUILD = "0.3.38", LIMIT = 10;
   const button = document.getElementById("bb-world-open");
   if (!button) return;
   const board = document.createElement("section");

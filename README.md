@@ -2,9 +2,16 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.37 — Game-Over Leaderboard Focus Fix**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.38 — Otto Wave-Based Surprise Arrivals**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## Otto timing correction — v0.3.38
+
+- **No Otto before Wave 6.** Beginning with Wave 6, each wave gets an independent 45% chance of one Otto visit, 7–22 seconds into eligible active play. He might arrive on Wave 6 or not until several waves later. The old fixed early-run and repeating time windows are removed.
+- A pending visit pauses while a mini-boss is warning/active; Otto never overlaps those encounters, main boss introductions, or graduation ceremonies. A previously active Otto vanishes if an encounter begins.
+- New independent roll on wave change and on test-mode starts. No artificially early guaranteed test appearance.
+- **Unchanged:** sprite, sound, shots knocking him back, wall phasing, shield/life penalty, score rewards, Cloudflare leaderboard functionality. Board run-build metadata updated only.
 
 ## Game-over leaderboard keyboard fix — v0.3.37
 

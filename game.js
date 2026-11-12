@@ -97,8 +97,13 @@
   const EXTRA_LIFE_INTERVAL = 15000, MAX_LIVES = 5;
   const HULL_REPAIR_FULL_BONUS = 250;
   const OTTO_RADIUS=23, OTTO_SPEED=56, OTTO_LIFETIME=10.8;
-  // Rare, unpredictable nuisance. Not part of the boss schedule or score.
-  const OTTO_FIRST_ARRIVAL=[28,44], OTTO_RETURN=[57,86];
+  // No Otto before Wave 6. Each wave independently rolls a chance for ONE
+  // visit with a fresh, unpredictable within-wave arrival time.
+  const OTTO_MIN_WAVE=6, OTTO_WAVE_CHANCE=.45, OTTO_WAVE_DELAY=[7,22];
+  function rollOttoForWave(wave) {
+    return wave>=OTTO_MIN_WAVE && Math.random()<OTTO_WAVE_CHANCE ?
+      rnd(...OTTO_WAVE_DELAY):null;
+  }
   const MINI_SENTINEL_HP = 8, MINI_BREAKER_HP = 14;
   const MINI_SENTINEL_GAP_HALF=1.04, MINI_BREAKER_FRONT_HALF=.98;
   const LEVIATHAN_POD_HP=5, LEVIATHAN_CORE_HP=8;
@@ -208,7 +213,7 @@
       leviathanDeath:null, leviathanVictories:0,
       miniBoss:null, miniBossState:"none", miniBossSeen:false,
       miniBossWarning:0, clearMiniShots:false, miniRewardPending:null,
-      otto:null,ottoClock:rnd(...OTTO_FIRST_ARRIVAL),ottoVisits:0,
+      otto:null,ottoClock:null,ottoVisits:0,
       architectRingSpins:null,
       aim:6, aimTarget:null, aimVelocity:0,
       rings:makeRings(), bots:[], shots:[], particles:[],
@@ -318,8 +323,8 @@
     state.penetrator = state.wave >= 7;
     state.arcCannon = state.wave >= 9;
     state.testStartWave = state.wave;
-    // Test jump can summon Otto without playing through several waves.
-    if(testMode && state.wave>=2)state.ottoClock=rnd(7,12);
+    // Normal and test runs use the same per-wave Otto odds.
+    state.ottoClock=rollOttoForWave(state.wave);
     state.toSpawn = state.wave===1 ? 15 : Math.min(120,10+state.wave*5);
     state.waveTotal=state.toSpawn;
     state.announce = (testMode ? "TEST // " : "") +
@@ -1346,17 +1351,22 @@
   function updateOtto(dt) {
     const noBossEncounter=state.bossState==="none" &&
       !state.leviathanDeath && state.waveClock===0;
-    // Respect the major boss presentation; Otto doesn't clutter their
-    // entrances or the graduation ceremony.
-    if(!noBossEncounter){
+    // Keep Otto away from all mini-boss introductions and fights. A
+    // pending chance stops counting down until the encounter ends.
+    const miniEncounter=state.miniBossState==="warning" ||
+      state.miniBossState==="active";
+    if(!noBossEncounter || miniEncounter){
       state.otto=null;
       return;
     }
     const o=state.otto;
     if(!o){
+      // null = no visit was rolled, or his one visit already happened.
+      if(state.ottoClock===null || state.wave<OTTO_MIN_WAVE)return;
       state.ottoClock-=dt;
-      if(state.wave<2 || state.ottoClock>0)return;
-      state.ottoClock=rnd(...OTTO_RETURN);
+      if(state.ottoClock>0)return;
+      state.ottoClock=null; // At most one appearance in this wave.
+
       const angle=rnd(-Math.PI,Math.PI);
       state.otto={angle,seed:rnd(0,TAU),radius:R+25,age:0,
         life:OTTO_LIFETIME,repelGrace:0,flash:0,
@@ -2327,6 +2337,7 @@
         state.miniBossWarning=0;state.miniBossSeen=false;
         state.clearMiniShots=false;state.miniRewardPending=null;
         state.otto=null; // No carried-over visit during graduations.
+        state.ottoClock=rollOttoForWave(state.wave); // Fresh wave roll.
         state.architectRingSpins=null;
         // Changing sectors changes real walls as well as the decorative field.
         // Preserve their angular orientation so the handoff feels continuous.
