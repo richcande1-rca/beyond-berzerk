@@ -2,9 +2,19 @@
 
 **An intense one-screen arcade shooter.**
 
-A fast, neon-drenched, one-screen arcade shooter. Version **0.3.38 — Otto Wave-Based Surprise Arrivals**.
+A fast, neon-drenched, one-screen arcade shooter. Version **0.3.39 — Mobile Full-Speed Performance Fix**.
 
 You command a stationary 360-degree rotating turret while tiny robots swarm through a spinning, morphing arena. The walls block ordinary friendly and hostile projectiles; after clearing Wave 6, an automatic Railgun discharges through walls while the regular cannons keep firing. Robot swarms get larger and faster with each wave.
+
+## Mobile performance / timing fix — v0.3.39
+
+- On coarse touch devices, update gameplay on a fixed **30 Hz simulation timestep** while rendering a maximum of 30 FPS. At 15 FPS the game now advances roughly two small simulation steps per paint instead of running at the old 35 ms cap (about 52.5% real speed). A small 150 ms upper bound and 5-step safety limit avoid catastrophic catch-up spirals on badly overloaded devices; when a device cannot execute the game in real time, some slowdown is still possible.
+- Mobile canvas rasterizes to **720×540** instead of 960×720 (44% fewer pixels). Its logical drawing coordinates stay 960×720, so the arena, touch controls, boss art positions and ALL collision radii are unchanged.
+- Mobile's continuous fire cadence carries the fractional 30 Hz tick overshoot, preserving roughly 115 ms between successive shots rather than degrading to a 133 ms cadence. The desktop timer is unchanged.
+- Mobile decorative work: **two** wireframe tesseracts instead of four and no expensive canvas soft blur. Real physical walls, enemy counts, attack patterns, bullets, sprites, sounds, wave timers and leaderboard scoring are not intentionally modified. Desktop visuals/frame loop remain unchanged.
+- Exact wall geometry is lazily cached per simulation step; previously `ringShape` recalculated a trigonometric shape multiple times during each shot and bot collision test.
+- Projectile broad-phase uses mathematically safe swept AABB rejection (retains exact impact calculations for possible hits); robot impacts use squared distances, and expired out-of-bounds shots avoid pointless wall checks.
+- Verify on actual phones as well as desktop: elapsed game time should track real time at 15–30 FPS, mobile touches should still aim correctly, and boss/score outcomes should be unaffected.
 
 ## Otto timing correction — v0.3.38
 

@@ -72,6 +72,13 @@
   // Center the entire arena in the space between the 65px top and 677px bottom HUD.
   // The outer perimeter, stroke, and radial markers now stay inside both HUDs.
   const W = 960, H = 720, CX = 480, CY = 371, R = 276;
+  // Canvas draws at 720x540 on touch phones. World coordinates stay 960x720,
+  // including touch input, aim, bosses, walls, and every collision hitbox.
+  if(touchPrimary){
+    canvas.width=720;
+    canvas.height=540;
+    ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);
+  }
   const TAU = Math.PI * 2;
   const MODES = ["SPIN", "MORPH", "MELTDOWN"];
   const DURATIONS = [13, 13, 11];
@@ -399,8 +406,21 @@
       width:ring.width
     };
   }
-  function blockedAngle(ring, angle, padding=0) {
-    const s = ringShape(ring);
+  let wallGeometry=null;
+  function collisionShapes(){
+    if(!wallGeometry || wallGeometry.rings!==state.rings ||
+        wallGeometry.elapsed!==state.elapsed ||
+        wallGeometry.modeIndex!==state.modeIndex ||
+        wallGeometry.wave!==state.wave){
+      wallGeometry={rings:state.rings,elapsed:state.elapsed,
+        modeIndex:state.modeIndex,wave:state.wave,
+        shapes:state.rings.map(ringShape)};
+    }
+    return wallGeometry.shapes;
+  }
+  function blockedAngle(ring, angle, padding=0, cachedShape=null) {
+    const s = cachedShape || collisionShapes()[state.rings.indexOf(ring)] ||
+      ringShape(ring);
     const pitch = TAU / ring.count;
     const n = Math.round((angle - ring.angle) / pitch);
     const center = ring.angle + n * pitch;
@@ -409,10 +429,11 @@
   function wallHit(x, y, padding=0) {
     const radius = dist(x, y);
     const angle = polar(x, y);
-    for (const ring of state.rings) {
-      const s = ringShape(ring);
+    const shapes=collisionShapes();
+    for(let i=0;i<state.rings.length;i++){
+      const ring=state.rings[i],s=shapes[i];
       if (Math.abs(radius - s.radius) <= s.width / 2 + padding &&
-          blockedAngle(ring, angle, padding / Math.max(60, radius))) return true;
+          blockedAngle(ring, angle, padding / Math.max(60, radius),s)) return true;
     }
     return false;
   }
@@ -1135,9 +1156,12 @@
         const factor=hostileScale(b);
         const vx=a.vx-b.vx*factor, vy=a.vy-b.vy*factor;
         const limit=Math.min(dt,a.life,b.life);
+        const radius=a.size+b.size+1.2;
+        // Exact swept AABB rejection: no possible collision is skipped.
+        if(Math.abs(rx)>Math.abs(vx)*limit+radius ||
+            Math.abs(ry)>Math.abs(vy)*limit+radius)continue;
         const t=clamp(-(rx*vx+ry*vy)/Math.max(1,vx*vx+vy*vy),0,limit);
         const dx=rx+vx*t, dy=ry+vy*t;
-        const radius=a.size+b.size+1.2;
         if (dx*dx+dy*dy<=radius*radius) possible.push({a,b,t});
       }
     }
@@ -1172,8 +1196,9 @@
       let hit=false;
       for (let j=0;j<steps;j++) {
         s.x+=s.vx*shotDt/steps;s.y+=s.vy*shotDt/steps;
-        const struckWall=!s.penetrating && wallHit(s.x,s.y,s.size);
-        if (dist(s.x,s.y)>R+21 || struckWall) {
+        const outside=dist(s.x,s.y)>R+21;
+        const struckWall=!outside && !s.penetrating && wallHit(s.x,s.y,s.size);
+        if (outside || struckWall) {
           burst(s.x,s.y,s.friendly?"#45fefa":"#ff9551",struckWall?8:5,.42);
           if(struckWall) {
             state.impacts.push({x:s.x,y:s.y,life:.19,maxLife:.19,
@@ -1291,7 +1316,8 @@
           }
           for (let k=state.bots.length-1;k>=0;k--) {
             const b=state.bots[k];
-            if (Math.hypot(s.x-b.x,s.y-b.y)<b.size+4) {
+            const rx=s.x-b.x,ry=s.y-b.y,hitRadius=b.size+4;
+            if (rx*rx+ry*ry<hitRadius*hitRadius) {
               b.hp-=s.damage||1;
               burst(s.x,s.y,s.penetrating?"#ffe9ab":"#ffffff",4,.27);
               if (b.hp<=0) scrap(k,false,s.guardian?"guardian":"shot");
@@ -2453,9 +2479,15 @@
     state.shieldFlash=Math.max(0,state.shieldFlash-dt);
     state.comboClock=Math.max(0,state.comboClock-dt);
     if (!state.comboClock) state.combo=0;
-    if ((keys.has(" ")||keys.has("Enter")||pointerFiring||buttonFiring) && state.fireClock<=0) {
+    const firing=keys.has(" ")||keys.has("Enter")||pointerFiring||buttonFiring;
+    if(firing && state.fireClock<=0){
       firePlayer();
-      state.fireClock=.115;
+      // Preserve ~115ms sustained-fire cadence on 30Hz phones: carry the
+      // fractional overshoot instead of delaying until the next 33ms tick.
+      // Desktop retains its original exact timer semantics.
+      state.fireClock=touchPrimary?.115+Math.max(-dt,state.fireClock):.115;
+    }else if(touchPrimary && !firing){
+      state.fireClock=0; // An idle trigger must never accumulate "back shots".
     }
     updateWave(dt);
     updateSupplyDrone(dt);
@@ -2772,7 +2804,7 @@
     // The 4D signature belongs exclusively to Cosmos, not Waves 5–8.
     if(v.stage!==9)return;
     // Four bounded, lightweight wireframe tesseracts. No glow or collision.
-    const amount=4;
+    const amount=touchPrimary?2:4;
     const time=state.elapsed*Math.min(v.tempo,2.2);
     ctx.save();
     ctx.translate(CX,CY);
@@ -2893,7 +2925,7 @@
     }
     ctx.globalAlpha=1;ctx.restore();
     const perimeter=v.stage===1?328:(v.hue+12)%360;
-    ctx.save();ctx.shadowBlur=5;ctx.shadowColor="hsl("+perimeter+",100%,55%)";
+    ctx.save();ctx.shadowBlur=touchPrimary?0:5;ctx.shadowColor="hsl("+perimeter+",100%,55%)";
     ctx.strokeStyle="hsl("+perimeter+",100%,62%)";
     ctx.lineWidth=6;ctx.beginPath();ctx.arc(CX,CY,R+17,0,TAU);ctx.stroke();
     ctx.restore();
@@ -3938,7 +3970,7 @@
     // Fixed, anchored neon defense platform.
     ctx.save();
     ctx.shadowColor = "#23f7ff";
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur=touchPrimary?0:18;
     ctx.fillStyle = "#0d1330";
     ctx.beginPath();
     ctx.arc(0, 0, 30, 0, TAU);
@@ -4044,7 +4076,7 @@
     ctx.fillRect(15, -2, 16, 4);
 
     // Hot-pink muzzle with a lively energy shimmer.
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur=touchPrimary?0:14;
     ctx.shadowColor = "#ff4ea7";
     ctx.fillStyle = "#ff4ea7";
     if (ctx.roundRect) {
@@ -4055,7 +4087,7 @@
       ctx.fillRect(35, -8, 12, 16);
     }
 
-    ctx.shadowBlur = 20;
+    ctx.shadowBlur=touchPrimary?0:20;
     ctx.shadowColor = "#fff2b8";
     ctx.fillStyle = "#fff6d8";
     ctx.beginPath();
@@ -4068,7 +4100,7 @@
     if (state.muzzleFlash>0) {
       const power=state.muzzleFlash/.07;
       ctx.globalAlpha*=power;
-      ctx.fillStyle="#fffbd6";ctx.shadowColor="#fdffab";ctx.shadowBlur=18;
+      ctx.fillStyle="#fffbd6";ctx.shadowColor="#fdffab";ctx.shadowBlur=touchPrimary?0:18;
       ctx.beginPath();
       ctx.moveTo(47,0);ctx.lineTo(66+power*8,-7);
       ctx.lineTo(59,0);ctx.lineTo(66+power*8,7);
@@ -4079,7 +4111,7 @@
     // Pulsing core remains visually centered as the barrel recoils.
     ctx.save();
     ctx.shadowColor = "#29fcf0";
-    ctx.shadowBlur = 24;
+    ctx.shadowBlur=touchPrimary?0:24;
     ctx.fillStyle = "#29fcf0";
     ctx.beginPath();
     ctx.arc(0, 0, 10+pulse*1.2, 0, TAU);
@@ -4354,11 +4386,36 @@
     }
     drawWaveCelebration();drawHUD();drawAnnouncements();
   }
+  const MOBILE_STEP=1/30;
+  let mobileRemainder=0,mobileLastPaint=-Infinity;
   function frame(now) {
-    const dt=clamp((now-last)/1000,0,.035);
+    const elapsed=clamp((now-last)/1000,0,touchPrimary?.15:.035);
     last=now;
-    if(state.phase==="playing") update(dt);
-    draw();
+    if(touchPrimary){
+      // Slow screens used to advance only 35ms per rendered frame; at 15fps
+      // that was 0.525x game speed. Fixed 30Hz simulation catches up in
+      // multiple small steps while rendering at most once per 33ms.
+      if(state.phase==="playing"){
+        mobileRemainder=Math.min(.15,mobileRemainder+elapsed);
+        let steps=0;
+        while(mobileRemainder>=MOBILE_STEP && steps<5 &&
+              state.phase==="playing"){
+          update(MOBILE_STEP);
+          mobileRemainder-=MOBILE_STEP;
+          steps++;
+        }
+        // Avoid a runaway backlog on severely overloaded hardware.
+        if(steps===5 && mobileRemainder>=MOBILE_STEP)
+          mobileRemainder=Math.min(mobileRemainder,MOBILE_STEP);
+      }else mobileRemainder=0;
+      if(now-mobileLastPaint>=1000/30-1){
+        draw();mobileLastPaint=now;
+      }
+    }else{
+      // Desktop gameplay and frame pacing remain as before.
+      if(state.phase==="playing")update(elapsed);
+      draw();
+    }
     requestAnimationFrame(frame);
   }
 
